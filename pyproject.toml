@@ -4,11 +4,12 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "0.1.0"
+version = "1.0.0"
 description = "Advanced customer segmentation engine for martech. RFM analysis, K-means clustering, streaming updates, tag-based filtering. Real-time audience scoring for email, ads, retention. 13x faster than sklearn."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
+maintainers = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 requires-python = ">=3.8"
 keywords = [
     "clustering",
@@ -38,7 +39,7 @@ keywords = [
     "rust-performance"
 ]
 classifiers = [
-    "Development Status :: 4 - Beta",
+    "Development Status :: 5 - Production/Stable",
     "Intended Audience :: Developers",
     "Intended Audience :: Financial and Insurance Industry",
     "License :: OSI Approved :: MIT License",
