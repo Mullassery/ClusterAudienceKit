@@ -27,7 +27,7 @@ except ImportError as e:
         "Please ensure the package is installed correctly."
     ) from e
 
-__version__: Final[str] = "0.1.0"
+__version__: Final[str] = "1.0.0"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
 __license__: Final[str] = "MIT"
