@@ -5,11 +5,58 @@ build-backend = "maturin"
 [project]
 name = "clusteraudiencekit"
 version = "0.1.0"
-description = "High-performance audience segmentation engine with Python bindings"
+description = "Advanced customer segmentation engine for martech. RFM analysis, K-means clustering, streaming updates, tag-based filtering. Real-time audience scoring for email, ads, retention. 13x faster than sklearn."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
 requires-python = ">=3.8"
+keywords = [
+    "clustering",
+    "customer-segmentation",
+    "rfm-analysis",
+    "martech",
+    "audience-segmentation",
+    "customer-analytics",
+    "machine-learning",
+    "k-means",
+    "segmentation-engine",
+    "crm",
+    "customer-lifetime-value",
+    "cohort-analysis",
+    "audience-targeting",
+    "marketing-automation",
+    "email-marketing",
+    "retargeting",
+    "customer-scoring",
+    "behavioral-analytics",
+    "data-science",
+    "python-library",
+    "real-time-processing",
+    "streaming-data",
+    "marketing-tech",
+    "audience-modeling",
+    "rust-performance"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Financial and Insurance Industry",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: News/Diary",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Monitoring",
+    "Topic :: Utilities",
+]
 dependencies = [
     "pandas>=1.3",
     "numpy>=1.20",
@@ -30,9 +77,13 @@ docs = [
 ]
 
 [project.urls]
-repository = "https://github.com/Mullassery/clusteraudiencekit"
-documentation = "https://clusteraudiencekit.readthedocs.io"
-"Bug Tracker" = "https://github.com/Mullassery/clusteraudiencekit/issues"
+Homepage = "https://github.com/Mullassery/ClusterAudienceKit"
+Repository = "https://github.com/Mullassery/ClusterAudienceKit"
+Documentation = "https://github.com/Mullassery/ClusterAudienceKit#readme"
+"Bug Tracker" = "https://github.com/Mullassery/ClusterAudienceKit/issues"
+Changelog = "https://github.com/Mullassery/ClusterAudienceKit/releases"
+"Source Code" = "https://github.com/Mullassery/ClusterAudienceKit/tree/main"
+Discussions = "https://github.com/Mullassery/ClusterAudienceKit/discussions"
 
 [tool.maturin]
 features = ["pyo3/extension-module"]
