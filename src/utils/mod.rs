@@ -1,6 +1,6 @@
 //! Utility functions
 
-pub mod validation;
 pub mod conversions;
+pub mod validation;
 
 pub use validation::*;
