@@ -54,6 +54,40 @@
 
 ---
 
+## 🔍 Competitive Gaps vs Market
+
+Based on analysis of customer segmentation market (Segment.io, mParticle, Mixpanel, Tealium), these gaps exist:
+
+### CRITICAL (Blocks Adoption)
+- **No UI dashboard** — Only Python SDK; competitors have marketing UIs
+  - **Market Impact:** Marketers cannot use ClusterAudienceKit (engineers-only)
+  - **Recommended Fix:** Dashboard UI in **v1.2.0 (Q4 2026)** is critical
+  - **Why:** 50%+ of CDPs are used by marketers who don't code
+
+- **Single algorithm (K-means only)** — Competitors offer hierarchical, DBSCAN, GMM
+  - **Market Impact:** Data scientists limited to one clustering approach
+  - **Recommended Fix:** Multi-algorithm support in v1.1.0 (Q3 2026) is on track
+  - **Why:** Different datasets need different clustering strategies
+
+### HIGH (Reduces Addressable Market)
+- **No real-time activation** — Cannot push segments to ad networks immediately
+  - **Competitor Advantage:** Mixpanel, Segment activate in <5 minutes
+  - **Timeline:** v1.3.0 (Q1 2027)
+
+- **Batch-only processing** — Cannot stream customer updates
+  - **Market Impact:** Daily re-segmentation only; real-time teams need streaming
+  - **Timeline:** v1.3.0 (Q1 2027)
+
+- **No pre-built integrations** — Segment has 400+ connectors
+  - **Competitor Advantage:** Teams don't need engineering for activation
+  - **Timeline:** v2.0.0 (Q2 2027)
+
+### MEDIUM (Nice-to-Have)
+- **No data governance** — Cannot track who accessed what segments
+  - **Timeline:** v1.3.0 (Q1 2027)
+
+---
+
 ## 📋 Roadmap
 
 ### v1.1.0 (Q3 2026) — Advanced Algorithms
