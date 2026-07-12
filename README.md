@@ -273,3 +273,22 @@ For security issues, see [SECURITY.md](SECURITY.md).
 
 
 
+
+## 🔒 Security & Error Handling
+
+ClusterAudienceKit includes comprehensive security and error handling:
+
+- **Input Validation**: Pydantic models validate all segmentation requests
+- **Resource Limits**: DoS protection with limits on customers (10M), clusters (1000), and features (100)
+- **Memory-Safe**: Execution time estimation and automatic limits
+- **Detailed Error Messages**: See `clusteraudiencekit/error_messages.py` for recovery steps
+
+### Security Roadmap
+
+- ✅ v1.0.0: Input validation with Pydantic, resource limits
+- ✅ v1.0.1: Dependencies pinned, DoS protection
+- 🔄 v1.1.0: Advanced segmentation algorithms
+- 🔄 v1.2.0: Distributed clustering for large datasets
+- 📋 v1.3.0: Real-time segment updates
+
+Full roadmap: [ROADMAP.md](ROADMAP.md)
