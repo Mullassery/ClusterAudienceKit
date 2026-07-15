@@ -22,6 +22,7 @@ pub mod pattern_discovery;
 pub mod platform_adapters;
 pub mod segment_intelligence;
 pub mod plugins;
+pub mod price_intelligence;
 pub mod privacy;
 pub mod profiling;
 pub mod quality_metrics;

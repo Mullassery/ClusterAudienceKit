@@ -1,15 +1,15 @@
-# ClusterAudienceKit v5.8.0
+# ClusterAudienceKit v5.9.0
 
-**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence + B2B governance (90 features) + privacy + 30 modules.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence + B2B governance + price intelligence (105 features) + privacy + 31 modules.**
 
 ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-5.8.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.9.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
-[![Tests](https://img.shields.io/badge/tests-367-brightgreen)](src/)
+[![Tests](https://img.shields.io/badge/tests-384-brightgreen)](src/)
 
 ## Install
 
@@ -316,9 +316,26 @@ AudienceSegmenter(
 - ✅ **Change Tracking**: Track all segment definition changes with member impact
 - ✅ **Impact Analysis**: Analyze change impact on customers, revenue, and contracts
 
-### 📋 Upcoming (v5.8+)
+### ✅ Phase 5.8: Price Intelligence (15 features)
+- ✅ **Price Elasticity**: Measure price sensitivity with demand curve modeling
+- ✅ **Tier Migration**: Predict customer movement across pricing tiers
+- ✅ **Category Affinity**: Identify cross-category purchasing patterns
+- ✅ **Price Sensitivity**: Measure discount response and willingness to pay
+- ✅ **Discount Optimization**: Find optimal discount strategies for conversion lift
+- ✅ **Revenue Maximization**: Identify highest revenue pricing strategy
+- ✅ **Competitive Pricing**: Benchmark against competitors with price gap analysis
+- ✅ **Price Thresholds**: Detect acceptable price ranges and breaking points
+- ✅ **Demand Forecasting**: Forecast demand at different price points
+- ✅ **Margin Optimization**: Maximize profit margins with cost-based pricing
+- ✅ **Bundle Recommendations**: Recommend product bundles with discount strategy
+- ✅ **Price Ranges**: Define minimum and maximum acceptable prices
+- ✅ **Churn by Price**: Analyze churn rates at different pricing tiers
+- ✅ **Customer Value by Tier**: Segment value analysis by pricing tier
+- ✅ **Price Change Impact**: Forecast impact of price changes on volume and revenue
+
+### 📋 Upcoming (v5.9+)
 - [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
-- [ ] **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
+- [ ] **Phase 5.9**: Graph Intelligence, Real-Time Events, Experimental AI (500+ hrs)
 
 ## Roadmap: v5.0 → v6.0
 
@@ -385,11 +402,23 @@ AudienceSegmenter(
 - Change tracking with member and revenue impact
 - Impact analysis for changes on customers and revenue
 
-**Phase 5.8+ (500+ hrs) — Advanced Engines**
-- Price intelligence (elasticity, migration, category analysis)
+**Phase 5.8 (50 hrs) — Price Intelligence** ✅ COMPLETE
+- Price elasticity analysis with demand curve modeling
+- Tier migration prediction with growth/churn assessment
+- Category affinity and cross-sell opportunity scoring
+- Discount optimization with conversion lift forecasting
+- Revenue maximization and competitive benchmarking
+- Price threshold detection and range definition
+- Demand forecasting at multiple price points
+- Margin optimization with cost-based pricing
+- Bundle recommendations with discount strategy
+- Churn analysis by pricing tier
+- Customer value segmentation by tier
+- Price change impact modeling
+
+**Phase 5.9+ (500+ hrs) — Advanced Engines**
 - Graph intelligence (relationships, households, networks)
 - Real-time events (live alerts, anomaly detection, triggers)
-- B2B (buying committees, intent signals, account health)
 - Experimental AI (self-healing segments, autonomous discovery)
 
 ## Community

@@ -2,6 +2,85 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [5.9.0] - 2026-07-16
+
+### 🎉 Phase 5.8: Price Intelligence (15 features, 50 hours)
+
+**Price Intelligence enables dynamic pricing strategies and revenue optimization for customer segments:**
+
+#### Features
+- ✅ **Price Elasticity**: Measure price sensitivity with demand curve analysis and optimal price identification
+- ✅ **Tier Migration**: Predict customer movement across pricing tiers with growth/churn likelihood
+- ✅ **Category Affinity**: Identify cross-category purchasing patterns and bundle opportunities
+- ✅ **Price Sensitivity**: Measure customer price sensitivity with discount response rates
+- ✅ **Discount Optimization**: Find optimal discount levels to maximize conversion lift
+- ✅ **Revenue Maximization**: Identify pricing strategy that maximizes segment revenue
+- ✅ **Competitive Pricing**: Benchmark prices against competitors with gap analysis
+- ✅ **Price Thresholds**: Detect acceptable price ranges and conversion breaking points
+- ✅ **Demand Forecasting**: Forecast segment demand at multiple price points
+- ✅ **Margin Optimization**: Maximize profit margins with cost-based pricing adjustments
+- ✅ **Bundle Recommendations**: Recommend product bundles with discount strategy
+- ✅ **Price Ranges**: Define minimum and maximum acceptable prices per segment
+- ✅ **Churn by Price Point**: Analyze churn rates at different pricing tiers
+- ✅ **Customer Value by Tier**: Analyze segment value distribution across pricing tiers
+- ✅ **Price Change Impact**: Forecast impact of price changes on volume, revenue, and churn
+
+#### Architecture
+- **31 Engine Modules** (up from 30): New `price_intelligence` module
+- **384 Tests** (up from 367): 17 comprehensive tests covering all features
+- **105 Total Features**: 10 (Phase 5.3) + 21 (Phase 5.4) + 12 (Phase 5.5) + 15 (Phase 5.6) + 15 (Phase 5.7) + 15 (Phase 5.8) + 7 earlier phases
+
+#### Technical Details
+- `ElasticityCalculator`: Price elasticity with demand curve and optimal price discovery
+- `TierMigrationPredictor`: Markov-style tier transition prediction with churn risk (0-1)
+- `AffiniCalculator`: Category co-purchase affinity with bundle recommendations
+- `SensitivityAnalyzer`: Discount response coefficient with willingness-to-pay scoring
+- `DiscountOptimizer`: Optimal discount calculation (0-50% range) for conversion lift
+- `RevenueMaximizer`: Price optimization with elasticity-aware volume adjustment
+- `CompetitiveAnalyzer`: Price gap analysis (-50% to +100%) with market positioning
+- `ThresholdDetector`: Acceptable, breakeven, premium, and drop-off price identification
+- `DemandForecaster`: Multi-point demand prediction across 5 price points (0.8-1.2x)
+- `MarginOptimizer`: Cost-based pricing with gross margin optimization
+- `BundleRecommender`: Multi-product bundling with 15-30% discount strategy
+- `PriceRangeAnalyzer`: Min/max price boundary with flexibility scoring
+- `ChurnAnalyzer`: Tier-by-tier churn correlation (0-1 scale)
+- `TierValueAnalyzer`: Revenue and growth concentration per pricing tier
+- `ImpactAnalyzer`: Price change elasticity-based volume/revenue/churn impact
+
+#### Use Cases
+1. **Dynamic Pricing**: Real-time price optimization based on demand elasticity
+2. **Tier Strategy**: Optimize pricing tier structure with migration prediction
+3. **Revenue Expansion**: Find price points that maximize segment revenue
+4. **Product Strategy**: Bundle recommendations with cross-sell opportunity scoring
+5. **Competitive Response**: Monitor competitor pricing and adjust positioning
+
+#### Test Coverage
+- Price elasticity with multiple demand points
+- Tier migration with growth rate analysis
+- Category affinity with bundle recommendations
+- Price sensitivity with discount history
+- Discount optimization with conversion modeling
+- Revenue maximization with elasticity adjustment
+- Competitive pricing with market positioning
+- Price threshold detection
+- Demand forecasting across price points
+- Margin optimization with cost-based pricing
+- Bundle recommendation with discount strategy
+- Price range analysis with flexibility
+- Churn analysis by pricing tier
+- Tier value concentration and growth
+- Price change impact modeling
+
+### 🏛️ Architecture Update
+- Price Intelligence module fully integrated with revenue, temporal, and governance engines
+- Pure Rust implementation with no external dependencies
+- 384 tests maintaining 100% pass rate
+
+### 🚀 Upcoming in v5.10+
+- **Phase 5.9+**: Graph Intelligence, Real-Time Events, Experimental AI (500+ hrs)
+
+---
+
 ## [5.8.0] - 2026-07-16
 
 ### 🎉 Phase 5.7: B2B & Governance (15 features, 50 hours)
