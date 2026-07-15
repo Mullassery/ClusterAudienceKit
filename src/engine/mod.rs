@@ -18,6 +18,7 @@ pub mod lookalike;
 pub mod metrics;
 pub mod platform_adapters;
 pub mod plugins;
+pub mod privacy;
 pub mod profiling;
 pub mod quality_metrics;
 pub mod rfm;
