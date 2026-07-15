@@ -18,6 +18,7 @@ pub mod lookalike;
 pub mod metrics;
 pub mod neural_networks;
 pub mod platform_adapters;
+pub mod segment_intelligence;
 pub mod plugins;
 pub mod privacy;
 pub mod profiling;
