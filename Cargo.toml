@@ -1,6 +1,6 @@
 [package]
 name = "clusteraudiencekit"
-version = "1.0.0"
+version = "1.5.0"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
 license = "MIT"
@@ -34,7 +34,7 @@ name = "benchmarks"
 harness = false
 
 [lib]
-crate-type = ["rlib"]
+crate-type = ["cdylib", "rlib"]
 
 [profile.release]
 opt-level = 3

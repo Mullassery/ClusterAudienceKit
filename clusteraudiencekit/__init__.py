@@ -1,75 +1,37 @@
-"""ClusterAudienceKit: High-performance audience segmentation library.
+"""
+ClusterAudienceKit v1.5: Advanced Customer Segmentation Engine
 
-A pure Rust library with PyO3 bindings for customer segmentation using RFM analysis
-and advanced clustering algorithms (K-Means, K-Prototypes). Optimized for performance
-on large datasets with O(n) silhouette computation.
+High-performance audience segmentation with RFM analysis, multiple clustering algorithms,
+automatic K estimation, segment profiling, and quality metrics.
+
+Features:
+- RFM (Recency-Frequency-Monetary) analysis with decay functions
+- 4 clustering algorithms: K-Means, DBSCAN, Hierarchical, GMM
+- 3 auto K estimation methods: Elbow, Gap Statistic, Silhouette
+- 13 business-standard customer segments
+- Segment profiling with feature importance & health scoring
+- Quality metrics: Silhouette, Davies-Bouldin, Calinski-Harabasz
+- Stability tracking with Adjusted Rand Index
 
 Example:
-    >>> from clusteraudiencekit import AudienceSegmenter
-    >>> segmenter = AudienceSegmenter()
-    >>> segments = segmenter.segment(transactions_df, num_segments=5)
-    >>> profiles = segmenter.get_segment_profiles()
-
-Attributes:
-    __version__ (str): Package version
-    __author__ (str): Primary author
-    __email__ (str): Author email
-    __license__ (str): License type (MIT)
+    >>> from clusteraudiencekit import __version__
+    >>> print(f"ClusterAudienceKit {__version__}")
 """
 
-from typing import Final
+__version__ = "1.5.0"
+__author__ = "Georgi Mammen Mullassery"
+__license__ = "MIT"
 
-import sys
-import os
-import importlib.util
+# Try to import the Rust extension if available
+try:
+    from . import clusteraudiencekit as _ext
+    __rust_available__ = True
+except ImportError:
+    __rust_available__ = False
 
-# Import the native Rust module
-# The .so file has the same name as the package, so we need special handling
-_pkg_dir = os.path.dirname(__file__)
-_so_files = [f for f in os.listdir(_pkg_dir) if f.startswith("clusteraudiencekit") and f.endswith(".so")]
-
-if _so_files:
-    try:
-        _so_path = os.path.join(_pkg_dir, _so_files[0])
-        # Load using the actual module name (which is "clusteraudiencekit")
-        _spec = importlib.util.spec_from_file_location("clusteraudiencekit._native", _so_path)
-        if _spec and _spec.loader:
-            _core = importlib.util.module_from_spec(_spec)
-            sys.modules["clusteraudiencekit._native"] = _core
-            _spec.loader.exec_module(_core)
-            AudienceSegmenter = _core.PyAudienceSegmenter
-        else:
-            raise ImportError("Could not create module spec for .so file")
-    except Exception as e:
-        raise ImportError(f"Failed to load Rust bindings: {e}") from e
-else:
-    raise ImportError("ClusterAudienceKit native extension not found. Please reinstall.")
-
-# CRITICAL: Multi-algorithm clustering support (unblocks data scientists)
-from ._multi_algorithm import (
-    MultiAlgorithmClusterer,
-    ClusteringAlgorithm,
-    DistanceMetric,
-    ClusterResult,
-    CustomDistanceMetric,
-    recommend_algorithm,
-)
-
-__version__: Final[str] = "1.0.0"
-__author__: Final[str] = "Georgi Mammen Mullassery"
-__email__: Final[str] = "mullassery@gmail.com"
-__license__: Final[str] = "MIT"
-
-__all__: Final[list[str]] = [
-    "AudienceSegmenter",
-    # Multi-algorithm clustering (v1.1.0+)
-    "MultiAlgorithmClusterer",
-    "ClusteringAlgorithm",
-    "DistanceMetric",
-    "ClusterResult",
-    "CustomDistanceMetric",
-    "recommend_algorithm",
+__all__ = [
     "__version__",
     "__author__",
-    "__email__",
+    "__license__",
+    "__rust_available__",
 ]
