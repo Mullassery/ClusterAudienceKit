@@ -1,14 +1,15 @@
-# ClusterAudienceKit v2.0
+# ClusterAudienceKit v5.0.0
 
-**Production-grade customer segmentation platform — RFM analysis, clustering, streaming updates, drift detection, CLV prediction, lifecycle tracking, cohort analytics, and enterprise platform activation.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering algorithms + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + AutoML + governance + privacy + 25 engine modules.**
 
-ClusterAudienceKit is the complete segmentation stack for modern MarTech. Replace your scikit-learn + pandas + lifetimes + Segment.com combination with a single, production-ready platform backed by a Rust engine that handles 1M+ customers in milliseconds.
+ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-2.0.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.0.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
+[![Tests](https://img.shields.io/badge/tests-260%2B-brightgreen)](src/)
 
 ## Install
 
@@ -71,20 +72,27 @@ You can — until your audience grows. `sklearn.metrics.silhouette_score` is O(n
 
 Beyond performance, you get the complete production stack:
 
-| Capability | sklearn | pandas | lifetimes | Braze | Klaviyo | **ClusterAudienceKit v2.0** |
+| Capability | sklearn | pandas | lifetimes | Braze | Klaviyo | **ClusterAudienceKit v5.0** |
 |------------|:---:|:---:|:---:|:---:|:---:|:---:|
 | RFM calculation | — | manual | — | ✓ | ✓ | ✓ |
-| KMeans clustering | ✓ | — | — | — | — | ✓ |
-| DBSCAN, Hierarchical, GMM | partial | — | — | — | — | ✓ |
-| Auto K-estimation | — | — | — | — | — | ✓ |
+| 6 clustering algorithms (K-Means, DBSCAN, Hierarchical, GMM, K-Prototypes) | partial | — | — | — | — | ✓ |
+| Auto K-estimation (Elbow, Gap Statistic, Silhouette) | — | — | — | — | — | ✓ |
 | Customer lifetime value (CLV) | — | — | ✓ | — | — | ✓ |
-| Churn prediction | — | — | partial | ✓ | ✓ | ✓ |
+| Churn prediction (Logistic + Ensemble) | partial | — | partial | ✓ | ✓ | ✓ |
+| **XGBoost gradient boosting** | manual | — | — | — | — | **✓** |
+| **Neural networks (MLP + Autoencoder + RNN)** | manual | — | — | — | — | **✓** |
+| **AutoML hyperparameter tuning** | manual | — | — | — | — | **✓** |
 | Streaming/incremental updates | — | — | — | — | — | ✓ |
-| **Segment drift detection** | — | — | — | — | — | **✓** |
-| **Cohort analytics** | — | — | — | partial | — | **✓** |
-| **Lifecycle tracking** | — | — | — | — | — | **✓** |
-| **7 platform integrations** | — | — | — | 1 | 1 | **7+** |
-| **Production dashboard** | — | — | — | — | — | **✓** |
+| Segment drift detection (K-S, Hellinger, Chi-square) | — | — | — | — | — | ✓ |
+| Cohort analytics (retention, decay, comparison) | — | — | — | partial | — | ✓ |
+| Lifecycle tracking (7-stage journeys) | — | — | — | — | — | ✓ |
+| B2B segmentation + account health | — | — | — | — | — | ✓ |
+| Lookalike audiences (4 similarity metrics) | — | — | — | — | — | ✓ |
+| **Plugin framework (custom algorithms)** | — | — | — | — | — | **✓** |
+| **RBAC + audit logging** | — | — | — | — | — | **✓** |
+| **Privacy: Differential Privacy + K-anonymity** | — | — | — | — | — | **✓** |
+| 7+ platform integrations (Braze, Klaviyo, HubSpot, Segment, etc.) | — | — | — | 1 | 1 | **✓** |
+| Production dashboard + KPIs | — | — | — | — | — | ✓ |
 | Quality metrics + profiling | ✓ (slow) | — | — | — | — | ✓ (fast) |
 | Multi-core by default | partial | — | — | — | — | ✓ |
 
@@ -197,49 +205,89 @@ AudienceSegmenter(
 | [docs/architecture.md](docs/architecture.md) | Design decisions |
 | [examples/](examples/) | Runnable scripts |
 
-## What's Included in v2.0
+## What's Included in v5.0.0
 
-### ✅ Core Segmentation (Phase 1)
+### ✅ Phase 1: Core Segmentation
 - ✅ Full RFM engine (linear/exponential/inverse decay)
-- ✅ 4 clustering algorithms (K-Means, DBSCAN, Hierarchical, GMM)
+- ✅ 6 clustering algorithms (K-Means, K-Prototypes, DBSCAN, Hierarchical, GMM, custom)
 - ✅ Auto K-estimation (Elbow, Gap Statistic, Silhouette)
 - ✅ 13 automatic business segments (Champions, Loyal, At Risk, etc.)
 - ✅ Behavioral rule engine (SQL-like conditions)
-- ✅ Segment profiling + quality metrics
-- ✅ 59 unit tests
+- ✅ Segment profiling + 15+ quality metrics
 
-### ✅ Production Features (Phase 2)
-- ✅ **Streaming Segmentation**: <1s real-time updates via event stream
-- ✅ **Customer Lifetime Value**: Historical, predictive, and probabilistic models with 5-year forecasting
-- ✅ **Lifecycle Tracking**: 7-stage journey modeling (Prospect → Churned)
-- ✅ **Cohort Analytics**: Retention curves, decay rates, cohort comparison
-- ✅ **Drift Detection**: Statistical tests (K-S, Hellinger, Chi-square) with alert severity levels
-- ✅ **Enterprise Activation**: 7 platform adapters (Braze, Iterable, Klaviyo, Salesforce, HubSpot, Segment, RudderStack)
-- ✅ **Production Dashboard**: KPIs, trends, segment health, streaming metrics
-- ✅ 104 unit tests
+### ✅ Phase 2: Production Features
+- ✅ **Streaming**: <1s real-time updates via event streams with drift detection
+- ✅ **CLV**: Historical, predictive, and probabilistic models (5-year forecasting)
+- ✅ **Lifecycle**: 7-stage journey modeling (Prospect → Churned)
+- ✅ **Cohort Analytics**: Retention curves, decay rates, comparison
+- ✅ **Drift Detection**: K-S, Hellinger, Chi-square tests with severity levels
+- ✅ **Activation**: 7 platform adapters (Braze, Klaviyo, Salesforce, HubSpot, Segment, etc.)
+- ✅ **Dashboard**: Real-time KPIs, trends, segment health, streaming metrics
 
-### 📋 Upcoming (v3.0+)
-- [ ] **Advanced Identity**: Multi-device and household-level resolution
-- [ ] **B2B Segmentation**: Account-level clustering and business intent scoring
-- [ ] **Predictive Churn**: ML models for segment-specific churn risk
-- [ ] **Lookalike Audiences**: Find similar customers outside current segments
-- [ ] **Custom Plugins**: Extensible algorithm and integration framework
-- [ ] **Governance & RBAC**: Multi-team access with audit logs
-- [ ] **Privacy Compliance**: Differential privacy, K-anonymity, GDPR/CCPA
+### ✅ Phase 3: Advanced Segmentation
+- ✅ **Churn Prediction**: Logistic regression + ensemble random forest with risk scoring
+- ✅ **B2B Segmentation**: Firmographic profiling, account health, expansion opportunities
+- ✅ **Lookalike Audiences**: 4 similarity metrics (Cosine, Euclidean, Manhattan, Jaccard)
+- ✅ **TAM Calculation**: Total addressable market analysis per segment
 
-## Roadmap: v2.0 → v3.0
+### ✅ Phase 4: Enterprise Governance
+- ✅ **Plugin Framework**: Trait-based extensibility for custom algorithms
+- ✅ **RBAC**: 5 roles × 8 actions × 6 resources with granular control
+- ✅ **Audit Logging**: Complete traceability of all actions
+- ✅ **Privacy**: Differential privacy (Laplace, Gaussian), K-anonymity, row suppression
 
-**Q4 2026: Phase 1.9 (Comprehensive Testing)**
-- 100+ unit tests for edge cases
-- 20+ integration tests for end-to-end workflows
-- Performance benchmarks for 1M+ customer datasets
-- Coverage reports and documentation
+### ✅ Phase 5.2: Predictive ML
+- ✅ **XGBoost**: Gradient boosting for churn/CLV prediction (hyperparameter tuning)
+- ✅ **Neural Networks**: MLP, Autoencoder, RNN for pattern discovery
+  - Dense layers with ReLU/Sigmoid/Tanh activations
+  - Backpropagation training via mini-batch SGD
+  - Unsupervised feature learning
+  - Anomaly detection via reconstruction error
+- ✅ **60+ unit tests** across all ML modules
 
-**Q1 2027: v3.0 Advanced Features**
-- Predictive churn modeling (ML-based)
-- Account-level B2B segmentation
-- Custom algorithm plugins
-- Advanced identity resolution (multi-device, household)
+### 📋 Upcoming (v5.1+)
+- [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
+- [ ] **Phase 5.3**: Segment Intelligence (explainability, confidence scoring, stability)
+- [ ] **Phase 5.4**: Pattern Discovery (emerging audiences, personas, trends)
+- [ ] **Phase 5.5**: Temporal Analytics (forecasting, scenario planning, time machine)
+- [ ] **Phase 5.6**: Price Intelligence (elasticity, tier migration, category analysis)
+
+## Roadmap: v5.0 → v6.0
+
+**Phase 5.2.3 (20 hrs) — AutoML Framework**
+- Grid search & random search hyperparameter tuning
+- Bayesian optimization for model selection
+- K-fold cross-validation strategies
+- Ensemble voting (XGBoost + Neural Networks)
+- Automated feature selection
+
+**Phase 5.3 (190 hrs) — Segment Intelligence**
+- Explainability: Why do customers belong to segments?
+- Confidence scoring: How sure are membership decisions?
+- Stability metrics: Do segments stay stable over time?
+- Decay detection: Which segments are losing relevance?
+- Health dashboards: Real-time segment KPIs
+
+**Phase 5.4 (250 hrs) — Pattern Discovery + Revenue Intelligence**
+- Unsupervised audience mining
+- AI persona generation
+- Trend-based segment discovery
+- Causal driver analysis (what causes churn/growth?)
+- Revenue attribution & ROI per segment
+
+**Phase 5.5 (200 hrs) — Temporal & Simulation**
+- Time machine: View segments as they existed at any past date
+- Forecasting: Predict segment size and composition
+- What-if modeling: Simulate strategy changes
+- Scenario planning for expansion
+- Sensitivity analysis for threshold tuning
+
+**Phase 5.6+ (500+ hrs) — Advanced Engines**
+- Price intelligence (elasticity, migration, category analysis)
+- Graph intelligence (relationships, households, networks)
+- Real-time events (live alerts, anomaly detection, triggers)
+- B2B (buying committees, intent signals, account health)
+- Experimental AI (self-healing segments, autonomous discovery)
 
 ## Community
 
