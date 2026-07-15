@@ -273,3 +273,62 @@ For security issues, see [SECURITY.md](SECURITY.md).
 
 
 
+
+## 🔒 Security & Error Handling
+
+ClusterAudienceKit includes comprehensive security and error handling:
+
+- **Input Validation**: Pydantic models validate all segmentation requests
+- **Resource Limits**: DoS protection with limits on customers (10M), clusters (1000), and features (100)
+- **Memory-Safe**: Execution time estimation and automatic limits
+- **Detailed Error Messages**: See `clusteraudiencekit/error_messages.py` for recovery steps
+
+### Security Roadmap
+
+- ✅ v1.0.0: Input validation with Pydantic, resource limits
+- ✅ v1.0.1: Dependencies pinned, DoS protection
+- 🔄 v1.1.0: Advanced segmentation algorithms
+- 🔄 v1.2.0: Distributed clustering for large datasets
+- 📋 v1.3.0: Real-time segment updates
+
+Full roadmap: [ROADMAP.md](ROADMAP.md)
+
+## 🆕 What's New in v1.1.0 (Q3 2026)
+
+### Multi-Algorithm Clustering 🔄
+Choose the right algorithm for your data:
+
+```python
+from clusteraudiencekit import MultiAlgorithmClusterer, ClusteringAlgorithm
+
+# K-means: Fast, spherical clusters
+clusterer_km = MultiAlgorithmClusterer(ClusteringAlgorithm.KMEANS)
+result_km = clusterer_km.fit_predict(data, n_clusters=5)
+
+# DBSCAN: Density-based, outlier detection
+clusterer_db = MultiAlgorithmClusterer(ClusteringAlgorithm.DBSCAN)
+result_db = clusterer_db.fit_predict(data, eps=0.5, min_samples=5)
+
+# GMM: Probabilistic, soft assignments
+clusterer_gmm = MultiAlgorithmClusterer(ClusteringAlgorithm.GMM)
+result_gmm = clusterer_gmm.fit_predict(data, n_components=5)
+
+# Compare all at once
+results = clusterer_km.compare_algorithms(data)
+```
+
+**Algorithm Comparison:**
+
+| Algorithm | Best For | Speed | Memory | Outliers |
+|-----------|----------|-------|--------|----------|
+| K-means | Retail, homogeneous | ⚡⚡⚡ | Low | ❌ |
+| DBSCAN | Geographic, spatial | ⚡⚡ | Low | ✅ |
+| GMM | Marketing, soft labels | ⚡ | Medium | ✅ |
+
+**Why This Matters:**
+- One size doesn't fit all customer data
+- K-means assumes spherical clusters (retail works)
+- DBSCAN finds variable-sized, irregular shapes (perfect for geographic)
+- GMM enables probabilistic assignments (marketing needs confidence scores)
+
+See `clusteraudiencekit/_multi_algorithm.py` for implementation.

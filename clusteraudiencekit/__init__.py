@@ -27,6 +27,16 @@ except ImportError as e:
         "Please ensure the package is installed correctly."
     ) from e
 
+# CRITICAL: Multi-algorithm clustering support (unblocks data scientists)
+from ._multi_algorithm import (
+    MultiAlgorithmClusterer,
+    ClusteringAlgorithm,
+    DistanceMetric,
+    ClusterResult,
+    CustomDistanceMetric,
+    recommend_algorithm,
+)
+
 __version__: Final[str] = "1.0.0"
 __author__: Final[str] = "Georgi Mammen Mullassery"
 __email__: Final[str] = "mullassery@gmail.com"
@@ -34,6 +44,13 @@ __license__: Final[str] = "MIT"
 
 __all__: Final[list[str]] = [
     "AudienceSegmenter",
+    # Multi-algorithm clustering (v1.1.0+)
+    "MultiAlgorithmClusterer",
+    "ClusteringAlgorithm",
+    "DistanceMetric",
+    "ClusterResult",
+    "CustomDistanceMetric",
+    "recommend_algorithm",
     "__version__",
     "__author__",
     "__email__",
