@@ -1,15 +1,15 @@
-# ClusterAudienceKit v5.5.0
+# ClusterAudienceKit v5.6.0
 
-**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery (48 features) + governance + privacy + 27 modules.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics (60 features) + governance + privacy + 28 modules.**
 
 ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-5.5.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.6.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
-[![Tests](https://img.shields.io/badge/tests-321-brightgreen)](src/)
+[![Tests](https://img.shields.io/badge/tests-334-brightgreen)](src/)
 
 ## Install
 
@@ -268,9 +268,22 @@ AudienceSegmenter(
 - ✅ **Customer Tribes**: Large, influence-driven groups with core values
 - ✅ **Lifecycle Discovery**: Auto-discovered customer journey stages with transition rates
 
-### 📋 Upcoming (v5.5+)
+### ✅ Phase 5.5: Temporal Analytics (12 features)
+- ✅ **Temporal Snapshot**: Capture segment state at any point in time
+- ✅ **Historical Reconstruction**: Rebuild past segments from event logs with composition changes
+- ✅ **Segment Size Forecasting**: Predict future segment sizes with confidence intervals
+- ✅ **Composition Forecasting**: Predict high-value/churn-risk/new-member ratio changes
+- ✅ **Membership Forecasting**: Predict individual member segment movement probabilities
+- ✅ **What-If Scenarios**: Simulate parameter and rule changes with impact analysis
+- ✅ **Scenario Comparison**: Compare multiple scenarios for revenue and churn impact
+- ✅ **Sensitivity Analysis**: Tornado analysis and parameter elasticity measurement
+- ✅ **Expansion Planning**: Growth planning with resource requirements and ROI
+- ✅ **Churn Forecasting**: Project churn rates over time with intervention opportunities
+- ✅ **Lifecycle Forecasting**: Predict customer stage transitions with Markov chains
+- ✅ **Trend Momentum**: Trend analysis with continuation probability and reversal risk
+
+### 📋 Upcoming (v5.6+)
 - [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
-- [ ] **Phase 5.5**: Temporal Analytics (forecasting, time machine, scenario planning)
 - [ ] **Phase 5.6**: Revenue Intelligence (revenue/segment, real-time alerts)
 - [ ] **Phase 5.7**: B2B & Governance (lineage, ownership, what-if modeling)
 - [ ] **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
@@ -298,12 +311,13 @@ AudienceSegmenter(
 - Causal driver analysis (what causes churn/growth?)
 - Revenue attribution & ROI per segment
 
-**Phase 5.5 (200 hrs) — Temporal & Simulation**
+**Phase 5.5 (45 hrs) — Temporal Analytics** ✅ COMPLETE
 - Time machine: View segments as they existed at any past date
-- Forecasting: Predict segment size and composition
-- What-if modeling: Simulate strategy changes
-- Scenario planning for expansion
-- Sensitivity analysis for threshold tuning
+- Forecasting: Predict segment size, composition, and membership movement
+- What-if modeling: Simulate parameter and rule changes
+- Scenario comparison and planning for expansion
+- Sensitivity analysis with tornado charts
+- Trend momentum analysis with reversal detection
 
 **Phase 5.6+ (500+ hrs) — Advanced Engines**
 - Price intelligence (elasticity, migration, category analysis)

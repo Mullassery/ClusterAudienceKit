@@ -27,6 +27,7 @@ pub mod quality_metrics;
 pub mod rfm;
 pub mod segments;
 pub mod streaming;
+pub mod temporal_analytics;
 pub mod xgboost_models;
 
 use crate::Result;

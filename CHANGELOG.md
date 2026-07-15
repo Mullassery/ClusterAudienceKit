@@ -2,6 +2,76 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [5.6.0] - 2026-07-16
+
+### 🎉 Phase 5.5: Temporal Analytics (12 features, 45 hours)
+
+**Temporal Analytics enables time-travel analysis and predictive forecasting for customer segments:**
+
+#### Features
+- ✅ **Temporal Snapshots**: Capture and restore segment state at any historical date
+- ✅ **Historical Reconstruction**: Rebuild segment membership from event logs with composition changes tracking
+- ✅ **Segment Size Forecasting**: Linear regression-based size prediction with confidence intervals (R² scoring)
+- ✅ **Composition Forecasting**: Predict ratio changes (high-value, churn-risk, new-member) with stability scoring
+- ✅ **Membership Forecasting**: Individual-level prediction of segment movement and churn probability
+- ✅ **What-If Scenarios**: Simulate parameter changes (RFM threshold, cluster count, churn rules) with impact analysis
+- ✅ **Scenario Comparison**: Compare multiple scenarios for revenue and churn impact rankings
+- ✅ **Sensitivity Analysis**: Tornado analysis and parameter elasticity measurement for risk assessment
+- ✅ **Expansion Planning**: Growth projection with resource requirements (engineering, marketing, infra) and ROI calculation
+- ✅ **Churn Forecasting**: Time-series churn rate projection with at-risk member identification and intervention opportunities
+- ✅ **Lifecycle Forecasting**: Markov chain-based stage transition prediction (prospect→onboarding→growth→mature→declining→churn)
+- ✅ **Trend Momentum**: Momentum scoring with acceleration detection and reversal risk assessment
+
+#### Architecture
+- **28 Engine Modules** (up from 27): New `temporal_analytics` module
+- **334 Tests** (up from 321): 13 comprehensive tests covering all features
+- **60 Total Features**: 10 (Phase 5.3) + 21 (Phase 5.4) + 12 (Phase 5.5) + 17 earlier phases
+
+#### Technical Details
+- `TemporalSnapshot`: Captures segment metrics (size, RFM, CLV, confidence) with interpolation flags
+- `HistoricalReconstruction`: Event-based replay with member composition tracking
+- `SegmentSizeForecaster`: Linear regression with forecasting, variance handling, R² evaluation
+- `CompositionForecaster`: Trend-based ratio forecasting with stability calculation (0-1 scale)
+- `MembershipForecaster`: Probability-based transitions (stay, move, churn) with confidence scoring
+- `WhatIfSimulator`: Parameter mutation and impact modeling (revenue, churn, feasibility)
+- `ScenarioAnalyzer`: Multi-scenario ranking and recommendation engine
+- `SensitivityAnalyzer`: Parameter elasticity, tornado analysis, risk classification
+- `ExpansionPlanner`: Resource planning with 4-quarter timelines and ROI projections
+- `ChurnForecaster`: Exponential/linear trend extrapolation with intervention targeting
+- `LifecycleForecaster`: Markov chain state prediction over 6 lifecycle stages
+- `MomentumAnalyzer`: Velocity/acceleration scoring with trend strength classification
+
+#### Use Cases
+1. **Regulatory Compliance**: View historical segment definitions and membership for audit trails
+2. **Strategic Planning**: Model growth scenarios with revenue/resource trade-offs
+3. **Risk Management**: Identify at-risk segments early with churn forecasting
+4. **Experimentation**: Simulate changes before rollout with what-if modeling
+5. **Investor Reporting**: Project customer lifetime value and segment health trajectories
+
+#### Test Coverage
+- Historical reconstruction with member additions/removals
+- Linear regression forecasting with multiple data points
+- Composition ratio trending and stability measurement
+- Parameter sensitivity with elasticity calculation
+- Expansion planning with multi-quarter ROI
+- Scenario comparison with ranking logic
+- Momentum analysis with acceleration detection
+- Lifecycle stage transition probability matrices
+- Churn forecasting with intervention identification
+- Tornado analysis for parameter importance ranking
+
+### 🏛️ Architecture Update
+- Temporal Analytics module fully integrated with existing segment intelligence and pattern discovery
+- Pure Rust implementation with no external dependencies
+- 334 tests maintaining 100% pass rate
+
+### 🚀 Upcoming in v5.7+
+- **Phase 5.6**: Revenue Intelligence (revenue/segment, real-time alerts)
+- **Phase 5.7**: B2B & Governance (lineage, ownership, what-if modeling)
+- **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
+
+---
+
 ## [5.5.0] - 2026-07-16
 
 ### 🎉 Phase 5.3 + 5.4: Segment Intelligence & Pattern Discovery
