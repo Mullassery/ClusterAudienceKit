@@ -1,5 +1,6 @@
 //! Core segmentation engine
 
+pub mod behavioral;
 pub mod clustering;
 pub mod metrics;
 pub mod rfm;
