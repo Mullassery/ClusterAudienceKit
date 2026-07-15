@@ -24,6 +24,7 @@ pub mod plugins;
 pub mod privacy;
 pub mod profiling;
 pub mod quality_metrics;
+pub mod revenue_intelligence;
 pub mod rfm;
 pub mod segments;
 pub mod streaming;

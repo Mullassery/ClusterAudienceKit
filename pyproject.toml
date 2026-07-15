@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "5.6.0"
-description = "Enterprise audience intelligence platform. RFM + 6 clustering + streaming + CLV + lifecycle + drift detection + churn + B2B + lookalikes + plugin framework + RBAC + privacy + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics (60 features). Real-time <1s, 1M+ customers, 28 engines, 334 tests."
+version = "5.7.0"
+description = "Enterprise audience intelligence platform. RFM + 6 clustering + streaming + CLV + lifecycle + drift detection + churn + B2B + lookalikes + plugin framework + RBAC + privacy + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence (75 features). Real-time <1s, 1M+ customers, 29 engines, 351 tests."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]

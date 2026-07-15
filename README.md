@@ -1,15 +1,15 @@
-# ClusterAudienceKit v5.6.0
+# ClusterAudienceKit v5.7.0
 
-**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics (60 features) + governance + privacy + 28 modules.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence (75 features) + governance + privacy + 29 modules.**
 
 ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-5.6.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.7.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
-[![Tests](https://img.shields.io/badge/tests-334-brightgreen)](src/)
+[![Tests](https://img.shields.io/badge/tests-351-brightgreen)](src/)
 
 ## Install
 
@@ -282,9 +282,25 @@ AudienceSegmenter(
 - ✅ **Lifecycle Forecasting**: Predict customer stage transitions with Markov chains
 - ✅ **Trend Momentum**: Trend analysis with continuation probability and reversal risk
 
-### 📋 Upcoming (v5.6+)
+### ✅ Phase 5.6: Revenue Intelligence (15 features)
+- ✅ **Segment Revenue**: Revenue per segment with concentration and top-customer metrics
+- ✅ **Segment ROI**: Return on investment calculation with payback period and profitability index
+- ✅ **Revenue Attribution**: Multi-channel and multi-product revenue attribution modeling
+- ✅ **Revenue Alerts**: Real-time anomaly detection with Z-score and variance analysis
+- ✅ **Revenue Forecasting**: Linear regression-based revenue prediction with confidence intervals
+- ✅ **Customer Acquisition Cost**: CAC tracking with payback period and efficiency scoring
+- ✅ **Margin Analysis**: Gross, operating, and net margin breakdown per segment
+- ✅ **Upsell Opportunities**: Product penetration analysis with addressable market sizing
+- ✅ **Concentration Risk**: Herfindahl index, Gini coefficient, and diversification scoring
+- ✅ **Revenue Efficiency**: Revenue per marketing spend, per employee, per customer
+- ✅ **Revenue Trends**: Growth rate analysis with trend direction and momentum detection
+- ✅ **Cohort Revenue**: Track revenue by customer cohort with retention correlation
+- ✅ **Product Mix Analysis**: Product revenue diversification with concentration metrics
+- ✅ **Growth Rates**: CAGR calculation with growth classification (high/moderate/stable/decline)
+- ✅ **Revenue Health Score**: Composite 0-100 score (35% profitability + 25% growth + 25% efficiency + 15% concentration)
+
+### 📋 Upcoming (v5.7+)
 - [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
-- [ ] **Phase 5.6**: Revenue Intelligence (revenue/segment, real-time alerts)
 - [ ] **Phase 5.7**: B2B & Governance (lineage, ownership, what-if modeling)
 - [ ] **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
 
@@ -319,7 +335,24 @@ AudienceSegmenter(
 - Sensitivity analysis with tornado charts
 - Trend momentum analysis with reversal detection
 
-**Phase 5.6+ (500+ hrs) — Advanced Engines**
+**Phase 5.6 (40 hrs) — Revenue Intelligence** ✅ COMPLETE
+- Segment revenue tracking with concentration metrics
+- ROI calculation with payback period and profitability index
+- Multi-channel and multi-product attribution modeling
+- Real-time revenue anomaly detection and alerts
+- Revenue forecasting with confidence intervals
+- CAC tracking and payback period analysis
+- Gross/operating/net margin breakdown per segment
+- Upsell opportunity identification with addressable market sizing
+- Revenue concentration risk analysis (Herfindahl, Gini)
+- Revenue efficiency scoring per customer and per marketing spend
+- Trend analysis with growth rate classification
+- Cohort revenue tracking with retention correlation
+- Product mix diversification analysis
+- CAGR and growth classification
+- Composite health scoring (profitability, growth, efficiency, concentration)
+
+**Phase 5.7+ (500+ hrs) — Advanced Engines**
 - Price intelligence (elasticity, migration, category analysis)
 - Graph intelligence (relationships, households, networks)
 - Real-time events (live alerts, anomaly detection, triggers)
