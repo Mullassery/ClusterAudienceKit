@@ -1,13 +1,79 @@
 //! Python bindings using PyO3
 
 use pyo3::prelude::*;
+use crate::engine::rfm::RFMScore;
 
 /// Python module initialization - exports PyAudienceSegmenter class
 #[pymodule]
 fn clusteraudiencekit(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyAudienceSegmenter>()?;
+    m.add_class::<PyRFMScore>()?;
     m.add("__version__", crate::VERSION)?;
     Ok(())
+}
+
+/// Python wrapper for RFM Score
+#[pyclass]
+pub struct PyRFMScore {
+    inner: RFMScore,
+}
+
+#[pymethods]
+impl PyRFMScore {
+    #[getter]
+    fn customer_id(&self) -> String {
+        self.inner.customer_id.clone()
+    }
+
+    #[getter]
+    fn recency(&self) -> f64 {
+        self.inner.recency
+    }
+
+    #[getter]
+    fn frequency(&self) -> f64 {
+        self.inner.frequency
+    }
+
+    #[getter]
+    fn monetary(&self) -> f64 {
+        self.inner.monetary
+    }
+
+    #[getter]
+    fn recency_score(&self) -> u32 {
+        self.inner.recency_score
+    }
+
+    #[getter]
+    fn frequency_score(&self) -> u32 {
+        self.inner.frequency_score
+    }
+
+    #[getter]
+    fn monetary_score(&self) -> u32 {
+        self.inner.monetary_score
+    }
+
+    #[getter]
+    fn rfm_segment(&self) -> String {
+        self.inner.rfm_segment.clone()
+    }
+
+    fn rfm_rank(&self) -> String {
+        self.inner.rfm_rank()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "RFMScore(customer_id='{}', segment='{}', r={} f={} m={})",
+            self.inner.customer_id,
+            self.inner.rfm_segment,
+            self.inner.recency_score,
+            self.inner.frequency_score,
+            self.inner.monetary_score
+        )
+    }
 }
 
 /// Python wrapper for AudienceSegmenter
