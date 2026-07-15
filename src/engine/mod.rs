@@ -5,6 +5,7 @@ pub mod behavioral;
 pub mod clustering;
 pub mod k_estimation;
 pub mod metrics;
+pub mod profiling;
 pub mod rfm;
 pub mod segments;
 
