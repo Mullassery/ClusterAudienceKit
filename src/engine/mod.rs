@@ -1,5 +1,7 @@
 //! Core segmentation engine
 
+pub mod activation;
+pub mod activation_orchestrator;
 pub mod algorithms;
 pub mod behavioral;
 pub mod clustering;
@@ -8,6 +10,7 @@ pub mod cohorts;
 pub mod k_estimation;
 pub mod lifecycle;
 pub mod metrics;
+pub mod platform_adapters;
 pub mod profiling;
 pub mod quality_metrics;
 pub mod rfm;
