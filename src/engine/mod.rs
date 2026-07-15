@@ -3,7 +3,9 @@
 pub mod activation;
 pub mod activation_orchestrator;
 pub mod algorithms;
+pub mod b2b_segmentation;
 pub mod behavioral;
+pub mod churn_prediction;
 pub mod clustering;
 pub mod clv;
 pub mod cohorts;
@@ -11,6 +13,7 @@ pub mod dashboard;
 pub mod drift_detection;
 pub mod k_estimation;
 pub mod lifecycle;
+pub mod lookalike;
 pub mod metrics;
 pub mod platform_adapters;
 pub mod profiling;
