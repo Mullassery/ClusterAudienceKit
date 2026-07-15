@@ -7,6 +7,8 @@ pub mod behavioral;
 pub mod clustering;
 pub mod clv;
 pub mod cohorts;
+pub mod dashboard;
+pub mod drift_detection;
 pub mod k_estimation;
 pub mod lifecycle;
 pub mod metrics;
@@ -15,6 +17,7 @@ pub mod profiling;
 pub mod quality_metrics;
 pub mod rfm;
 pub mod segments;
+pub mod streaming;
 
 use crate::Result;
 use ndarray::Array2;
