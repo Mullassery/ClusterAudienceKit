@@ -5,6 +5,7 @@ pub mod behavioral;
 pub mod clustering;
 pub mod clv;
 pub mod k_estimation;
+pub mod lifecycle;
 pub mod metrics;
 pub mod profiling;
 pub mod quality_metrics;
