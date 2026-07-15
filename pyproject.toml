@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "1.5.0"
-description = "Advanced customer segmentation engine for martech. RFM analysis, K-means clustering, streaming updates, tag-based filtering. Real-time audience scoring for email, ads, retention. 13x faster than sklearn."
+version = "2.0.0"
+description = "Production-grade customer segmentation platform. RFM + clustering + streaming + CLV + lifecycle + drift detection + cohort analytics + 7 enterprise platform activations. Real-time segmentation <1s, handles 1M+ customers."
 readme = "README.md"
 license = { text = "MIT" }
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
