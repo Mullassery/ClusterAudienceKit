@@ -2,9 +2,8 @@
 
 use pyo3::prelude::*;
 
-/// Python module initialization
+/// Python module initialization - exports PyAudienceSegmenter class
 #[pymodule]
-#[pyo3(name = "_core")]
 fn clusteraudiencekit(m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyAudienceSegmenter>()?;
     m.add("__version__", crate::VERSION)?;

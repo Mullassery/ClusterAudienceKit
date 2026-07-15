@@ -19,15 +19,31 @@ Attributes:
 
 from typing import Final
 
-try:
-    # Import the compiled Rust module (named _core)
-    from . import _core
-    AudienceSegmenter = _core.PyAudienceSegmenter
-except (ImportError, AttributeError) as e:
-    raise ImportError(
-        "ClusterAudienceKit native extension not found. "
-        "Please ensure the package is installed correctly with: pip install clusteraudiencekit"
-    ) from e
+import sys
+import os
+import importlib.util
+
+# Import the native Rust module
+# The .so file has the same name as the package, so we need special handling
+_pkg_dir = os.path.dirname(__file__)
+_so_files = [f for f in os.listdir(_pkg_dir) if f.startswith("clusteraudiencekit") and f.endswith(".so")]
+
+if _so_files:
+    try:
+        _so_path = os.path.join(_pkg_dir, _so_files[0])
+        # Load using the actual module name (which is "clusteraudiencekit")
+        _spec = importlib.util.spec_from_file_location("clusteraudiencekit._native", _so_path)
+        if _spec and _spec.loader:
+            _core = importlib.util.module_from_spec(_spec)
+            sys.modules["clusteraudiencekit._native"] = _core
+            _spec.loader.exec_module(_core)
+            AudienceSegmenter = _core.PyAudienceSegmenter
+        else:
+            raise ImportError("Could not create module spec for .so file")
+    except Exception as e:
+        raise ImportError(f"Failed to load Rust bindings: {e}") from e
+else:
+    raise ImportError("ClusterAudienceKit native extension not found. Please reinstall.")
 
 # CRITICAL: Multi-algorithm clustering support (unblocks data scientists)
 from ._multi_algorithm import (
