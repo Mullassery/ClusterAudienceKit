@@ -3,6 +3,7 @@
 pub mod clustering;
 pub mod metrics;
 pub mod rfm;
+pub mod segments;
 
 use crate::Result;
 use ndarray::Array2;
