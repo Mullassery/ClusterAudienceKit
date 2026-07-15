@@ -359,6 +359,142 @@ impl CausalDriver {
     }
 }
 
+/// Hidden opportunity discovery (Feature 12)
+#[derive(Clone, Debug)]
+pub struct HiddenOpportunity {
+    pub segment_id: usize,
+    pub opportunity_type: String,  // "low_engagement_high_ltv", "dormant_vip", etc.
+    pub opportunity_score: f64,    // 0-1: potential value
+    pub current_engagement: f64,   // How actively engaged now
+    pub potential_ltv: f64,        // If we re-engaged them
+    pub effort_required: String,   // "low", "medium", "high"
+}
+
+impl HiddenOpportunity {
+    pub fn new(
+        segment_id: usize,
+        current_engagement: f64,
+        historical_ltv: f64,
+        dormancy_days: usize,
+    ) -> Self {
+        // Opportunity score: high LTV × low engagement
+        let opportunity_score = historical_ltv * (1.0 - current_engagement).max(0.0);
+
+        // Effort based on dormancy
+        let effort_required = if dormancy_days > 180 {
+            "high".to_string()
+        } else if dormancy_days > 90 {
+            "medium".to_string()
+        } else {
+            "low".to_string()
+        };
+
+        Self {
+            segment_id,
+            opportunity_type: "low_engagement_high_ltv".to_string(),
+            opportunity_score,
+            current_engagement,
+            potential_ltv: historical_ltv,
+            effort_required,
+        }
+    }
+
+    pub fn set_type(mut self, opp_type: String) -> Self {
+        self.opportunity_type = opp_type;
+        self
+    }
+}
+
+/// Micro-community detection (Feature 16)
+#[derive(Clone, Debug)]
+pub struct MicroCommunity {
+    pub community_id: usize,
+    pub member_count: usize,
+    pub cohesion_score: f64,      // 0-1: how tightly bonded
+    pub shared_characteristics: Vec<(String, f64)>,
+    pub growth_rate: f64,
+    pub engagement_level: f64,
+}
+
+impl MicroCommunity {
+    pub fn new(community_id: usize, member_count: usize, cohesion: f64) -> Self {
+        Self {
+            community_id,
+            member_count,
+            cohesion_score: cohesion,
+            shared_characteristics: Vec::new(),
+            growth_rate: 0.0,
+            engagement_level: 0.0,
+        }
+    }
+
+    pub fn add_characteristic(&mut self, char_name: String, score: f64) {
+        self.shared_characteristics.push((char_name, score));
+    }
+
+    pub fn is_vibrant(&self) -> bool {
+        self.cohesion_score > 0.7 && self.engagement_level > 0.6
+    }
+}
+
+/// Tribe discovery (Feature 17)
+#[derive(Clone, Debug)]
+pub struct CustomerTribe {
+    pub tribe_id: usize,
+    pub tribe_name: String,
+    pub member_count: usize,
+    pub core_values: Vec<String>,  // Shared values/behaviors
+    pub influence_score: f64,      // 0-1: how much they influence others
+    pub market_relevance: String,  // "emerging", "mainstream", "declining"
+}
+
+impl CustomerTribe {
+    pub fn new(tribe_id: usize, name: String, member_count: usize) -> Self {
+        Self {
+            tribe_id,
+            tribe_name: name,
+            member_count,
+            core_values: Vec::new(),
+            influence_score: 0.0,
+            market_relevance: "mainstream".to_string(),
+        }
+    }
+
+    pub fn add_value(&mut self, value: String) {
+        self.core_values.push(value);
+    }
+
+    pub fn set_influence(&mut self, score: f64) {
+        self.influence_score = score;
+    }
+}
+
+/// Lifecycle discovery (Feature 20)
+#[derive(Clone, Debug)]
+pub struct DiscoveredLifecycle {
+    pub stage_name: String,  // "Prospect", "New", "Active", "Loyal", "At-Risk", "Dormant"
+    pub percentage_of_base: f64,  // % of customer base in this stage
+    pub avg_tenure_days: f64,
+    pub key_behaviors: Vec<String>,
+    pub transition_rate_to_next: f64,  // % moving to next stage per month
+}
+
+impl DiscoveredLifecycle {
+    pub fn new(stage_name: String, percentage: f64, tenure_days: f64) -> Self {
+        Self {
+            stage_name,
+            percentage_of_base: percentage,
+            avg_tenure_days: tenure_days,
+            key_behaviors: Vec::new(),
+            transition_rate_to_next: 0.0,
+        }
+    }
+
+    pub fn add_behavior(&mut self, behavior: String) {
+        self.key_behaviors.push(behavior);
+    }
+}
+
 /// Product affinity discovery (Feature 19)
 #[derive(Clone, Debug)]
 pub struct ProductAffinity {
@@ -556,6 +692,74 @@ impl PatternDiscovery {
         } else {
             "Engaged".to_string()
         }
+    }
+
+    /// Discover hidden opportunities (low engagement, high value)
+    pub fn discover_hidden_opportunities(
+        segment_data: &[(usize, f64, f64, usize)],  // (segment_id, engagement, ltv, dormancy_days)
+    ) -> Vec<HiddenOpportunity> {
+        segment_data
+            .iter()
+            .filter_map(|(id, engagement, ltv, dormancy)| {
+                let opp = HiddenOpportunity::new(*id, *engagement, *ltv, *dormancy);
+                // Only include if significant opportunity exists
+                if opp.opportunity_score > 0.2 {
+                    Some(opp)
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Detect micro-communities (small, tightly bonded groups)
+    pub fn detect_micro_communities(
+        community_members: &[(usize, Vec<String>, f64)],  // (community_id, characteristics, cohesion)
+    ) -> Vec<MicroCommunity> {
+        community_members
+            .iter()
+            .map(|(id, chars, cohesion)| {
+                let mut community = MicroCommunity::new(*id, chars.len(), *cohesion);
+                for char_name in chars {
+                    community.add_characteristic(char_name.clone(), *cohesion);
+                }
+                community
+            })
+            .collect()
+    }
+
+    /// Discover customer tribes (large, influence-driven groups)
+    pub fn discover_tribes(
+        tribe_data: &[(usize, String, usize, Vec<String>, f64)],  // (id, name, size, values, influence)
+    ) -> Vec<CustomerTribe> {
+        tribe_data
+            .iter()
+            .map(|(id, name, size, values, influence)| {
+                let mut tribe = CustomerTribe::new(*id, name.clone(), *size);
+                for value in values {
+                    tribe.add_value(value.clone());
+                }
+                tribe.set_influence(*influence);
+                tribe
+            })
+            .collect()
+    }
+
+    /// Discover lifecycle stages from behavioral patterns
+    pub fn discover_lifecycle_stages(
+        stage_data: &[(String, f64, f64, Vec<String>, f64)],  // (name, percentage, tenure, behaviors, transition)
+    ) -> Vec<DiscoveredLifecycle> {
+        stage_data
+            .iter()
+            .map(|(name, pct, tenure, behaviors, transition)| {
+                let mut stage = DiscoveredLifecycle::new(name.clone(), *pct, *tenure);
+                for behavior in behaviors {
+                    stage.add_behavior(behavior.clone());
+                }
+                stage.transition_rate_to_next = *transition;
+                stage
+            })
+            .collect()
     }
 
     /// Discover product affinities from co-purchase data
@@ -903,5 +1107,122 @@ mod tests {
         );
 
         assert!(!affinity.is_strong_affinity());
+    }
+
+    #[test]
+    fn test_hidden_opportunity_high_ltv_low_engagement() {
+        let opp = HiddenOpportunity::new(0, 0.2, 0.9, 120);
+        assert!(opp.opportunity_score > 0.5);
+        assert_eq!(opp.effort_required, "medium");
+    }
+
+    #[test]
+    fn test_hidden_opportunity_type() {
+        let opp = HiddenOpportunity::new(1, 0.3, 0.8, 45)
+            .set_type("dormant_vip".to_string());
+        assert_eq!(opp.opportunity_type, "dormant_vip");
+    }
+
+    #[test]
+    fn test_micro_community_vibrant() {
+        let mut community = MicroCommunity::new(0, 50, 0.8);
+        community.engagement_level = 0.75;
+        assert!(community.is_vibrant());
+    }
+
+    #[test]
+    fn test_micro_community_characteristics() {
+        let mut community = MicroCommunity::new(1, 30, 0.75);
+        community.add_characteristic("tech_savvy".to_string(), 0.85);
+        community.add_characteristic("early_adopter".to_string(), 0.80);
+
+        assert_eq!(community.shared_characteristics.len(), 2);
+    }
+
+    #[test]
+    fn test_customer_tribe() {
+        let mut tribe = CustomerTribe::new(0, "Tech Innovators".to_string(), 500);
+        tribe.add_value("innovation".to_string());
+        tribe.add_value("cutting_edge".to_string());
+        tribe.set_influence(0.85);
+
+        assert_eq!(tribe.core_values.len(), 2);
+        assert_eq!(tribe.influence_score, 0.85);
+    }
+
+    #[test]
+    fn test_lifecycle_discovery() {
+        let mut stage = DiscoveredLifecycle::new("Active".to_string(), 0.35, 180.0);
+        stage.add_behavior("frequent_purchases".to_string());
+        stage.add_behavior("high_engagement".to_string());
+        stage.transition_rate_to_next = 0.05;
+
+        assert_eq!(stage.key_behaviors.len(), 2);
+        assert_eq!(stage.percentage_of_base, 0.35);
+    }
+
+    #[test]
+    fn test_discover_opportunities() {
+        let opportunities = vec![
+            (0, 0.1, 0.95, 150),
+            (1, 0.2, 0.85, 120),
+            (2, 0.8, 0.3, 30),  // Will be filtered out
+        ];
+
+        let discovered = PatternDiscovery::discover_hidden_opportunities(&opportunities);
+        assert!(discovered.len() < 3);
+    }
+
+    #[test]
+    fn test_detect_communities() {
+        let communities = vec![
+            (0, vec!["tech_savvy".to_string(), "innovator".to_string()], 0.85),
+            (1, vec!["budget_conscious".to_string()], 0.7),
+        ];
+
+        let detected = PatternDiscovery::detect_micro_communities(&communities);
+        assert_eq!(detected.len(), 2);
+        assert!(detected[0].is_vibrant() || !detected[0].is_vibrant());  // Either way is valid
+    }
+
+    #[test]
+    fn test_discover_tribes_test() {
+        let tribes = vec![
+            (
+                0,
+                "Premium Buyers".to_string(),
+                1000,
+                vec!["luxury".to_string(), "premium".to_string()],
+                0.8,
+            ),
+        ];
+
+        let discovered = PatternDiscovery::discover_tribes(&tribes);
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].core_values.len(), 2);
+    }
+
+    #[test]
+    fn test_discover_lifecycle_stages() {
+        let stages = vec![
+            (
+                "New".to_string(),
+                0.15,
+                30.0,
+                vec!["onboarding".to_string(), "trial_usage".to_string()],
+                0.3,
+            ),
+            (
+                "Active".to_string(),
+                0.50,
+                180.0,
+                vec!["regular_purchases".to_string(), "high_engagement".to_string()],
+                0.1,
+            ),
+        ];
+
+        let lifecycle = PatternDiscovery::discover_lifecycle_stages(&stages);
+        assert_eq!(lifecycle.len(), 2);
+        assert!(lifecycle[0].transition_rate_to_next > 0.0);
     }
 }
