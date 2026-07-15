@@ -4,6 +4,7 @@ pub mod algorithms;
 pub mod behavioral;
 pub mod clustering;
 pub mod clv;
+pub mod cohorts;
 pub mod k_estimation;
 pub mod lifecycle;
 pub mod metrics;
