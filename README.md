@@ -1,15 +1,15 @@
-# ClusterAudienceKit v5.0.0
+# ClusterAudienceKit v5.5.0
 
-**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering algorithms + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + AutoML + governance + privacy + 25 engine modules.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery (48 features) + governance + privacy + 27 modules.**
 
 ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-5.0.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.5.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
-[![Tests](https://img.shields.io/badge/tests-260%2B-brightgreen)](src/)
+[![Tests](https://img.shields.io/badge/tests-321-brightgreen)](src/)
 
 ## Install
 
@@ -205,7 +205,7 @@ AudienceSegmenter(
 | [docs/architecture.md](docs/architecture.md) | Design decisions |
 | [examples/](examples/) | Runnable scripts |
 
-## What's Included in v5.0.0
+## What's Included in v5.5.0
 
 ### ✅ Phase 1: Core Segmentation
 - ✅ Full RFM engine (linear/exponential/inverse decay)
@@ -216,7 +216,7 @@ AudienceSegmenter(
 - ✅ Segment profiling + 15+ quality metrics
 
 ### ✅ Phase 2: Production Features
-- ✅ **Streaming**: <1s real-time updates via event streams with drift detection
+- ✅ **Streaming**: <500ms real-time updates via event streams with drift detection
 - ✅ **CLV**: Historical, predictive, and probabilistic models (5-year forecasting)
 - ✅ **Lifecycle**: 7-stage journey modeling (Prospect → Churned)
 - ✅ **Cohort Analytics**: Retention curves, decay rates, comparison
@@ -243,14 +243,37 @@ AudienceSegmenter(
   - Backpropagation training via mini-batch SGD
   - Unsupervised feature learning
   - Anomaly detection via reconstruction error
-- ✅ **60+ unit tests** across all ML modules
 
-### 📋 Upcoming (v5.1+)
+### ✅ Phase 5.3: Segment Intelligence (10 features)
+- ✅ **Explainability**: Feature importance → segment membership causality (XGBoost wiring)
+- ✅ **Confidence Score**: Membership certainty (distance-based 0-1 scoring)
+- ✅ **Entropy Analysis**: Segment diversity (Shannon entropy + Gini coefficient)
+- ✅ **Stability Score**: Retention tracking + churn resistance
+- ✅ **Decay Detection**: Attrition forecasting with half-life calculation
+- ✅ **Predictability**: Assignment stability with trend detection
+- ✅ **Differentiation**: Segment uniqueness vs. nearest competitor
+- ✅ **Segment Aging**: Member tenure analysis + lifecycle staging
+- ✅ **Segment Health**: Composite 0-100 scoring with alerts
+
+### ✅ Phase 5.4: Pattern Discovery (21 features)
+- ✅ **Emerging Audiences**: Accelerating segment detection with growth forecasting
+- ✅ **Hidden Opportunities**: Low-engagement high-LTV segment identification
+- ✅ **Trend-Based Discovery**: Time-series trend analysis via linear regression
+- ✅ **Intent Clusters**: Behavioral pattern classification (churn, growth, engagement)
+- ✅ **Growth Forecasting**: Multi-period projection with confidence intervals
+- ✅ **AI Personas**: Auto-generated personas (High-Value, At-Risk, Growth-Oriented, Engaged)
+- ✅ **Product Affinity**: Cross-product relationship discovery with lift calculation
+- ✅ **Causal Drivers** (10 types): Feature → outcome causality + effect size scoring
+- ✅ **Micro-Communities**: Small, tightly-bonded groups (cohesion > 0.7)
+- ✅ **Customer Tribes**: Large, influence-driven groups with core values
+- ✅ **Lifecycle Discovery**: Auto-discovered customer journey stages with transition rates
+
+### 📋 Upcoming (v5.5+)
 - [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
-- [ ] **Phase 5.3**: Segment Intelligence (explainability, confidence scoring, stability)
-- [ ] **Phase 5.4**: Pattern Discovery (emerging audiences, personas, trends)
-- [ ] **Phase 5.5**: Temporal Analytics (forecasting, scenario planning, time machine)
-- [ ] **Phase 5.6**: Price Intelligence (elasticity, tier migration, category analysis)
+- [ ] **Phase 5.5**: Temporal Analytics (forecasting, time machine, scenario planning)
+- [ ] **Phase 5.6**: Revenue Intelligence (revenue/segment, real-time alerts)
+- [ ] **Phase 5.7**: B2B & Governance (lineage, ownership, what-if modeling)
+- [ ] **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
 
 ## Roadmap: v5.0 → v6.0
 
