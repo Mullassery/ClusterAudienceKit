@@ -20,11 +20,13 @@ Attributes:
 from typing import Final
 
 try:
-    from ._core import PyAudienceSegmenter as AudienceSegmenter
-except ImportError as e:
+    # Import the compiled Rust module (named _core)
+    from . import _core
+    AudienceSegmenter = _core.PyAudienceSegmenter
+except (ImportError, AttributeError) as e:
     raise ImportError(
         "ClusterAudienceKit native extension not found. "
-        "Please ensure the package is installed correctly."
+        "Please ensure the package is installed correctly with: pip install clusteraudiencekit"
     ) from e
 
 # CRITICAL: Multi-algorithm clustering support (unblocks data scientists)

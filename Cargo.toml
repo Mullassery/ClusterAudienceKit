@@ -34,7 +34,6 @@ name = "benchmarks"
 harness = false
 
 [lib]
-name = "clusteraudiencekit"
 crate-type = ["cdylib", "rlib"]
 
 [profile.release]
