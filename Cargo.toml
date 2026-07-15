@@ -34,7 +34,7 @@ name = "benchmarks"
 harness = false
 
 [lib]
-crate-type = ["cdylib", "rlib"]
+crate-type = ["rlib"]
 
 [profile.release]
 opt-level = 3
