@@ -24,6 +24,7 @@ pub mod quality_metrics;
 pub mod rfm;
 pub mod segments;
 pub mod streaming;
+pub mod xgboost_models;
 
 use crate::Result;
 use ndarray::Array2;
