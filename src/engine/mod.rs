@@ -17,6 +17,7 @@ pub mod lifecycle;
 pub mod lookalike;
 pub mod metrics;
 pub mod neural_networks;
+pub mod pattern_discovery;
 pub mod platform_adapters;
 pub mod segment_intelligence;
 pub mod plugins;
