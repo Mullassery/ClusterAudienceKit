@@ -269,6 +269,51 @@ impl GrowthForecast {
     }
 }
 
+/// AI Persona (Feature 14)
+#[derive(Clone, Debug)]
+pub struct AiPersona {
+    pub persona_id: usize,
+    pub name: String,              // Auto-generated: "High-Value Loyalist", "At-Risk Churn", etc.
+    pub description: String,       // Business-friendly description
+    pub segment_ids: Vec<usize>,   // Segments matching this persona
+    pub size: usize,               // Total members in persona
+    pub key_characteristics: Vec<(String, f64)>,  // (trait, score) pairs
+    pub recommended_actions: Vec<String>,
+    pub business_impact: String,   // "high", "medium", "low"
+}
+
+impl AiPersona {
+    pub fn new(persona_id: usize, name: String, segment_ids: Vec<usize>, size: usize) -> Self {
+        Self {
+            persona_id,
+            name,
+            description: String::new(),
+            segment_ids,
+            size,
+            key_characteristics: Vec::new(),
+            recommended_actions: Vec::new(),
+            business_impact: "medium".to_string(),
+        }
+    }
+
+    pub fn with_description(mut self, desc: String) -> Self {
+        self.description = desc;
+        self
+    }
+
+    pub fn add_characteristic(&mut self, trait_name: String, score: f64) {
+        self.key_characteristics.push((trait_name, score));
+    }
+
+    pub fn add_action(&mut self, action: String) {
+        self.recommended_actions.push(action);
+    }
+
+    pub fn set_impact(&mut self, impact: String) {
+        self.business_impact = impact;
+    }
+}
+
 /// Causal driver discovery (Features 31-40)
 #[derive(Clone, Debug)]
 pub struct CausalDriver {
@@ -278,6 +323,7 @@ pub struct CausalDriver {
     pub statistical_significance: f64,  // p-value analog
     pub direction: String,    // "positive" or "negative"
     pub affected_segments: Vec<usize>,
+    pub mechanism: String,    // How/why this causes the outcome
 }
 
 impl CausalDriver {
@@ -295,7 +341,13 @@ impl CausalDriver {
             statistical_significance: significance,
             direction,
             affected_segments: Vec::new(),
+            mechanism: String::new(),
         }
+    }
+
+    pub fn with_mechanism(mut self, mechanism: String) -> Self {
+        self.mechanism = mechanism;
+        self
     }
 
     pub fn add_affected_segment(&mut self, segment_id: usize) {
@@ -304,6 +356,48 @@ impl CausalDriver {
 
     pub fn is_significant(&self) -> bool {
         self.statistical_significance < 0.05
+    }
+}
+
+/// Product affinity discovery (Feature 19)
+#[derive(Clone, Debug)]
+pub struct ProductAffinity {
+    pub product_pair: (String, String),  // (product_a, product_b)
+    pub affinity_score: f64,  // 0-1: likelihood of both products
+    pub co_purchase_rate: f64,  // % of users buying both
+    pub correlation: f64,  // Statistical correlation
+    pub lift: f64,  // Lift over random chance
+    pub segments_affected: Vec<usize>,
+}
+
+impl ProductAffinity {
+    pub fn new(
+        product_a: String,
+        product_b: String,
+        affinity_score: f64,
+        co_purchase_rate: f64,
+        correlation: f64,
+    ) -> Self {
+        // Lift = actual co-purchase / (rate_a * rate_b)
+        // Approximation: lift based on correlation
+        let lift = (1.0 + correlation).max(0.1);
+
+        Self {
+            product_pair: (product_a, product_b),
+            affinity_score,
+            co_purchase_rate,
+            correlation,
+            lift,
+            segments_affected: Vec::new(),
+        }
+    }
+
+    pub fn add_segment(&mut self, segment_id: usize) {
+        self.segments_affected.push(segment_id);
+    }
+
+    pub fn is_strong_affinity(&self) -> bool {
+        self.affinity_score > 0.6 && self.lift > 1.5
     }
 }
 
@@ -382,6 +476,147 @@ impl PatternDiscovery {
         periods: usize,
     ) -> Result<GrowthForecast> {
         GrowthForecast::from_historical(segment_id, current_size, historical_sizes, periods)
+    }
+
+    /// Generate AI personas from segment characteristics
+    pub fn generate_personas(
+        segment_profiles: &[(usize, Vec<(String, f64)>)],  // (segment_id, characteristics)
+    ) -> Vec<AiPersona> {
+        let mut personas = Vec::new();
+
+        for (segment_id, characteristics) in segment_profiles {
+            // Infer persona name from characteristics
+            let persona_name = Self::infer_persona_name(characteristics);
+
+            let mut persona = AiPersona::new(*segment_id, persona_name.clone(), vec![*segment_id], 100);
+
+            // Add characteristics
+            for (char_name, score) in characteristics {
+                persona.add_characteristic(char_name.clone(), *score);
+            }
+
+            // Generate description
+            let description = format!(
+                "{} customers with {} characteristics. High engagement and targeted approach recommended.",
+                persona_name,
+                if characteristics.len() > 2 { "diverse" } else { "focused" }
+            );
+            persona = persona.with_description(description);
+
+            // Add recommended actions
+            persona.add_action("Segment for targeted campaigns".to_string());
+            persona.add_action("Personalize messaging".to_string());
+            persona.add_action("Monitor lifecycle progression".to_string());
+
+            // Estimate business impact
+            let avg_score = characteristics.iter().map(|(_, s)| s).sum::<f64>()
+                / characteristics.len().max(1) as f64;
+            let impact = if avg_score > 0.7 {
+                "high".to_string()
+            } else if avg_score > 0.4 {
+                "medium".to_string()
+            } else {
+                "low".to_string()
+            };
+            persona.set_impact(impact);
+
+            personas.push(persona);
+        }
+
+        personas
+    }
+
+    /// Infer persona name from characteristics
+    fn infer_persona_name(characteristics: &[(String, f64)]) -> String {
+        if characteristics.is_empty() {
+            return "Standard".to_string();
+        }
+
+        let mut churn_score = 0.0;
+        let mut growth_score = 0.0;
+        let mut value_score = 0.0;
+
+        for (char_name, score) in characteristics {
+            match char_name.as_str() {
+                s if s.contains("churn") || s.contains("risk") => churn_score += score,
+                s if s.contains("growth") || s.contains("opportunity") => growth_score += score,
+                s if s.contains("value") || s.contains("ltv") || s.contains("premium") => {
+                    value_score += score
+                }
+                _ => {}
+            }
+        }
+
+        if churn_score > growth_score && churn_score > value_score {
+            "At-Risk".to_string()
+        } else if growth_score > value_score {
+            "Growth-Oriented".to_string()
+        } else if value_score > 0.5 {
+            "High-Value".to_string()
+        } else {
+            "Engaged".to_string()
+        }
+    }
+
+    /// Discover product affinities from co-purchase data
+    pub fn discover_product_affinities(
+        segment_products: &HashMap<usize, Vec<String>>,  // segment_id -> products
+        product_correlations: &HashMap<(String, String), f64>,  // (product_a, product_b) -> correlation
+    ) -> Vec<ProductAffinity> {
+        let mut affinities = Vec::new();
+
+        for ((prod_a, prod_b), correlation) in product_correlations {
+            if correlation.abs() > 0.2 {
+                // Calculate co-purchase rate
+                let mut co_purchases = 0;
+                let mut total = 0;
+
+                for (_segment_id, products) in segment_products {
+                    let has_a = products.iter().any(|p| p == prod_a);
+                    let has_b = products.iter().any(|p| p == prod_b);
+
+                    if has_a || has_b {
+                        total += 1;
+                        if has_a && has_b {
+                            co_purchases += 1;
+                        }
+                    }
+                }
+
+                let co_purchase_rate = if total > 0 {
+                    co_purchases as f64 / total as f64
+                } else {
+                    0.0
+                };
+
+                // Affinity score: combination of correlation and co-purchase
+                let affinity_score = (correlation.abs() + co_purchase_rate) / 2.0;
+
+                let mut affinity = ProductAffinity::new(
+                    prod_a.clone(),
+                    prod_b.clone(),
+                    affinity_score,
+                    co_purchase_rate,
+                    *correlation,
+                );
+
+                // Track which segments show this affinity
+                for (segment_id, products) in segment_products {
+                    let has_both = products.iter().any(|p| p == prod_a)
+                        && products.iter().any(|p| p == prod_b);
+                    if has_both {
+                        affinity.add_segment(*segment_id);
+                    }
+                }
+
+                affinities.push(affinity);
+            }
+        }
+
+        // Sort by affinity score
+        affinities.sort_by(|a, b| b.affinity_score.partial_cmp(&a.affinity_score).unwrap_or(std::cmp::Ordering::Equal));
+
+        affinities
     }
 
     /// Extract causal drivers from feature importance + outcomes
@@ -565,5 +800,108 @@ mod tests {
             GrowthForecast::from_historical(0, 1000, &vec![800, 900, 1000], 2).unwrap();
         assert!(forecast.confidence_interval.0 > 0.0);
         assert!(forecast.confidence_interval.1 > forecast.confidence_interval.0);
+    }
+
+    #[test]
+    fn test_ai_persona_creation() {
+        let mut persona =
+            AiPersona::new(0, "High-Value".to_string(), vec![0, 1, 2], 5000);
+        persona.add_characteristic("high_ltv".to_string(), 0.9);
+        persona.add_characteristic("frequent_purchase".to_string(), 0.8);
+
+        assert_eq!(persona.name, "High-Value");
+        assert_eq!(persona.key_characteristics.len(), 2);
+    }
+
+    #[test]
+    fn test_persona_with_actions() {
+        let mut persona =
+            AiPersona::new(1, "At-Risk".to_string(), vec![3, 4], 2000);
+        persona.add_action("Send retention offer".to_string());
+        persona.add_action("Schedule check-in call".to_string());
+
+        assert_eq!(persona.recommended_actions.len(), 2);
+    }
+
+    #[test]
+    fn test_generate_personas() {
+        let profiles = vec![
+            (0, vec![("high_ltv".to_string(), 0.85), ("engagement".to_string(), 0.8)]),
+            (1, vec![("churn_risk".to_string(), 0.75), ("low_recency".to_string(), 0.8)]),
+        ];
+
+        let personas = PatternDiscovery::generate_personas(&profiles);
+        assert_eq!(personas.len(), 2);
+        assert!(personas[0].name.len() > 0);
+    }
+
+    #[test]
+    fn test_product_affinity() {
+        let affinity = ProductAffinity::new(
+            "product_a".to_string(),
+            "product_b".to_string(),
+            0.75,
+            0.65,
+            0.7,
+        );
+
+        assert_eq!(affinity.product_pair.0, "product_a");
+        assert!(affinity.is_strong_affinity());
+    }
+
+    #[test]
+    fn test_discover_affinities() {
+        let mut segment_products = HashMap::new();
+        segment_products.insert(0, vec!["product_a".to_string(), "product_b".to_string()]);
+        segment_products.insert(1, vec!["product_a".to_string(), "product_b".to_string()]);
+        segment_products.insert(2, vec!["product_a".to_string()]);
+
+        let mut correlations = HashMap::new();
+        correlations.insert(("product_a".to_string(), "product_b".to_string()), 0.8);
+
+        let affinities = PatternDiscovery::discover_product_affinities(&segment_products, &correlations);
+        assert_eq!(affinities.len(), 1);
+        assert!(affinities[0].co_purchase_rate > 0.5);
+    }
+
+    #[test]
+    fn test_causal_driver_with_mechanism() {
+        let driver = CausalDriver::new(
+            "recency".to_string(),
+            "churn_driver".to_string(),
+            0.8,
+            0.01,
+            "negative".to_string(),
+        )
+        .with_mechanism("Low recency indicates dormancy and increases churn risk".to_string());
+
+        assert!(!driver.mechanism.is_empty());
+    }
+
+    #[test]
+    fn test_persona_impact_high() {
+        let profiles = vec![(
+            0,
+            vec![
+                ("high_value".to_string(), 0.9),
+                ("high_engagement".to_string(), 0.85),
+            ],
+        )];
+
+        let personas = PatternDiscovery::generate_personas(&profiles);
+        assert_eq!(personas[0].business_impact, "high");
+    }
+
+    #[test]
+    fn test_product_affinity_weak() {
+        let affinity = ProductAffinity::new(
+            "product_x".to_string(),
+            "product_y".to_string(),
+            0.3,
+            0.2,
+            0.1,
+        );
+
+        assert!(!affinity.is_strong_affinity());
     }
 }
