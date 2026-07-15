@@ -3,6 +3,7 @@
 pub mod activation;
 pub mod activation_orchestrator;
 pub mod algorithms;
+pub mod b2b_governance;
 pub mod b2b_segmentation;
 pub mod behavioral;
 pub mod churn_prediction;

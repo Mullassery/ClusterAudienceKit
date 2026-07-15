@@ -2,6 +2,85 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [5.8.0] - 2026-07-16
+
+### 🎉 Phase 5.7: B2B & Governance (15 features, 50 hours)
+
+**B2B & Governance provides account intelligence and data governance capabilities for enterprise segmentation:**
+
+#### Features
+- ✅ **Account Hierarchy**: Parent-subsidiary relationship tracking with depth analysis and aggregation
+- ✅ **Buying Committees**: Decision maker identification with influence/engagement scoring and role classification
+- ✅ **Intent Signals**: Multi-source intent aggregation with budget allocation and timeline estimation
+- ✅ **Account Health**: B2B health scoring combining engagement, expansion potential, and churn risk (0-100)
+- ✅ **Data Lineage**: Full provenance tracking from source systems through transformations with quality scoring
+- ✅ **Ownership**: Assign primary and secondary owners with stewardship scoring (0-1)
+- ✅ **Advanced What-If**: Constrained scenario simulation with feasibility assessment and timeline estimation
+- ✅ **Segment Genealogy**: Version history with parent lineage, split/merge tracking, and ancestor counting
+- ✅ **Feature Provenance**: Source tracking per feature with transformation history and reliability scoring
+- ✅ **Audit Trails**: Complete decision audit with actor, action, timestamp, impact classification
+- ✅ **Policy Enforcement**: Define segmentation policies with compliance scoring and violation tracking
+- ✅ **Access Control**: Granular ACLs with user/resource/permission triples and expiration support
+- ✅ **Segment Contracts**: SLA commitments with size, churn, and quality thresholds with compliance tracking
+- ✅ **Change Tracking**: All modifications tracked with actor, timestamp, state change, and member impact
+- ✅ **Impact Analysis**: Change impact assessment with affected customer/revenue/contract counts and risk levels
+
+#### Architecture
+- **30 Engine Modules** (up from 29): New `b2b_governance` module
+- **367 Tests** (up from 351): 16 comprehensive tests covering all features
+- **90 Total Features**: 10 (Phase 5.3) + 21 (Phase 5.4) + 12 (Phase 5.5) + 15 (Phase 5.6) + 15 (Phase 5.7) + 7 earlier phases
+
+#### Technical Details
+- `HierarchyBuilder`: Build account trees with parent-child relationships and subsidiary aggregation
+- `CommitteeDetector`: Identify decision makers from engagement data with influence (0-1) scoring
+- `IntentAggregator`: Score buying intent (0-1) from multi-source signals with budget/timeline classification
+- `HealthScorer`: Composite B2B health (0-100) = 40% engagement + 35% expansion + 25% churn resistance
+- `LineageTracker`: DAG-based lineage with quality decay (multiply by 0.95 per step)
+- `OwnershipManager`: Stewardship assignment with dual-owner support
+- `AdvancedSimulator`: Constrained what-if with feasibility scoring (budget/timeline/technical penalties)
+- `Genealogist`: Version history tracking with ancestor counting and split/merge event detection
+- `ProvenanceTracker`: Feature-level source and transformation tracking with reliability (0-1)
+- `AuditTracker`: Complete event log with actor/action/impact/timestamp
+- `PolicyEnforcer`: Rule-based policy definition with compliance calculation
+- `AccessController`: ACL management with expiration support
+- `ContractManager`: SLA commitments with compliance percentage tracking
+- `ChangeTracker`: Change log with velocity calculation (modifications per 30 days)
+- `ImpactAnalyzer`: Change impact with risk levels (critical/high/medium/low) based on customer/revenue scale
+
+#### Use Cases
+1. **Account Management**: Track company structures, identify buying committees, assess account health
+2. **Governance**: Audit trails, policy enforcement, access controls for regulatory compliance
+3. **Data Quality**: Lineage tracking, provenance verification, reliability scoring
+4. **Risk Management**: Impact analysis before changes, SLA tracking, contract compliance
+5. **Change Management**: Complete change history, genealogy tracking, rollback support
+
+#### Test Coverage
+- Account hierarchy with subsidiary tracking
+- Buying committee identification with influence scoring
+- Intent aggregation with budget and timeline
+- B2B account health with weighted scoring
+- Data lineage with quality decay
+- Ownership assignment with dual owners
+- Advanced what-if with constraints
+- Segment genealogy with version tracking
+- Feature provenance with transformations
+- Audit trails with decision tracking
+- Policy enforcement with compliance
+- Access control with ACLs
+- Segment contracts with SLA commitments
+- Change tracking with velocity
+- Impact analysis with risk levels
+
+### 🏛️ Architecture Update
+- B2B Governance module fully integrated with existing temporal, revenue, and pattern discovery engines
+- Pure Rust implementation with no external dependencies
+- 367 tests maintaining 100% pass rate
+
+### 🚀 Upcoming in v5.9+
+- **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
+
+---
+
 ## [5.7.0] - 2026-07-16
 
 ### 🎉 Phase 5.6: Revenue Intelligence (15 features, 40 hours)

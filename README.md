@@ -1,15 +1,15 @@
-# ClusterAudienceKit v5.7.0
+# ClusterAudienceKit v5.8.0
 
-**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence (75 features) + governance + privacy + 29 modules.**
+**Enterprise audience intelligence platform — Complete ML stack for customer segmentation at scale. RFM + 6 clustering + streaming + CLV + churn + B2B + lookalikes + XGBoost + neural networks + segment intelligence + pattern discovery + temporal analytics + revenue intelligence + B2B governance (90 features) + privacy + 30 modules.**
 
 ClusterAudienceKit is the production-grade segmentation engine for modern martech. Replace your scikit-learn + pandas + lifetimes + Braze/Klaviyo combination with a single, unified platform backed by a Rust engine that handles 1M+ customers in under 500ms with integrated ML models for prediction and pattern discovery.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
-[![Version](https://img.shields.io/badge/version-5.7.0-green)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-5.8.0-green)](CHANGELOG.md)
 [![GitHub Issues](https://img.shields.io/github/issues/Mullassery/ClusterAudienceKit)](https://github.com/Mullassery/ClusterAudienceKit/issues)
-[![Tests](https://img.shields.io/badge/tests-351-brightgreen)](src/)
+[![Tests](https://img.shields.io/badge/tests-367-brightgreen)](src/)
 
 ## Install
 
@@ -299,9 +299,25 @@ AudienceSegmenter(
 - ✅ **Growth Rates**: CAGR calculation with growth classification (high/moderate/stable/decline)
 - ✅ **Revenue Health Score**: Composite 0-100 score (35% profitability + 25% growth + 25% efficiency + 15% concentration)
 
-### 📋 Upcoming (v5.7+)
+### ✅ Phase 5.7: B2B & Governance (15 features)
+- ✅ **Account Hierarchy**: Track company structures with parent-subsidiary relationships
+- ✅ **Buying Committees**: Identify decision makers with influence and engagement scoring
+- ✅ **Intent Signals**: Aggregate buying intent indicators across multiple sources
+- ✅ **Account Health**: B2B health scoring with engagement, expansion, and churn risk
+- ✅ **Data Lineage**: Track data provenance and transformations across systems
+- ✅ **Ownership Assignment**: Assign primary and secondary owners to segments
+- ✅ **Advanced What-If**: Simulation with constraints and feasibility scoring
+- ✅ **Segment Genealogy**: Track segment evolution with versions and ancestors
+- ✅ **Feature Provenance**: Track feature sources, transformations, and reliability
+- ✅ **Audit Trails**: Complete decision audit with actor, action, and impact tracking
+- ✅ **Policy Enforcement**: Define and enforce segmentation policies with compliance scoring
+- ✅ **Access Control**: Granular ACLs for segment and feature access
+- ✅ **Segment Contracts**: Define SLAs with size, churn, and quality commitments
+- ✅ **Change Tracking**: Track all segment definition changes with member impact
+- ✅ **Impact Analysis**: Analyze change impact on customers, revenue, and contracts
+
+### 📋 Upcoming (v5.8+)
 - [ ] **Phase 5.2.3**: AutoML framework (grid/Bayesian search, ensemble voting)
-- [ ] **Phase 5.7**: B2B & Governance (lineage, ownership, what-if modeling)
 - [ ] **Phase 5.8+**: Price Intelligence, Graph Intelligence, Experimental AI (500+ hrs)
 
 ## Roadmap: v5.0 → v6.0
@@ -352,7 +368,24 @@ AudienceSegmenter(
 - CAGR and growth classification
 - Composite health scoring (profitability, growth, efficiency, concentration)
 
-**Phase 5.7+ (500+ hrs) — Advanced Engines**
+**Phase 5.7 (50 hrs) — B2B & Governance** ✅ COMPLETE
+- Account hierarchy tracking with parent-subsidiary relationships
+- Buying committee identification with influence scoring
+- Intent signal aggregation with budget and timeline classification
+- B2B account health scoring (engagement, expansion, churn)
+- Data lineage tracking across systems and transformations
+- Segment and feature ownership assignment
+- Advanced what-if modeling with constraints and feasibility
+- Segment genealogy with version history and ancestors
+- Feature provenance with source tracking and reliability scoring
+- Comprehensive audit trails for all decisions
+- Policy definition and enforcement with compliance scoring
+- Granular access controls and ACLs
+- Segment contracts with SLAs and compliance tracking
+- Change tracking with member and revenue impact
+- Impact analysis for changes on customers and revenue
+
+**Phase 5.8+ (500+ hrs) — Advanced Engines**
 - Price intelligence (elasticity, migration, category analysis)
 - Graph intelligence (relationships, households, networks)
 - Real-time events (live alerts, anomaly detection, triggers)
