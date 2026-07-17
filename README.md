@@ -1,4 +1,4 @@
-# ClusterAudienceKit v5.9.0
+# ClusterAudienceKit v5.9.1
 
 > **Fast customer segmentation at Rust speed** — Process 1M customers in <500ms. Complete ML stack with 105 features, 6 clustering algorithms, XGBoost, neural networks, and production integrations.
 
