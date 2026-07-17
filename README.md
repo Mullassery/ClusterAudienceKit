@@ -6,6 +6,7 @@
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
 [![PyPI](https://img.shields.io/badge/pypi-clusteraudiencekit-orange)](https://pypi.org/project/clusteraudiencekit/)
 [![Tests](https://img.shields.io/badge/tests-384-brightgreen)]()
+![Status: v5.9 Tier 1 Ready](https://img.shields.io/badge/Status-v5.9%20Tier%201%20Ready-brightgreen)
 
 ---
 
