@@ -103,7 +103,7 @@ print(segmenter.segment_profiles())
 - Cohort analytics (retention, decay, comparison)
 - B2B segmentation + account health scoring
 - Production dashboard + KPI tracking
-- RBAC + audit logging (enterprise security)
+- RBAC + audit logging
 
 ### 🔒 Privacy & Compliance
 - Differential privacy support
