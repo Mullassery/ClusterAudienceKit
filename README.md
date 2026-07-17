@@ -1,6 +1,6 @@
 # ClusterAudienceKit v5.9.0
 
-> **Enterprise customer segmentation at Rust speed** — Process 1M customers in <500ms. Complete ML stack with 105 features, 6 clustering algorithms, XGBoost, neural networks, and production integrations.
+> **Fast customer segmentation at Rust speed** — Process 1M customers in <500ms. Complete ML stack with 105 features, 6 clustering algorithms, XGBoost, neural networks, and production integrations.
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.8%20%7C%203.9%20%7C%203.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](pyproject.toml)
@@ -297,15 +297,6 @@ pytest --cov=clusteraudiencekit tests/
 
 **Status:** 384 tests passing ✅
 
----
-
-## Enterprise Support
-
-- 🔒 On-premise deployment
-- 🛡️ Private cloud options
-- 📊 Custom algorithm plugins
-- 👨‍💼 Dedicated support team
-- 🎓 Training & consulting
 
 ---
 
