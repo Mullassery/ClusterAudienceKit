@@ -29,6 +29,7 @@ pub mod quality_metrics;
 pub mod revenue_intelligence;
 pub mod rfm;
 pub mod segments;
+pub mod sql_export;
 pub mod streaming;
 pub mod temporal_analytics;
 pub mod xgboost_models;

@@ -1,37 +1,71 @@
 """
-ClusterAudienceKit v1.5: Advanced Customer Segmentation Engine
-
-High-performance audience segmentation with RFM analysis, multiple clustering algorithms,
-automatic K estimation, segment profiling, and quality metrics.
+ClusterAudienceKit: High-performance audience segmentation library with SQL export.
 
 Features:
-- RFM (Recency-Frequency-Monetary) analysis with decay functions
-- 4 clustering algorithms: K-Means, DBSCAN, Hierarchical, GMM
-- 3 auto K estimation methods: Elbow, Gap Statistic, Silhouette
+- RFM (Recency-Frequency-Monetary) analysis
 - 13 business-standard customer segments
-- Segment profiling with feature importance & health scoring
-- Quality metrics: Silhouette, Davies-Bouldin, Calinski-Harabasz
-- Stability tracking with Adjusted Rand Index
-
-Example:
-    >>> from clusteraudiencekit import __version__
-    >>> print(f"ClusterAudienceKit {__version__}")
+- SQL export to 8 warehouse dialects (ANSI, Snowflake, BigQuery, Redshift, PostgreSQL, Oracle, SQL Server, MySQL)
+- Multiple clustering algorithms
+- Segment profiling and quality metrics
 """
 
-__version__ = "1.5.0"
+import sys
+import os
+from pathlib import Path
+import importlib.machinery
+import importlib.util
+
+__version__ = "5.9.0"
 __author__ = "Georgi Mammen Mullassery"
+__email__ = "mullassery@gmail.com"
 __license__ = "MIT"
 
-# Try to import the Rust extension if available
+# Import SQL export functions from compiled Rust extension
 try:
-    from . import clusteraudiencekit as _ext
-    __rust_available__ = True
-except ImportError:
-    __rust_available__ = False
+    import glob
+
+    package_dir = Path(__file__).parent
+    so_files = glob.glob(str(package_dir / "*.so"))
+
+    if so_files:
+        so_path = so_files[0]
+        # The .so exports PyInit_clusteraudiencekit, so we must use that exact name
+        loader = importlib.machinery.ExtensionFileLoader("clusteraudiencekit", so_path)
+        spec = importlib.util.spec_from_file_location("clusteraudiencekit", so_path, loader=loader)
+        _rust_ext = importlib.util.module_from_spec(spec)
+        sys.modules["_clusteraudiencekit_ext"] = _rust_ext  # Register with different name
+        loader.exec_module(_rust_ext)
+
+        export_segment_sql = _rust_ext.export_segment_sql
+        export_all_segments_sql = _rust_ext.export_all_segments_sql
+        get_supported_sql_dialects = _rust_ext.get_supported_sql_dialects
+        get_segment_rfm_patterns = _rust_ext.get_segment_rfm_patterns
+    else:
+        raise ImportError("No .so files found")
+
+except Exception as e:
+    # Fallback if import fails
+    _import_error = str(e)
+
+    def export_segment_sql(*args, **kwargs):
+        raise RuntimeError(f"SQL export not available: {_import_error}")
+
+    def export_all_segments_sql(*args, **kwargs):
+        raise RuntimeError(f"SQL export not available: {_import_error}")
+
+    def get_supported_sql_dialects():
+        raise RuntimeError(f"SQL export not available: {_import_error}")
+
+    def get_segment_rfm_patterns(*args, **kwargs):
+        raise RuntimeError(f"SQL export not available: {_import_error}")
 
 __all__ = [
+    "export_segment_sql",
+    "export_all_segments_sql",
+    "get_supported_sql_dialects",
+    "get_segment_rfm_patterns",
     "__version__",
     "__author__",
+    "__email__",
     "__license__",
-    "__rust_available__",
 ]
