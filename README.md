@@ -20,17 +20,17 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from lifetimes import BetaGeoFitter
 
-transactions = pd.read_csv('1M_customers.csv')  # ⏳ Loading...
-rfm = transactions.groupby('customer_id').agg({...})  # ⏳ Computing RFM...
-kmeans = KMeans(n_clusters=5).fit(rfm)  # ⏳ Clustering...
-# ⏳ Waiting... still waiting... ⏰ 2.7+ HOURS LATER
+transactions = pd.read_csv('1M_customers.csv') #  Loading...
+rfm = transactions.groupby('customer_id').agg({...}) #  Computing RFM...
+kmeans = KMeans(n_clusters=5).fit(rfm) #  Clustering...
+#  Waiting... still waiting...  2.7+ HOURS LATER
 segments = kmeans.predict(rfm)
 ```
 
 **The Reality:**
 - 100k customers: **2.7 hours** of computation
 - 1M customers: **Doesn't finish** (timeout)
-- Silhouette scoring: O(n²) complexity 
+- Silhouette scoring: O(n) complexity 
 - Limited algorithms: Only K-Means at scale
 - No production features: No streaming, no drift detection, no integrations
 - Manual orchestration: Gluing sklearn + pandas + lifetimes + custom code
@@ -51,7 +51,7 @@ segments = kmeans.predict(rfm)
 
 ## Why Star This?
 
-- **Segment 1M customers in <500ms** — 1,247× faster than scikit-learn + pandas (infinite speedup at scale)
+- **Segment 1M customers in <500ms** — 1,247 faster than scikit-learn + pandas (infinite speedup at scale)
 - **Production-ready segmentation** — No boilerplate; RFM clustering, segment profiles, stability tracking built-in
 - **Quality validation baked in** — Detect segment drift, track clustering stability, benchmark against industry
 - **Tiny memory footprint** — Process massive datasets without loading into RAM
@@ -65,15 +65,15 @@ transactions = pd.read_csv('1M_customers.csv')
 
 # 1 line to replace 100 lines of sklearn boilerplate
 segmenter = AudienceSegmenter(method='rfm_kmeans', n_clusters=4)
-segmenter.fit(transactions)  # ⚡ <500ms for 1M customers
+segmenter.fit(transactions) # <500ms for 1M customers
 
 segments = segmenter.predict(transactions)
 print(segmenter.segment_profiles())
-# segment | size  | avg_recency | avg_frequency | avg_monetary
-# 0       | 250k  | 15.3 days   | 8.2 purchases | $450   ← high-value loyalists
-# 1       | 180k  | 45.2 days   | 3.1 purchases | $120   ← regular buyers
-# 2       | 320k  | 2.1 days    | 2.0 purchases | $80    ← new / recent
-# 3       | 250k  | 60.5 days   | 1.0 purchases | $30    ← at-risk / dormant
+# segment | size | avg_recency | avg_frequency | avg_monetary
+# 0 | 250k | 15.3 days | 8.2 purchases | $450  high-value loyalists
+# 1 | 180k | 45.2 days | 3.1 purchases | $120  regular buyers
+# 2 | 320k | 2.1 days | 2.0 purchases | $80  new / recent
+# 3 | 250k | 60.5 days | 1.0 purchases | $30  at-risk / dormant
 ```
 
 ### Real Performance Numbers
@@ -82,10 +82,10 @@ print(segmenter.segment_profiles())
 |---|---|---|---|
 | **1,000** | 38ms | <9ms | 4x |
 | **10,000** | 606ms | <37ms | 16x |
-| **100,000** | 2.7 hours | <130ms | **1,247x** ⚡ |
-| **1,000,000** | Did not finish | <470ms | **∞** (infinite speedup) |
+| **100,000** | 2.7 hours | <130ms | **1,247x** |
+| **1,000,000** | Did not finish | <470ms | **** (infinite speedup) |
 
-**How?** ClusterAudienceKit is built in Rust with O(n log n) algorithms, not O(n²) like sklearn.
+**How?** ClusterAudienceKit is built in Rust with O(n log n) algorithms, not O(n) like sklearn.
 
 ---
 
@@ -95,26 +95,26 @@ print(segmenter.segment_profiles())
 |---------|--------|-----------|------|
 | **Speed (1M customers)** | <500ms | 2.7+ hours | N/A |
 | **Algorithms** | 6 built-in + Auto K | Limited | DIY |
-| **Production features** | ✅ Full pipeline | ❌ None | ❌ DIY all |
-| **Segment drift detection** | ✅ 4 methods | ❌ Manual | ❌ None |
-| **RFM scoring** | ✅ Built-in | ❌ Manual pandas | ❌ DIY |
-| **Platform integrations** | ✅ 7+ (Braze, Klaviyo, etc.) | ❌ None | ❌ Custom code |
-| **SQL export** | ✅ 8 warehouses | ❌ Manual | ❌ DIY |
-| **Real-time updates** | ✅ Streaming | ❌ Batch only | ❌ Complex |
-| **Compliance** | ✅ GDPR, Audit trails | ❌ None | ❌ DIY |
+| **Production features** | Full pipeline | None | DIY all |
+| **Segment drift detection** | 4 methods | Manual | None |
+| **RFM scoring** | Built-in | Manual pandas | DIY |
+| **Platform integrations** | 7+ (Braze, Klaviyo, etc.) | None | Custom code |
+| **SQL export** | 8 warehouses | Manual | DIY |
+| **Real-time updates** | Streaming | Batch only | Complex |
+| **Compliance** | GDPR, Audit trails | None | DIY |
 | **Setup time** | Hours | Days/Weeks | Weeks |
 
 ---
 
 ## Why Choose ClusterAudienceKit?
 
-### 🚀 Performance
+### Performance
 - Process **1M customers in <500ms** (vs 2.7+ hours with sklearn)
 - 6 clustering algorithms (K-Means, DBSCAN, Hierarchical, GMM, K-Prototypes, MiniBatch)
 - Auto K-estimation (Elbow, Gap Statistic, Silhouette) — no manual tuning needed
 - Multi-core by default (leverages all your CPU cores)
 
-### 🧠 Intelligence
+### Intelligence
 - **XGBoost** gradient boosting for prediction
 - **Neural networks** (MLP, Autoencoder, RNN) built-in
 - **AutoML** hyperparameter tuning
@@ -122,7 +122,7 @@ print(segmenter.segment_profiles())
 - Churn prediction with multiple algorithms
 - Lookalike audiences (4 similarity metrics)
 
-### 📊 Production-Ready
+### Production-Ready
 - **7+ platform integrations** (Braze, Klaviyo, HubSpot, Segment, mParticle, AWS, Snowflake)
 - **SQL export to 8 warehouses** (Snowflake, BigQuery, Redshift, PostgreSQL, Oracle, SQL Server, MySQL, ANSI)
 - Streaming/incremental updates (real-time personalization)
@@ -132,13 +132,13 @@ print(segmenter.segment_profiles())
 - Production dashboard + KPI tracking
 - RBAC + audit logging
 
-### 🔒 Privacy & Compliance
+### Privacy & Compliance
 - Differential privacy support
 - K-anonymity enforcement
 - GDPR-ready (automatic data handling)
 - Audit trail for all segmentation decisions
 
-### 💰 Cost Savings
+### Cost Savings
 - Eliminate expensive Braze/Klaviyo custom segmentation
 - Run on-premise (no vendor lock-in)
 - 80% cheaper than hiring specialized segmentation engineers
@@ -150,24 +150,24 @@ print(segmenter.segment_profiles())
 
 | Feature | sklearn | pandas | lifetimes | Braze | Klaviyo | **ClusterAudienceKit** |
 |---------|:---:|:---:|:---:|:---:|:---:|:---:|
-| RFM calculation | — | manual | — | ✓ | ✓ | **✓** |
-| **6 clustering algorithms** | partial | — | — | — | — | **✓** |
-| Auto K-estimation | — | — | — | — | — | **✓** |
-| **XGBoost predictions** | manual | — | — | — | — | **✓** |
-| **Neural networks** | manual | — | — | — | — | **✓** |
-| **AutoML tuning** | manual | — | — | — | — | **✓** |
-| Customer lifetime value | — | — | ✓ | — | — | **✓** |
-| Churn prediction | partial | — | partial | ✓ | ✓ | **✓** |
-| Streaming updates | — | — | — | — | — | **✓** |
-| Drift detection | — | — | — | — | — | **✓** |
-| Cohort analytics | — | — | — | partial | — | **✓** |
-| Lifecycle tracking | — | — | — | — | — | **✓** |
-| B2B segmentation | — | — | — | — | — | **✓** |
-| Lookalike audiences | — | — | — | — | — | **✓** |
-| **Plugin framework** | — | — | — | — | — | **✓** |
-| **7+ integrations** | — | — | — | 1 | 1 | **✓** |
-| **Privacy controls** | — | — | — | — | — | **✓** |
-| Production dashboard | — | — | — | — | — | **✓** |
+| RFM calculation | — | manual | — | | | **** |
+| **6 clustering algorithms** | partial | — | — | — | — | **** |
+| Auto K-estimation | — | — | — | — | — | **** |
+| **XGBoost predictions** | manual | — | — | — | — | **** |
+| **Neural networks** | manual | — | — | — | — | **** |
+| **AutoML tuning** | manual | — | — | — | — | **** |
+| Customer lifetime value | — | — | | — | — | **** |
+| Churn prediction | partial | — | partial | | | **** |
+| Streaming updates | — | — | — | — | — | **** |
+| Drift detection | — | — | — | — | — | **** |
+| Cohort analytics | — | — | — | partial | — | **** |
+| Lifecycle tracking | — | — | — | — | — | **** |
+| B2B segmentation | — | — | — | — | — | **** |
+| Lookalike audiences | — | — | — | — | — | **** |
+| **Plugin framework** | — | — | — | — | — | **** |
+| **7+ integrations** | — | — | — | 1 | 1 | **** |
+| **Privacy controls** | — | — | — | — | — | **** |
+| Production dashboard | — | — | — | — | — | **** |
 
 ---
 
@@ -191,7 +191,7 @@ from clusteraudiencekit import AudienceSegmenter
 import pandas as pd
 
 # Load your transaction data
-transactions = pd.read_csv('transactions.csv')  # Need: customer_id, date, amount
+transactions = pd.read_csv('transactions.csv') # Need: customer_id, date, amount
 
 # Create segmenter (RFM + K-Means)
 segmenter = AudienceSegmenter(method='rfm_kmeans', n_clusters=4)
@@ -223,26 +223,26 @@ sql = export_segment_sql("Champions", "snowflake", "customers")
 # Or export all 13 segments for BigQuery
 queries = export_all_segments_sql("bigquery", "project.dataset.customers")
 for segment_name, query in queries.items():
-    print(f"-- {segment_name}")
-    print(query)
+ print(f"-- {segment_name}")
+ print(query)
 ```
 
 **Supported SQL Dialects:**
-- ✅ Snowflake
-- ✅ BigQuery  
-- ✅ Amazon Redshift
-- ✅ PostgreSQL
-- ✅ Oracle
-- ✅ SQL Server
-- ✅ MySQL
-- ✅ ANSI SQL (all warehouses)
+- Snowflake
+- BigQuery 
+- Amazon Redshift
+- PostgreSQL
+- Oracle
+- SQL Server
+- MySQL
+- ANSI SQL (all warehouses)
 
 **Key Benefits:**
-- 🚀 **Zero Python dependency** — Segments run 100% in SQL
-- ⚡ **Automatic optimization** — Each dialect gets optimized queries (IN clauses, syntax variants)
-- 🎯 **Custom column mapping** — Map to your actual table columns
-- 📦 **Batch operations** — Export all 13 segments in one call
-- 🔄 **Production-ready** — 162 tests covering all dialects
+- **Zero Python dependency** — Segments run 100% in SQL
+- **Automatic optimization** — Each dialect gets optimized queries (IN clauses, syntax variants)
+- **Custom column mapping** — Map to your actual table columns
+- **Batch operations** — Export all 13 segments in one call
+- **Production-ready** — 162 tests covering all dialects
 
 **Example:** Create segment views in Snowflake
 ```sql
@@ -251,11 +251,11 @@ CREATE OR REPLACE VIEW segment_champions AS
 SELECT customer_id, 'Champions' AS segment
 FROM customers
 WHERE (recency_score = 5 AND frequency_score = 5 AND monetary_score IN (5, 4))
-   OR (recency_score = 5 AND frequency_score = 4 AND monetary_score = 5)
-   OR (recency_score = 4 AND frequency_score = 5 AND monetary_score = 5);
+ OR (recency_score = 5 AND frequency_score = 4 AND monetary_score = 5)
+ OR (recency_score = 4 AND frequency_score = 5 AND monetary_score = 5);
 ```
 
-📖 **Full documentation:** [SQL_EXPORT.md](SQL_EXPORT.md)
+ **Full documentation:** [SQL_EXPORT.md](SQL_EXPORT.md)
 
 ---
 
@@ -263,7 +263,7 @@ WHERE (recency_score = 5 AND frequency_score = 5 AND monetary_score IN (5, 4))
 
 ### Case 1: E-Commerce (100k customers)
 - **Before:** 2.7 hours to re-segment
-- **After:** 130ms to re-segment (↓ 75,000x faster)
+- **After:** 130ms to re-segment ( 75,000x faster)
 - **Result:** Weekly segmentation runs instead of monthly
 - **Impact:** 23% lift in campaign relevance
 
@@ -288,10 +288,10 @@ WHERE (recency_score = 5 AND frequency_score = 5 AND monetary_score IN (5, 4))
 ```
 Processing 1M customers:
 
-sklearn + pandas: ████████████████████████ 2.7 hours (did not complete)
-Braze native:     ███████ 2-3 hours
-Klaviyo native:   ████████ 3-4 hours
-ClusterAudienceKit: ▌ 470ms
+sklearn + pandas: 2.7 hours (did not complete)
+Braze native: 2-3 hours
+Klaviyo native: 3-4 hours
+ClusterAudienceKit: 470ms
 
 Speed advantage: 20,000x+ faster than alternatives
 ```
@@ -300,23 +300,23 @@ Speed advantage: 20,000x+ faster than alternatives
 
 ```
 Silhouette Score (higher is better):
-sklearn KMeans:        0.52
-Braze clustering:      0.58
-ClusterAudienceKit:    0.71 ← Better clustering quality
+sklearn KMeans: 0.52
+Braze clustering: 0.58
+ClusterAudienceKit: 0.71  Better clustering quality
 
 Predicted Churn Accuracy:
 sklearn LogisticRegression: 72%
-ClusterAudienceKit XGBoost:  87% ← Better predictions
+ClusterAudienceKit XGBoost: 87%  Better predictions
 ```
 
 ### Memory Efficiency
 
 ```
 Memory usage for 1M customers:
-sklearn + pandas:       3.2 GB
-Braze (estimated):      4.5 GB
-Klaviyo (estimated):    5.1 GB
-ClusterAudienceKit:     240 MB ← 13x more efficient
+sklearn + pandas: 3.2 GB
+Braze (estimated): 4.5 GB
+Klaviyo (estimated): 5.1 GB
+ClusterAudienceKit: 240 MB  13x more efficient
 ```
 
 ---
@@ -326,23 +326,23 @@ ClusterAudienceKit:     240 MB ← 13x more efficient
 **Python frontend. Rust engine. Production-ready.**
 
 ```
-┌─────────────────────────────────────┐
-│  Python API (familiar interface)    │
-├─────────────────────────────────────┤
-│  PyO3 Bridge (fast C boundary)      │
-├─────────────────────────────────────┤
-│  Rust Core Engine (blazing fast)    │
-│  ├─ RFM Calculator (optimized)      │
-│  ├─ 6 Clustering Algorithms         │
-│  ├─ AutoML Hyperparameter Tuning    │
-│  ├─ XGBoost Integration             │
-│  ├─ Neural Network Training         │
-│  ├─ Streaming Engine                │
-│  └─ Drift Detection (Kolmogorov)    │
-├─────────────────────────────────────┤
-│  Platform Integrations              │
-│  (Braze, Klaviyo, Segment, etc.)    │
-└─────────────────────────────────────┘
+
+ Python API (familiar interface) 
+
+ PyO3 Bridge (fast C boundary) 
+
+ Rust Core Engine (blazing fast) 
+ RFM Calculator (optimized) 
+ 6 Clustering Algorithms 
+ AutoML Hyperparameter Tuning 
+ XGBoost Integration 
+ Neural Network Training 
+ Streaming Engine 
+ Drift Detection (Kolmogorov) 
+
+ Platform Integrations 
+ (Braze, Klaviyo, Segment, etc.) 
+
 ```
 
 ---
@@ -374,7 +374,7 @@ pytest tests/test_benchmarks.py -v
 pytest --cov=clusteraudiencekit tests/
 ```
 
-**Status:** 546 tests passing ✅ (384 core + 162 SQL export)
+**Status:** 546 tests passing (384 core + 162 SQL export)
 
 
 ---
@@ -407,8 +407,8 @@ MIT License — See [LICENSE](LICENSE) for details
 
 <div align="center">
 
-**⚡ Process 1M customers in <500ms — No more 2.7-hour waiting periods.**
+** Process 1M customers in <500ms — No more 2.7-hour waiting periods.**
 
-**[Get Started Now →](INSTALL.md)** • **[View Benchmarks →](BENCHMARKS.md)** • **[Read Comparisons →](docs/comparison.md)**
+**[Get Started Now ](INSTALL.md)**  **[View Benchmarks ](BENCHMARKS.md)**  **[Read Comparisons ](docs/comparison.md)**
 
 </div>
