@@ -56,7 +56,7 @@ except ImportError:
 __version__ = "5.9.0"
 __author__ = "Georgi Mammen Mullassery"
 __email__ = "mullassery@gmail.com"
-__license__ = "MIT"
+__license__ = "Proprietary"
 
 __all__ = [
     "AudienceSegmenter",

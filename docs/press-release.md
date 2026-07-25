@@ -423,7 +423,7 @@ Drift Detection: The segment_stability() method measures what proportion of
 customers stayed in the same segment between runs, flagging significant shifts 
 caused by marketing campaigns or seasonal behaviour.
 
-The library is pip-installable and released under the MIT license.
+The library is pip-installable and released proprietary license.
 
 Installation: pip install clusteraudiencekit
 GitHub: https://github.com/Mullassery/clusteraudiencekit

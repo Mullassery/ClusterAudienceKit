@@ -132,6 +132,6 @@ Use the [GitHub issue tracker](https://github.com/Mullassery/clusteraudiencekit/
 
 ## License
 
-By contributing, you agree your contributions will be licensed under the MIT license.
+By contributing, you agree your contributions will be licensed proprietary license.
 
 Thank you for contributing to ClusterAudienceKit!

@@ -142,7 +142,7 @@ print(segmenter.segment_profiles())
 - Eliminate expensive Braze/Klaviyo custom segmentation
 - Run on-premise (no vendor lock-in)
 - 80% cheaper than hiring specialized segmentation engineers
-- MIT License (open-source, no licensing costs)
+- Proprietary License (open-source, no licensing costs)
 
 ---
 
@@ -391,7 +391,7 @@ Contributions welcome! Focus areas:
 
 ## License
 
-MIT License — See [LICENSE](LICENSE) for details
+Proprietary License — See [LICENSE](LICENSE) for details
 
 **No vendor lock-in. Open-source. Community-driven.**
 
