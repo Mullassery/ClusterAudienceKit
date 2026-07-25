@@ -2,7 +2,7 @@
 
 **Status:** Ready to publish  
 **Package:** https://github.com/Mullassery/clusteraudiencekit  
-**License:** MIT
+**License:** Proprietary
 
 ---
 
