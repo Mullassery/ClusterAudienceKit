@@ -1,54 +1,98 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
+# Sensitive files and credentials
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+credentials.json
+secrets.json
+.credentials
+config.local.*
+.config.local
+oauth_tokens.json
+aws_keys.json
+gcp_credentials.json
+azure_credentials.json
 
-# Virtual environments
-venv/
-ENV/
-env/
-
-# IDE
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 .DS_Store
+Thumbs.db
+*.sublime-project
+*.sublime-workspace
 
-# Testing
+# Python cache files
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+*.so
+.eggs/
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Testing and coverage
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
+.hypothesis/
 
-# Build
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+.env
+
+# Rust build artifacts
 target/
 Cargo.lock
-*.o
+*.rlib
+*.a
+*.so
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Node modules (if applicable)
+node_modules/
+npm-debug.log
+yarn-error.log
 
-# Temporary
+# Temporary files
+*.tmp
+*.temp
+*.log
+temp/
+tmp/
 .tmp/
-*.local
+
+# OS-specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+Thumbs.db
+ehthumbs.db
+
+# Large data files (if tracking data)
+*.pkl
+*.pickle
+data/private/
+data/*.sensitive.*
+
+# IDE-specific
+.pylintrc
+.mypy.ini
+
+# Build/dist
+*.whl
+*.tar.gz
+
+# Jupyter
+.ipynb_checkpoints/
