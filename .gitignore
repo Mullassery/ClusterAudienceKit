@@ -11,88 +11,33 @@ secrets.json
 config.local.*
 .config.local
 oauth_tokens.json
-aws_keys.json
-gcp_credentials.json
-azure_credentials.json
 
-# IDE and editor files
+# IDE files
 .vscode/
 .idea/
 *.swp
-*.swo
 *~
 .DS_Store
-Thumbs.db
-*.sublime-project
-*.sublime-workspace
 
-# Python cache files
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
-.Python
-*.so
-.eggs/
 *.egg-info/
 dist/
 build/
-*.egg
-
-# Testing and coverage
 .pytest_cache/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.hypothesis/
 
 # Virtual environments
 venv/
 env/
-ENV/
 .venv
-.env
 
-# Rust build artifacts
+# Rust
 target/
 Cargo.lock
-*.rlib
-*.a
-*.so
 
-# Node modules (if applicable)
-node_modules/
-npm-debug.log
-yarn-error.log
-
-# Temporary files
+# Temp files
 *.tmp
-*.temp
 *.log
 temp/
 tmp/
-.tmp/
-
-# OS-specific files
-.DS_Store
-.AppleDouble
-.LSOverride
-Thumbs.db
-ehthumbs.db
-
-# Large data files (if tracking data)
-*.pkl
-*.pickle
-data/private/
-data/*.sensitive.*
-
-# IDE-specific
-.pylintrc
-.mypy.ini
-
-# Build/dist
-*.whl
-*.tar.gz
-
-# Jupyter
-.ipynb_checkpoints/
