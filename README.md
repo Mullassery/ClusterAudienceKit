@@ -46,6 +46,9 @@ Optimized clustering on millions of records:
 
 ```bash
 pip install clusteraudiencekit
+
+# Verify installation
+clusteraudiencekit --version
 ```
 
 ## Use Cases
