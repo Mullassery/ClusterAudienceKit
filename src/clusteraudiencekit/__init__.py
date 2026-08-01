@@ -15,7 +15,7 @@ from pathlib import Path
 import importlib.machinery
 import importlib.util
 
-__version__ = "5.9.0"
+__version__ = "5.9.2"
 __author__ = "Georgi Mammen Mullassery"
 __email__ = "mullassery@gmail.com"
 __license__ = "Proprietary"
