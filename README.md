@@ -7,6 +7,13 @@ Enterprise audience intelligence at scale. RFM analysis, clustering, CLV, churn 
 
 Segment millions of customers. RFM analysis, neural networks, lookalike modeling—all in one package.
 
+## Overview
+
+ClusterAudienceKit provides enterprise-grade audience intelligence at scale. RFM analysis, 
+advanced clustering (K-means, DBSCAN, spectral), CLV prediction, churn detection, lookalike 
+modeling, and neural network clustering. Process 1M+ customers in <1 second.
+---
+
 ## Quick Start
 
 ```python
@@ -41,6 +48,40 @@ Optimized clustering on millions of records:
 - Lookalike modeling
 - Neural network clustering
 - Sub-second processing
+
+## Key Features
+
+**Audience Analysis**
+- RFM segmentation (Recency, Frequency, Monetary)
+- 6 clustering algorithms (K-means, DBSCAN, Spectral, Hierarchical, GMM, Isolation Forest)
+- Customer Lifetime Value (CLV) prediction
+- Churn detection and scoring
+- Lookalike audience modeling
+
+**Scalability**
+- Process 1M+ customers in <1 second
+- Rust-powered core for speed
+- Streaming data support
+- Batch and real-time APIs
+
+**Integration**
+- Pandas/Polars DataFrames
+- Cloud storage (S3, GCS)
+- SQL databases
+- BI tools (Tableau, Looker)
+
+---
+
+## Requirements
+
+- Python 3.10+
+- NumPy ≥1.20.0
+- Scikit-learn ≥1.0.0
+- Pandas ≥1.3.0
+- Rust core (precompiled wheels)
+- Optional: Polars ≥0.18.0
+
+---
 
 ## Installation
 
