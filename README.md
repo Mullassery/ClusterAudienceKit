@@ -1,17 +1,46 @@
 # ClusterAudienceKit
 
-Enterprise audience intelligence at scale. RFM analysis, clustering, CLV, churn detection, lookalikes.
+**Segment millions of customers in <1 second. Know who matters.**
+
+RFM analysis, customer lifetime value prediction, churn detection, and lookalike modeling—all in one production-ready package. Process 1M+ customers instantly.
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/Mullassery/ClusterAudienceKit/tests.yml?label=tests)](https://github.com/Mullassery/ClusterAudienceKit/actions)
 [![PyPI](https://img.shields.io/pypi/v/clusteraudiencekit)](https://pypi.org/project/clusteraudiencekit/)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://www.python.org)
 
-Segment millions of customers. RFM analysis, neural networks, lookalike modeling—all in one package.
+---
 
-## Overview
+## 30-Second Start
 
-ClusterAudienceKit provides enterprise-grade audience intelligence at scale. RFM analysis, 
-advanced clustering (K-means, DBSCAN, spectral), CLV prediction, churn detection, lookalike 
-modeling, and neural network clustering. Process 1M+ customers in <1 second.
+```python
+from clusteraudiencekit import Segmentation, CLV
+
+# Segment your customers
+segments = Segmentation(df).fit()
+print(segments.summary)  # Automatic RFM + clustering
+
+# Find high-value customers
+clv = CLV(df)
+vips = clv.top_customers(n=100)
+print(f"Top 100 worth: ${clv.total_value(vips):,.0f}")
+```
+
+---
+
+## Why ClusterAudienceKit?
+
+**The Problem:**
+- Marketing teams manually segment (outdated, slow)
+- No clear view of customer value
+- Churn prediction requires multiple tools
+- Building lookalike audiences is complex
+
+**The Solution:**
+- Automatic RFM segmentation (no configuration)
+- Customer lifetime value prediction
+- Churn scoring and early warning
+- Lookalike audience generation
+- Sub-second processing (1M+ customers)
 ---
 
 ## Quick Start
