@@ -7,6 +7,7 @@ use crate::engine::rfm::{RFMConfig, DecayFunction, ScoringMethod, RFMScore, Tran
 use crate::engine::clustering::{KMeansResult, kmeans, ClusteringMethod};
 use crate::engine::churn_prediction::{ChurnRiskLevel, ChurnPrediction, ChurnModelType};
 use crate::engine::clv::{CLVModel, CustomerLTV, CLVCalculator};
+use crate::engine::segments::{SegmentType, SegmentProfile};
 use std::collections::HashMap;
 use ndarray::Array2;
 
@@ -519,6 +520,146 @@ fn calculate_simple_ltv(
 }
 
 // ============================================================================
+// SEGMENT CLASSES & FUNCTIONS
+// ============================================================================
+
+#[pyclass]
+struct PySegmentType {
+    inner: SegmentType,
+}
+
+#[pymethods]
+impl PySegmentType {
+    #[staticmethod]
+    fn champions() -> Self {
+        PySegmentType {
+            inner: SegmentType::Champions,
+        }
+    }
+
+    #[staticmethod]
+    fn loyal_customers() -> Self {
+        PySegmentType {
+            inner: SegmentType::LoyalCustomers,
+        }
+    }
+
+    #[staticmethod]
+    fn potential_loyalists() -> Self {
+        PySegmentType {
+            inner: SegmentType::PotentialLoyalists,
+        }
+    }
+
+    #[staticmethod]
+    fn at_risk() -> Self {
+        PySegmentType {
+            inner: SegmentType::AtRisk,
+        }
+    }
+
+    #[staticmethod]
+    fn cannot_lose() -> Self {
+        PySegmentType {
+            inner: SegmentType::CannotLose,
+        }
+    }
+
+    #[staticmethod]
+    fn vip() -> Self {
+        PySegmentType {
+            inner: SegmentType::VIP,
+        }
+    }
+
+    #[staticmethod]
+    fn new_customers() -> Self {
+        PySegmentType {
+            inner: SegmentType::NewCustomers,
+        }
+    }
+
+    #[staticmethod]
+    fn need_attention() -> Self {
+        PySegmentType {
+            inner: SegmentType::NeedAttention,
+        }
+    }
+
+    fn as_str(&self) -> String {
+        self.inner.as_str().to_string()
+    }
+
+    fn __repr__(&self) -> String {
+        format!("SegmentType({})", self.inner.as_str())
+    }
+}
+
+#[pyclass]
+struct PySegmentProfile {
+    inner: SegmentProfile,
+}
+
+#[pymethods]
+impl PySegmentProfile {
+    #[new]
+    fn new(segment_type: &PySegmentType) -> Self {
+        PySegmentProfile {
+            inner: SegmentProfile::new(segment_type.inner.clone()),
+        }
+    }
+
+    #[getter]
+    fn segment_type(&self) -> String {
+        self.inner.segment_type.as_str().to_string()
+    }
+
+    #[getter]
+    fn description(&self) -> String {
+        self.inner.description.clone()
+    }
+
+    #[getter]
+    fn size(&self) -> usize {
+        self.inner.size
+    }
+
+    #[getter]
+    fn avg_monetary(&self) -> f64 {
+        self.inner.avg_monetary
+    }
+
+    #[getter]
+    fn avg_frequency(&self) -> f64 {
+        self.inner.avg_frequency
+    }
+
+    #[getter]
+    fn avg_recency(&self) -> f64 {
+        self.inner.avg_recency
+    }
+
+    #[getter]
+    fn churn_risk(&self) -> f64 {
+        self.inner.churn_risk
+    }
+
+    #[getter]
+    fn revenue_contribution(&self) -> f64 {
+        self.inner.revenue_contribution
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SegmentProfile(type={}, size={}, avg_monetary={:.2})",
+            self.inner.segment_type.as_str(),
+            self.inner.size,
+            self.inner.avg_monetary
+        )
+    }
+}
+
+// ============================================================================
 // SQL EXPORT FUNCTIONS (EXISTING)
 // ============================================================================
 
@@ -611,6 +752,8 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyChurnRiskLevel>()?;
     m.add_class::<PyChurnPrediction>()?;
     m.add_class::<PyCustomerLTV>()?;
+    m.add_class::<PySegmentType>()?;
+    m.add_class::<PySegmentProfile>()?;
 
     // Add RFM functions
     m.add_function(wrap_pyfunction!(calculate_rfm_py, m)?)?;
