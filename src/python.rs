@@ -5,6 +5,8 @@ use crate::engine::sql_export::{SQLExporter, SQLDialect, ColumnMapping};
 use crate::engine::{SegmenterConfig, AudienceSegmenterCore, NormalizationParams};
 use crate::engine::rfm::{RFMConfig, DecayFunction, ScoringMethod, RFMScore, Transaction, calculate_rfm};
 use crate::engine::clustering::{KMeansResult, kmeans, ClusteringMethod};
+use crate::engine::churn_prediction::{ChurnRiskLevel, ChurnPrediction, ChurnModelType};
+use crate::engine::clv::{CLVModel, CustomerLTV, CLVCalculator};
 use std::collections::HashMap;
 use ndarray::Array2;
 
@@ -339,6 +341,184 @@ impl PyAudienceSegmenter {
 }
 
 // ============================================================================
+// CHURN PREDICTION CLASSES & FUNCTIONS
+// ============================================================================
+
+#[pyclass]
+struct PyChurnRiskLevel {
+    inner: ChurnRiskLevel,
+}
+
+#[pymethods]
+impl PyChurnRiskLevel {
+    #[staticmethod]
+    fn very_low() -> Self {
+        PyChurnRiskLevel {
+            inner: ChurnRiskLevel::VeryLow,
+        }
+    }
+
+    #[staticmethod]
+    fn low() -> Self {
+        PyChurnRiskLevel {
+            inner: ChurnRiskLevel::Low,
+        }
+    }
+
+    #[staticmethod]
+    fn medium() -> Self {
+        PyChurnRiskLevel {
+            inner: ChurnRiskLevel::Medium,
+        }
+    }
+
+    #[staticmethod]
+    fn high() -> Self {
+        PyChurnRiskLevel {
+            inner: ChurnRiskLevel::High,
+        }
+    }
+
+    #[staticmethod]
+    fn critical() -> Self {
+        PyChurnRiskLevel {
+            inner: ChurnRiskLevel::Critical,
+        }
+    }
+
+    fn as_str(&self) -> String {
+        self.inner.as_str().to_string()
+    }
+
+    fn threshold(&self) -> f64 {
+        self.inner.threshold()
+    }
+}
+
+#[pyclass]
+struct PyChurnPrediction {
+    inner: ChurnPrediction,
+}
+
+#[pymethods]
+impl PyChurnPrediction {
+    #[getter]
+    fn customer_id(&self) -> String {
+        self.inner.customer_id.clone()
+    }
+
+    #[getter]
+    fn churn_probability(&self) -> f64 {
+        self.inner.churn_probability
+    }
+
+    #[getter]
+    fn risk_level(&self) -> String {
+        self.inner.risk_level.as_str().to_string()
+    }
+
+    #[getter]
+    fn confidence(&self) -> f64 {
+        self.inner.confidence
+    }
+
+    #[getter]
+    fn days_until_churn_estimate(&self) -> i32 {
+        self.inner.days_until_churn_estimate
+    }
+
+    #[getter]
+    fn model_type(&self) -> String {
+        self.inner.model_type.as_str().to_string()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "ChurnPrediction(customer_id={}, prob={:.4}, risk={}, confidence={:.4})",
+            self.inner.customer_id,
+            self.inner.churn_probability,
+            self.inner.risk_level.as_str(),
+            self.inner.confidence
+        )
+    }
+}
+
+// ============================================================================
+// CLV CLASSES & FUNCTIONS
+// ============================================================================
+
+#[pyclass]
+struct PyCustomerLTV {
+    inner: CustomerLTV,
+}
+
+#[pymethods]
+impl PyCustomerLTV {
+    #[getter]
+    fn customer_id(&self) -> String {
+        self.inner.customer_id.clone()
+    }
+
+    #[getter]
+    fn historical_value(&self) -> f64 {
+        self.inner.historical_value
+    }
+
+    #[getter]
+    fn annual_value(&self) -> f64 {
+        self.inner.annual_value
+    }
+
+    #[getter]
+    fn predicted_ltv(&self) -> f64 {
+        self.inner.predicted_ltv
+    }
+
+    #[getter]
+    fn predicted_ltv_3yr(&self) -> f64 {
+        self.inner.predicted_ltv_3yr
+    }
+
+    #[getter]
+    fn predicted_ltv_5yr(&self) -> f64 {
+        self.inner.predicted_ltv_5yr
+    }
+
+    #[getter]
+    fn churn_probability(&self) -> f64 {
+        self.inner.churn_probability
+    }
+
+    #[getter]
+    fn confidence_score(&self) -> f64 {
+        self.inner.confidence_score
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "CustomerLTV(customer_id={}, ltv={:.2}, 3yr={:.2}, 5yr={:.2})",
+            self.inner.customer_id,
+            self.inner.predicted_ltv,
+            self.inner.predicted_ltv_3yr,
+            self.inner.predicted_ltv_5yr
+        )
+    }
+}
+
+#[pyfunction]
+fn calculate_simple_ltv(
+    customer_id: String,
+    total_spent: f64,
+    purchase_count: usize,
+    days_active: i32,
+    avg_customer_lifespan_days: i32,
+) -> PyResult<PyCustomerLTV> {
+    CLVCalculator::calculate_simple_ltv(&customer_id, total_spent, purchase_count, days_active, avg_customer_lifespan_days)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        .map(|ltv| PyCustomerLTV { inner: ltv })
+}
+
+// ============================================================================
 // SQL EXPORT FUNCTIONS (EXISTING)
 // ============================================================================
 
@@ -428,12 +608,18 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyDecayFunction>()?;
     m.add_class::<PyScoringMethod>()?;
     m.add_class::<PyKMeansResult>()?;
+    m.add_class::<PyChurnRiskLevel>()?;
+    m.add_class::<PyChurnPrediction>()?;
+    m.add_class::<PyCustomerLTV>()?;
 
     // Add RFM functions
     m.add_function(wrap_pyfunction!(calculate_rfm_py, m)?)?;
 
     // Add clustering functions
     m.add_function(wrap_pyfunction!(kmeans_py, m)?)?;
+
+    // Add churn & CLV functions
+    m.add_function(wrap_pyfunction!(calculate_simple_ltv, m)?)?;
 
     // Add SQL export functions
     m.add_function(wrap_pyfunction!(export_segment_sql, m)?)?;
