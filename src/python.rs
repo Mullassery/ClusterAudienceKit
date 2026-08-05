@@ -2,7 +2,345 @@
 
 use pyo3::prelude::*;
 use crate::engine::sql_export::{SQLExporter, SQLDialect, ColumnMapping};
+use crate::engine::{SegmenterConfig, AudienceSegmenterCore, NormalizationParams};
+use crate::engine::rfm::{RFMConfig, DecayFunction, ScoringMethod, RFMScore, Transaction, calculate_rfm};
+use crate::engine::clustering::{KMeansResult, kmeans, ClusteringMethod};
 use std::collections::HashMap;
+use ndarray::Array2;
+
+// ============================================================================
+// RFM CLASSES & FUNCTIONS
+// ============================================================================
+
+#[pyclass]
+struct PyDecayFunction {
+    inner: DecayFunction,
+}
+
+#[pymethods]
+impl PyDecayFunction {
+    #[staticmethod]
+    fn linear() -> Self {
+        PyDecayFunction {
+            inner: DecayFunction::Linear,
+        }
+    }
+
+    #[staticmethod]
+    fn exponential() -> Self {
+        PyDecayFunction {
+            inner: DecayFunction::Exponential,
+        }
+    }
+
+    #[staticmethod]
+    fn inverse() -> Self {
+        PyDecayFunction {
+            inner: DecayFunction::Inverse,
+        }
+    }
+
+    fn __repr__(&self) -> String {
+        format!("DecayFunction({})", self.inner)
+    }
+}
+
+#[pyclass]
+struct PyScoringMethod {
+    inner: ScoringMethod,
+}
+
+#[pymethods]
+impl PyScoringMethod {
+    #[staticmethod]
+    fn quintile() -> Self {
+        PyScoringMethod {
+            inner: ScoringMethod::Quintile,
+        }
+    }
+
+    #[staticmethod]
+    fn decile() -> Self {
+        PyScoringMethod {
+            inner: ScoringMethod::Decile,
+        }
+    }
+
+    #[staticmethod]
+    fn percentile() -> Self {
+        PyScoringMethod {
+            inner: ScoringMethod::Percentile,
+        }
+    }
+}
+
+#[pyclass]
+struct PyRFMConfig {
+    inner: RFMConfig,
+}
+
+#[pymethods]
+impl PyRFMConfig {
+    #[new]
+    fn new(
+        recency_window_days: Option<u32>,
+        frequency_threshold: Option<usize>,
+        monetary_threshold: Option<f64>,
+        decay_function: Option<&PyDecayFunction>,
+        decay_half_life_days: Option<u32>,
+        scoring_method: Option<&PyScoringMethod>,
+    ) -> Self {
+        let mut config = RFMConfig::default();
+        if let Some(days) = recency_window_days {
+            config.recency_window_days = days;
+        }
+        if let Some(threshold) = frequency_threshold {
+            config.frequency_threshold = threshold;
+        }
+        if let Some(threshold) = monetary_threshold {
+            config.monetary_threshold = threshold;
+        }
+        if let Some(decay) = decay_function {
+            config.decay_function = decay.inner;
+        }
+        if let Some(half_life) = decay_half_life_days {
+            config.decay_half_life_days = half_life;
+        }
+        if let Some(method) = scoring_method {
+            config.scoring_method = method.inner;
+        }
+        PyRFMConfig { inner: config }
+    }
+
+    #[getter]
+    fn recency_window_days(&self) -> u32 {
+        self.inner.recency_window_days
+    }
+
+    #[getter]
+    fn frequency_threshold(&self) -> usize {
+        self.inner.frequency_threshold
+    }
+
+    #[getter]
+    fn monetary_threshold(&self) -> f64 {
+        self.inner.monetary_threshold
+    }
+
+    #[getter]
+    fn decay_half_life_days(&self) -> u32 {
+        self.inner.decay_half_life_days
+    }
+}
+
+#[pyclass]
+struct PyRFMScore {
+    inner: RFMScore,
+}
+
+#[pymethods]
+impl PyRFMScore {
+    #[getter]
+    fn customer_id(&self) -> String {
+        self.inner.customer_id.clone()
+    }
+
+    #[getter]
+    fn recency(&self) -> f64 {
+        self.inner.recency
+    }
+
+    #[getter]
+    fn frequency(&self) -> f64 {
+        self.inner.frequency
+    }
+
+    #[getter]
+    fn monetary(&self) -> f64 {
+        self.inner.monetary
+    }
+
+    #[getter]
+    fn recency_score(&self) -> u32 {
+        self.inner.recency_score
+    }
+
+    #[getter]
+    fn frequency_score(&self) -> u32 {
+        self.inner.frequency_score
+    }
+
+    #[getter]
+    fn monetary_score(&self) -> u32 {
+        self.inner.monetary_score
+    }
+
+    #[getter]
+    fn rfm_segment(&self) -> String {
+        self.inner.rfm_segment.clone()
+    }
+
+    #[getter]
+    fn rfm_rank(&self) -> String {
+        self.inner.rfm_rank()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "RFMScore(customer_id={}, r={}, f={}, m={}, segment={})",
+            self.inner.customer_id, self.inner.recency_score,
+            self.inner.frequency_score, self.inner.monetary_score,
+            self.inner.rfm_segment
+        )
+    }
+}
+
+#[pyfunction]
+fn calculate_rfm_py(
+    transactions: Vec<(String, String, f64)>,
+    config: &PyRFMConfig,
+) -> PyResult<Vec<PyRFMScore>> {
+    let tx_vec: Vec<Transaction> = transactions
+        .into_iter()
+        .map(|(customer_id, date, amount)| Transaction {
+            customer_id,
+            date,
+            amount,
+        })
+        .collect();
+
+    calculate_rfm(tx_vec, &config.inner)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        .map(|scores| {
+            scores
+                .into_iter()
+                .map(|s| PyRFMScore { inner: s })
+                .collect()
+        })
+}
+
+// ============================================================================
+// CLUSTERING CLASSES & FUNCTIONS
+// ============================================================================
+
+#[pyclass]
+struct PyKMeansResult {
+    inner: KMeansResult,
+}
+
+#[pymethods]
+impl PyKMeansResult {
+    #[getter]
+    fn labels(&self) -> Vec<usize> {
+        self.inner.labels.clone()
+    }
+
+    #[getter]
+    fn inertia(&self) -> f64 {
+        self.inner.inertia
+    }
+
+    #[getter]
+    fn n_iter(&self) -> usize {
+        self.inner.n_iter
+    }
+
+    #[getter]
+    fn centers(&self) -> Vec<Vec<f64>> {
+        self.inner
+            .centers
+            .outer_iter()
+            .map(|row| row.to_vec())
+            .collect()
+    }
+}
+
+#[pyfunction]
+fn kmeans_py(
+    data: Vec<Vec<f64>>,
+    n_clusters: usize,
+    max_iter: Option<usize>,
+    random_state: Option<u64>,
+) -> PyResult<PyKMeansResult> {
+    let max_iter = max_iter.unwrap_or(300);
+    let random_state = random_state.unwrap_or(42);
+
+    let data_array = Array2::from_shape_vec(
+        (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
+        data.into_iter().flatten().collect(),
+    )
+    .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+
+    kmeans(&data_array, n_clusters, max_iter, random_state)
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+        .map(|result| PyKMeansResult { inner: result })
+}
+
+// ============================================================================
+// SEGMENTER CORE CLASS
+// ============================================================================
+
+#[pyclass]
+struct PyAudienceSegmenter {
+    inner: AudienceSegmenterCore,
+}
+
+#[pymethods]
+impl PyAudienceSegmenter {
+    #[new]
+    fn new(n_clusters: usize) -> Self {
+        let config = SegmenterConfig {
+            method: "kmeans".to_string(),
+            n_clusters,
+            rfm_config: RFMConfig::default(),
+            clustering_method: ClusteringMethod::KMeans,
+            random_state: 42,
+            n_jobs: -1,
+        };
+        PyAudienceSegmenter {
+            inner: AudienceSegmenterCore::new(config),
+        }
+    }
+
+    fn fit(&mut self, data: Vec<Vec<f64>>) -> PyResult<()> {
+        let data_array = Array2::from_shape_vec(
+            (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
+            data.into_iter().flatten().collect(),
+        )
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+
+        self.inner
+            .fit(&data_array)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    }
+
+    fn predict(&self, data: Vec<Vec<f64>>) -> PyResult<Vec<usize>> {
+        let data_array = Array2::from_shape_vec(
+            (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
+            data.into_iter().flatten().collect(),
+        )
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
+
+        self.inner
+            .predict(&data_array)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    }
+
+    fn get_n_clusters(&self) -> usize {
+        self.inner.config.n_clusters
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "AudienceSegmenter(n_clusters={}, method={})",
+            self.inner.config.n_clusters, self.inner.config.method
+        )
+    }
+}
+
+// ============================================================================
+// SQL EXPORT FUNCTIONS (EXISTING)
+// ============================================================================
 
 /// Export a single segment as SQL query
 #[pyfunction]
@@ -73,11 +411,29 @@ fn get_segment_rfm_patterns(segment_name: &str) -> PyResult<Vec<(u32, u32, u32)>
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
 }
 
+// ============================================================================
+// PYTHON MODULE INITIALIZATION
+// ============================================================================
+
 /// Python module initialization
 #[pymodule]
 fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add("__version__", crate::VERSION)?;
     m.add("__author__", "Georgi Mammen Mullassery")?;
+
+    // Add core classes
+    m.add_class::<PyAudienceSegmenter>()?;
+    m.add_class::<PyRFMConfig>()?;
+    m.add_class::<PyRFMScore>()?;
+    m.add_class::<PyDecayFunction>()?;
+    m.add_class::<PyScoringMethod>()?;
+    m.add_class::<PyKMeansResult>()?;
+
+    // Add RFM functions
+    m.add_function(wrap_pyfunction!(calculate_rfm_py, m)?)?;
+
+    // Add clustering functions
+    m.add_function(wrap_pyfunction!(kmeans_py, m)?)?;
 
     // Add SQL export functions
     m.add_function(wrap_pyfunction!(export_segment_sql, m)?)?;
