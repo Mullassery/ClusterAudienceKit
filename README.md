@@ -63,15 +63,14 @@ high_value = clv.top_customers(n=100)
 ## Process 1M+ Customers in <1s
 
 Optimized clustering on millions of records:
-- K-means, DBSCAN, Hierarchical clustering
-- 6 algorithm options
+- K-means, DBSCAN, Hierarchical clustering, Gaussian Mixture Models
 - Parallel processing
 - GPU acceleration support
 
 ## Key Features
 
 - RFM analysis built-in
-- 6 clustering algorithms
+- 4 clustering algorithms
 - Customer Lifetime Value (CLV)
 - Churn prediction
 - Lookalike modeling
@@ -82,7 +81,10 @@ Optimized clustering on millions of records:
 
 **Audience Analysis**
 - RFM segmentation (Recency, Frequency, Monetary)
-- 6 clustering algorithms (K-means, DBSCAN, Spectral, Hierarchical, GMM, Isolation Forest)
+- 4 clustering algorithms (K-means, DBSCAN, Hierarchical, Gaussian Mixture Model).
+  Spectral clustering and Isolation Forest are not implemented anywhere in this
+  codebase (not even as stubs) despite being listed here previously — removed
+  until they're real.
 - Customer Lifetime Value (CLV) prediction
 - Churn detection and scoring
 - Lookalike audience modeling

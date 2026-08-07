@@ -2,6 +2,45 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [7.1.0] - 2026-08-07
+
+### Fixed
+- **Critical: the published package crashed on `import` for every user.** A leftover
+  `.cargo/config.toml` from an earlier debugging attempt force-linked the extension
+  module against a specific `libpython3.13.dylib` — which is the wrong approach for a
+  `cdylib` Python extension (it should resolve Python symbols dynamically from
+  whatever interpreter loads it, not embed its own copy). This caused
+  `PyInterpreterState_Get: ... GIL released ... thread state NULL` immediately on
+  import, on every Python version tested (3.9, 3.11). Removed the file; `maturin`'s
+  default linking (already correct) now applies.
+- **Core clustering engine was entirely unimplemented.** `engine::clustering`
+  (KMeans, K-Prototypes, cluster assignment) and `engine::metrics` (Silhouette,
+  Davies-Bouldin, inertia) were `// TODO` stubs returning empty/zero results, despite
+  being the backing implementation for the public `AudienceSegmenter` /  `kmeans_py`
+  API and the README's "6 clustering algorithms, process 1M+ customers in <1s"
+  claims. Implemented:
+  - KMeans via Lloyd's algorithm with k-means++ initialization, deterministic for a
+    given `random_state`.
+  - K-Prototypes (Huang 1998) for mixed numeric/categorical data.
+  - Silhouette / Davies-Bouldin / inertia — cross-verified against
+    `sklearn.metrics` on a fixed reference dataset (bit-exact to 1e-9).
+  - `AudienceSegmenterCore::fit()`/`predict()` now actually call the above instead
+    of being no-ops.
+  - Fixed a K-Prototypes bug found by testing: categorical cluster centers were
+    seeded from static row indices instead of the same rows k-means++ chose for the
+    numeric centers, and mode tie-breaking went through a `HashMap` (whose iteration
+    order — and therefore tie-breaking — is randomized per-process in Rust),
+    making output nondeterministic across runs of the same `random_state`.
+- README corrected: "6 clustering algorithms (K-means, DBSCAN, Spectral,
+  Hierarchical, GMM, Isolation Forest)" → 4 real ones (K-means, DBSCAN, Hierarchical,
+  GMM). Spectral clustering and Isolation Forest don't exist anywhere in this
+  codebase, not even as stubs.
+
+### Known remaining gaps (not fixed in this release)
+- `utils::conversions::pandas_to_arrow` / `arrow_to_pandas` still return
+  "Not implemented".
+- `streaming::StreamingState` is still a stub.
+
 ## [5.9.0] - 2026-07-16
 
 ### 🎉 Phase 5.8: Price Intelligence (15 features, 50 hours)

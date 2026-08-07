@@ -1,4 +1,0 @@
-[build]
-# ARM64 macOS Python linking configuration for Homebrew Python
-# This resolves PyO3 symbol resolution on ARM64 when using Homebrew Python
-rustflags = ["-L/opt/homebrew/opt/python@3.13/Frameworks/Python.framework/Versions/3.13/lib", "-lpython3.13"]

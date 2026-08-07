@@ -78,16 +78,61 @@ impl AudienceSegmenterCore {
         }
     }
 
-    /// Fit the segmenter on data
-    pub fn fit(&mut self, _data: &Array2<f64>) -> Result<()> {
-        // TODO: Implement fitting logic
+    /// Default max iterations for the underlying Lloyd's-algorithm loop,
+    /// matching scikit-learn's KMeans default.
+    const DEFAULT_MAX_ITER: usize = 300;
+
+    /// Fit the segmenter on data: runs the configured clustering method and
+    /// stores the resulting centers/labels for later use by `predict`.
+    pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
+        match self.config.clustering_method {
+            clustering::ClusteringMethod::KMeans | clustering::ClusteringMethod::KMeansOnly => {
+                let result =
+                    clustering::kmeans(data, self.config.n_clusters, Self::DEFAULT_MAX_ITER, self.config.random_state)?;
+                self.cluster_centers = Some(result.centers);
+                self.cluster_labels = Some(result.labels);
+            }
+            clustering::ClusteringMethod::KPrototypes => {
+                // Numeric-only path: AudienceSegmenterCore's fit() signature
+                // doesn't currently carry categorical feature data, so this
+                // runs K-Prototypes in numeric-only mode (equivalent to
+                // KMeans). Categorical support needs a richer input type
+                // than a single Array2<f64> — tracked as a follow-up rather
+                // than silently ignored.
+                let labels = clustering::kprototypes(data, None, self.config.n_clusters, Self::DEFAULT_MAX_ITER, self.config.random_state)?;
+                let centers = {
+                    let dim = data.ncols();
+                    let mut centers = Array2::zeros((self.config.n_clusters, dim));
+                    let mut counts = vec![0usize; self.config.n_clusters];
+                    for (i, &label) in labels.iter().enumerate() {
+                        counts[label] += 1;
+                        let mut row = centers.row_mut(label);
+                        row += &data.row(i);
+                    }
+                    for c in 0..self.config.n_clusters {
+                        if counts[c] > 0 {
+                            let mut row = centers.row_mut(c);
+                            row /= counts[c] as f64;
+                        }
+                    }
+                    centers
+                };
+                self.cluster_centers = Some(centers);
+                self.cluster_labels = Some(labels);
+            }
+        }
         Ok(())
     }
 
-    /// Predict cluster assignments
-    pub fn predict(&self, _data: &Array2<f64>) -> Result<Vec<usize>> {
-        // TODO: Implement prediction logic
-        Ok(vec![])
+    /// Predict cluster assignments for new data using the centers learned
+    /// by a prior call to `fit`.
+    pub fn predict(&self, data: &Array2<f64>) -> Result<Vec<usize>> {
+        let centers = self.cluster_centers.as_ref().ok_or_else(|| {
+            crate::ClusterClusterAudienceKitError::ClusteringError(
+                "predict() called before fit() — no cluster centers available".to_string(),
+            )
+        })?;
+        clustering::assign_to_clusters(data, centers)
     }
 }
 
@@ -107,5 +152,60 @@ mod tests {
         };
 
         let _segmenter = AudienceSegmenterCore::new(config);
+    }
+
+    fn make_config(n_clusters: usize, method: clustering::ClusteringMethod) -> SegmenterConfig {
+        SegmenterConfig {
+            method: "rfm_kmeans".to_string(),
+            n_clusters,
+            rfm_config: rfm::RFMConfig::default(),
+            clustering_method: method,
+            random_state: 42,
+            n_jobs: -1,
+        }
+    }
+
+    #[test]
+    fn predict_before_fit_returns_a_clear_error_not_an_empty_result() {
+        let segmenter = AudienceSegmenterCore::new(make_config(3, clustering::ClusteringMethod::KMeans));
+        let data = ndarray::array![[1.0, 1.0]];
+        let err = segmenter.predict(&data).unwrap_err();
+        assert!(err.to_string().contains("predict() called before fit()"));
+    }
+
+    #[test]
+    fn fit_then_predict_round_trips_through_real_kmeans() {
+        let mut segmenter = AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KMeans));
+        let data = ndarray::array![
+            [1.0, 1.0], [1.1, 0.9], [0.9, 1.1],
+            [50.0, 50.0], [50.1, 49.9], [49.9, 50.1],
+        ];
+        segmenter.fit(&data).unwrap();
+
+        assert!(segmenter.cluster_centers.is_some());
+        let labels = segmenter.cluster_labels.as_ref().unwrap();
+        assert_eq!(labels.len(), 6);
+        assert!(labels[0] == labels[1] && labels[1] == labels[2]);
+        assert!(labels[3] == labels[4] && labels[4] == labels[5]);
+        assert_ne!(labels[0], labels[3]);
+
+        // predict() on the same data should reproduce the fitted labels.
+        let predicted = segmenter.predict(&data).unwrap();
+        assert_eq!(predicted, *labels);
+
+        // predict() on a brand-new point near the first blob should land
+        // in that blob's cluster.
+        let new_point = ndarray::array![[1.05, 0.95]];
+        let new_labels = segmenter.predict(&new_point).unwrap();
+        assert_eq!(new_labels[0], labels[0]);
+    }
+
+    #[test]
+    fn fit_with_kprototypes_falls_back_to_numeric_only_and_still_produces_centers() {
+        let mut segmenter = AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KPrototypes));
+        let data = ndarray::array![[1.0, 1.0], [1.1, 0.9], [20.0, 20.0], [20.1, 19.9]];
+        segmenter.fit(&data).unwrap();
+        assert!(segmenter.cluster_centers.is_some());
+        assert_eq!(segmenter.cluster_labels.as_ref().unwrap().len(), 4);
     }
 }
