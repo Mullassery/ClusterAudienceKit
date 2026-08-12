@@ -5,10 +5,10 @@ use crate::Result;
 /// Activation function type
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
 pub enum Activation {
-    ReLU,      // Rectified Linear Unit
-    Sigmoid,   // Logistic sigmoid
-    Tanh,      // Hyperbolic tangent
-    Linear,    // No activation
+    ReLU,    // Rectified Linear Unit
+    Sigmoid, // Logistic sigmoid
+    Tanh,    // Hyperbolic tangent
+    Linear,  // No activation
 }
 
 impl Activation {
@@ -23,7 +23,13 @@ impl Activation {
 
     pub fn derivative(&self, x: f64) -> f64 {
         match self {
-            Activation::ReLU => if x > 0.0 { 1.0 } else { 0.0 },
+            Activation::ReLU => {
+                if x > 0.0 {
+                    1.0
+                } else {
+                    0.0
+                }
+            }
             Activation::Sigmoid => {
                 let s = self.apply(x);
                 s * (1.0 - s)
@@ -49,8 +55,8 @@ impl Activation {
 /// Dense layer in neural network
 #[derive(Clone, Debug)]
 pub struct DenseLayer {
-    pub weights: Vec<Vec<f64>>,      // [output_size x input_size]
-    pub biases: Vec<f64>,             // [output_size]
+    pub weights: Vec<Vec<f64>>, // [output_size x input_size]
+    pub biases: Vec<f64>,       // [output_size]
     pub activation: Activation,
     pub input_size: usize,
     pub output_size: usize,
@@ -107,9 +113,9 @@ impl DenseLayer {
     /// Backward pass (compute gradients)
     pub fn backward(
         &self,
-        input: &[f64],
+        _input: &[f64],
         output_deltas: &[f64],
-        learning_rate: f64,
+        _learning_rate: f64,
     ) -> Result<Vec<f64>> {
         if output_deltas.len() != self.output_size {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
@@ -150,13 +156,13 @@ impl DenseLayer {
 /// Neural network model configuration
 #[derive(Clone, Debug)]
 pub struct NNConfig {
-    pub hidden_layers: Vec<usize>,     // Sizes of hidden layers
-    pub activation: Activation,        // Hidden layer activation
+    pub hidden_layers: Vec<usize>, // Sizes of hidden layers
+    pub activation: Activation,    // Hidden layer activation
     pub learning_rate: f64,
     pub epochs: usize,
     pub batch_size: usize,
-    pub dropout_rate: f64,             // Regularization via dropout
-    pub momentum: f64,                 // Momentum for SGD
+    pub dropout_rate: f64, // Regularization via dropout
+    pub momentum: f64,     // Momentum for SGD
 }
 
 impl Default for NNConfig {
@@ -272,7 +278,7 @@ impl NeuralNetwork {
         let mut total_loss = 0.0;
         let mut samples_processed = 0;
 
-        for epoch in 0..self.config.epochs {
+        for _epoch in 0..self.config.epochs {
             total_loss = 0.0;
             samples_processed = 0;
 
@@ -725,10 +731,7 @@ mod tests {
     #[test]
     fn test_autoencoder_anomaly_scores() {
         let ae = Autoencoder::new(3, 2, NNConfig::default());
-        let X = vec![
-            vec![0.1, 0.2, 0.3],
-            vec![0.4, 0.5, 0.6],
-        ];
+        let X = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
 
         let scores = ae.anomaly_scores(&X).unwrap();
         assert_eq!(scores.len(), 2);
@@ -740,10 +743,7 @@ mod tests {
     #[test]
     fn test_autoencoder_extract_patterns() {
         let ae = Autoencoder::new(4, 2, NNConfig::default());
-        let X = vec![
-            vec![0.1, 0.2, 0.3, 0.4],
-            vec![0.5, 0.6, 0.7, 0.8],
-        ];
+        let X = vec![vec![0.1, 0.2, 0.3, 0.4], vec![0.5, 0.6, 0.7, 0.8]];
 
         let patterns = ae.extract_patterns(&X).unwrap();
         assert_eq!(patterns.len(), 2);
@@ -769,11 +769,7 @@ mod tests {
     #[test]
     fn test_recurrent_layer_sequence() {
         let mut rnn = RecurrentLayer::new(2, 3);
-        let sequence = vec![
-            vec![0.1, 0.2],
-            vec![0.3, 0.4],
-            vec![0.5, 0.6],
-        ];
+        let sequence = vec![vec![0.1, 0.2], vec![0.3, 0.4], vec![0.5, 0.6]];
 
         let outputs = rnn.process_sequence(&sequence).unwrap();
         assert_eq!(outputs.len(), 3);
@@ -802,7 +798,7 @@ mod tests {
         );
 
         let info = nn.layer_info();
-        assert!(info.len() > 0);
+        assert!(!info.is_empty());
         assert!(info[0].contains("Input"));
     }
 

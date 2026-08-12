@@ -1,8 +1,8 @@
 //! Clustering quality metrics
 
-use crate::Result;
-use ndarray::{Array1, Array2, s};
 use crate::engine::algorithms::DistanceMetric;
+use crate::Result;
+use ndarray::{s, Array1, Array2};
 use std::collections::HashMap;
 
 /// Clustering quality report
@@ -38,7 +38,8 @@ impl SilhouetteMetric {
 
             for (j, other) in data.outer_iter().enumerate() {
                 if labels[j] == cluster_id && i != j {
-                    let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &other.to_owned());
+                    let dist =
+                        DistanceMetric::Euclidean.distance(&sample.to_owned(), &other.to_owned());
                     intra_sum += dist;
                     intra_count += 1;
                 }
@@ -63,7 +64,8 @@ impl SilhouetteMetric {
 
                 for (j, other) in data.outer_iter().enumerate() {
                     if labels[j] == c {
-                        let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &other.to_owned());
+                        let dist = DistanceMetric::Euclidean
+                            .distance(&sample.to_owned(), &other.to_owned());
                         inter_sum += dist;
                         inter_count += 1;
                     }
@@ -107,7 +109,8 @@ impl DaviesBouldinMetric {
 
             for (j, sample) in data.outer_iter().enumerate() {
                 if labels[j] == i {
-                    let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &center_i.to_owned());
+                    let dist = DistanceMetric::Euclidean
+                        .distance(&sample.to_owned(), &center_i.to_owned());
                     avg_dist_i += dist;
                     count_i += 1;
                 }
@@ -134,7 +137,8 @@ impl DaviesBouldinMetric {
 
                 for (j, sample) in data.outer_iter().enumerate() {
                     if labels[j] == k {
-                        let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &center_k.to_owned());
+                        let dist = DistanceMetric::Euclidean
+                            .distance(&sample.to_owned(), &center_k.to_owned());
                         avg_dist_k += dist;
                         count_k += 1;
                     }
@@ -147,7 +151,8 @@ impl DaviesBouldinMetric {
                 avg_dist_k /= count_k as f64;
 
                 // Distance between centers
-                let center_dist = DistanceMetric::Euclidean.distance(&center_i.to_owned(), &center_k.to_owned());
+                let center_dist =
+                    DistanceMetric::Euclidean.distance(&center_i.to_owned(), &center_k.to_owned());
 
                 if center_dist > 1e-10 {
                     let ratio = (avg_dist_i + avg_dist_k) / center_dist;
@@ -231,7 +236,8 @@ impl CalinskiHarabaszMetric {
 
                 for (i, sample) in data.outer_iter().enumerate() {
                     if labels[i] == c {
-                        let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &cluster_center);
+                        let dist =
+                            DistanceMetric::Euclidean.distance(&sample.to_owned(), &cluster_center);
                         within_variance += dist * dist;
                     }
                 }
@@ -253,7 +259,7 @@ impl CalinskiHarabaszMetric {
 #[derive(Clone, Debug)]
 pub struct StabilityAnalysis {
     pub run_number: usize,
-    pub label_agreement: f64,       // Adjusted Rand Index
+    pub label_agreement: f64,        // Adjusted Rand Index
     pub cluster_correspondence: f64, // Stability of cluster assignments
     pub size_consistency: f64,       // Cluster size consistency
 }
@@ -267,8 +273,7 @@ impl StabilityAnalysis {
         if previous_labels.len() != current_labels.len() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Label arrays must have same length".to_string(),
-            )
-            .into());
+            ));
         }
 
         // Adjusted Rand Index
@@ -316,12 +321,16 @@ impl StabilityAnalysis {
         let ri = agreement / n_pairs;
 
         // Simplified ARI calculation: directly use RI
-        (ri * 2.0 - 1.0).max(-1.0).min(1.0)
+        (ri * 2.0 - 1.0).clamp(-1.0, 1.0)
     }
 
     fn calculate_correspondence(labels1: &[usize], labels2: &[usize]) -> f64 {
         let n = labels1.len();
-        let agreement = labels1.iter().zip(labels2.iter()).filter(|(a, b)| a == b).count();
+        let agreement = labels1
+            .iter()
+            .zip(labels2.iter())
+            .filter(|(a, b)| a == b)
+            .count();
 
         agreement as f64 / n as f64
     }
@@ -402,16 +411,24 @@ mod tests {
 
     #[test]
     fn test_silhouette_metric() {
-        let data = Array2::from_shape_vec((6, 2), vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0]).unwrap();
+        let data = Array2::from_shape_vec(
+            (6, 2),
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
+        )
+        .unwrap();
         let labels = vec![0, 0, 0, 1, 1, 1];
 
         let score = SilhouetteMetric::calculate(&data, &labels).unwrap();
-        assert!(score >= -1.0 && score <= 1.0);
+        assert!((-1.0..=1.0).contains(&score));
     }
 
     #[test]
     fn test_davies_bouldin_metric() {
-        let data = Array2::from_shape_vec((6, 2), vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0]).unwrap();
+        let data = Array2::from_shape_vec(
+            (6, 2),
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
+        )
+        .unwrap();
         let labels = vec![0, 0, 0, 1, 1, 1];
         let centers = Array2::from_shape_vec((2, 2), vec![0.5, 0.5, 5.5, 5.5]).unwrap();
 
@@ -421,7 +438,11 @@ mod tests {
 
     #[test]
     fn test_calinski_harabasz_metric() {
-        let data = Array2::from_shape_vec((6, 2), vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0]).unwrap();
+        let data = Array2::from_shape_vec(
+            (6, 2),
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
+        )
+        .unwrap();
         let labels = vec![0, 0, 0, 1, 1, 1];
 
         let score = CalinskiHarabaszMetric::calculate(&data, &labels).unwrap();
@@ -440,7 +461,11 @@ mod tests {
 
     #[test]
     fn test_quality_assessment() {
-        let data = Array2::from_shape_vec((6, 2), vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0]).unwrap();
+        let data = Array2::from_shape_vec(
+            (6, 2),
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
+        )
+        .unwrap();
         let labels = vec![0, 0, 0, 1, 1, 1];
         let centers = Array2::from_shape_vec((2, 2), vec![0.5, 0.5, 5.5, 5.5]).unwrap();
 

@@ -32,9 +32,9 @@ impl CohortId {
         let days_since_epoch = date / 86400;
         let cohort_number = match period {
             CohortPeriod::Weekly => days_since_epoch / 7,
-            CohortPeriod::Monthly => (days_since_epoch / 30),
-            CohortPeriod::Quarterly => (days_since_epoch / 90),
-            CohortPeriod::Yearly => (days_since_epoch / 365),
+            CohortPeriod::Monthly => days_since_epoch / 30,
+            CohortPeriod::Quarterly => days_since_epoch / 90,
+            CohortPeriod::Yearly => days_since_epoch / 365,
         };
         CohortId(format!("cohort_{}", cohort_number))
     }
@@ -43,10 +43,10 @@ impl CohortId {
 /// Retention curve point
 #[derive(Clone, Debug)]
 pub struct RetentionPoint {
-    pub age_in_periods: usize,  // How many periods since cohort creation
-    pub retained_count: usize,   // Customers still active
-    pub churn_rate: f64,         // 0-1 churn rate at this point
-    pub retention_rate: f64,     // 0-1 retention rate (1 - churn_rate)
+    pub age_in_periods: usize, // How many periods since cohort creation
+    pub retained_count: usize, // Customers still active
+    pub churn_rate: f64,       // 0-1 churn rate at this point
+    pub retention_rate: f64,   // 0-1 retention rate (1 - churn_rate)
 }
 
 /// Cohort profile with retention analytics
@@ -54,13 +54,13 @@ pub struct RetentionPoint {
 pub struct Cohort {
     pub cohort_id: CohortId,
     pub period: CohortPeriod,
-    pub size: usize,                           // Initial cohort size
-    pub created_at: i64,                       // Unix timestamp
-    pub revenue: f64,                          // Total revenue
-    pub avg_ltv: f64,                          // Average lifetime value
+    pub size: usize,     // Initial cohort size
+    pub created_at: i64, // Unix timestamp
+    pub revenue: f64,    // Total revenue
+    pub avg_ltv: f64,    // Average lifetime value
     pub retention_curve: Vec<RetentionPoint>,
-    pub churn_rate_total: f64,                 // Overall churn rate
-    pub retention_rate_total: f64,             // Overall retention rate
+    pub churn_rate_total: f64,     // Overall churn rate
+    pub retention_rate_total: f64, // Overall retention rate
 }
 
 /// Cohort comparison metrics
@@ -212,16 +212,16 @@ impl CohortAnalytics {
         summary.insert("size".to_string(), cohort.size as f64);
         summary.insert("revenue".to_string(), cohort.revenue);
         summary.insert("avg_ltv".to_string(), cohort.avg_ltv);
-        summary.insert(
-            "retention_rate".to_string(),
-            cohort.retention_rate_total,
-        );
+        summary.insert("retention_rate".to_string(), cohort.retention_rate_total);
         summary.insert("churn_rate".to_string(), cohort.churn_rate_total);
         summary.insert(
             "decay_rate".to_string(),
             Self::retention_decay_rate(cohort)?,
         );
-        summary.insert("revenue_per_retained".to_string(), Self::revenue_per_retained(cohort)?);
+        summary.insert(
+            "revenue_per_retained".to_string(),
+            Self::revenue_per_retained(cohort)?,
+        );
 
         Ok(summary)
     }
@@ -235,12 +235,11 @@ impl CohortAnalytics {
         for cohort in cohorts {
             let period_key = cohort.cohort_id.0.clone();
 
-            let entry = aggregates.entry(period_key).or_insert_with(HashMap::new);
+            let entry = aggregates.entry(period_key).or_default();
 
             *entry.entry("total_size".to_string()).or_insert(0.0) += cohort.size as f64;
             *entry.entry("total_revenue".to_string()).or_insert(0.0) += cohort.revenue;
-            *entry.entry("avg_retention".to_string()).or_insert(0.0) +=
-                cohort.retention_rate_total;
+            *entry.entry("avg_retention".to_string()).or_insert(0.0) += cohort.retention_rate_total;
             *entry.entry("cohort_count".to_string()).or_insert(0.0) += 1.0;
         }
 
@@ -258,9 +257,7 @@ impl CohortAnalytics {
     }
 
     /// Calculate retention cohort table
-    pub fn retention_table(
-        cohorts: &[Cohort],
-    ) -> Result<Vec<Vec<f64>>> {
+    pub fn retention_table(cohorts: &[Cohort]) -> Result<Vec<Vec<f64>>> {
         if cohorts.is_empty() {
             return Ok(vec![]);
         }
@@ -359,7 +356,9 @@ mod tests {
         CohortAnalytics::add_retention_point(&mut cohort, 2, 2).unwrap();
 
         assert_eq!(cohort.retention_curve.len(), 3);
-        assert!(cohort.retention_curve[2].retention_rate < cohort.retention_curve[1].retention_rate);
+        assert!(
+            cohort.retention_curve[2].retention_rate < cohort.retention_curve[1].retention_rate
+        );
     }
 
     #[test]
@@ -439,7 +438,7 @@ mod tests {
 
         assert_eq!(summary.get("size"), Some(&50.0));
         assert_eq!(summary.get("revenue"), Some(&5000.0));
-        assert!(summary.get("retention_rate").is_some());
+        assert!(summary.contains_key("retention_rate"));
     }
 
     #[test]
@@ -463,7 +462,8 @@ mod tests {
         )
         .unwrap();
 
-        let (best, worst) = CohortAnalytics::performance_ranking(&[cohort_good, cohort_poor]).unwrap();
+        let (best, worst) =
+            CohortAnalytics::performance_ranking(&[cohort_good, cohort_poor]).unwrap();
 
         assert!(best.is_some());
         assert!(worst.is_some());
@@ -511,6 +511,6 @@ mod tests {
 
         let aggregates = CohortAnalytics::aggregate_by_period(&[cohort1, cohort2]).unwrap();
 
-        assert!(aggregates.len() > 0);
+        assert!(!aggregates.is_empty());
     }
 }

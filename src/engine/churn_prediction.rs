@@ -149,7 +149,7 @@ impl ChurnPredictor {
 
         // Sigmoid function
         let probability = 1.0 / (1.0 + (-logit).exp());
-        Ok(probability.max(0.0).min(1.0))
+        Ok(probability.clamp(0.0, 1.0))
     }
 
     /// Random forest-like ensemble prediction
@@ -159,7 +159,7 @@ impl ChurnPredictor {
         monetary: f64,
         days_since_signup: f64,
         engagement_score: f64,
-        support_tickets: f64,
+        _support_tickets: f64,
     ) -> Result<f64> {
         // Tree 1: Engagement-based
         let tree1 = if engagement_score < 0.3 {
@@ -215,7 +215,7 @@ impl ChurnPredictor {
         recency: f64,
         frequency: f64,
         monetary: f64,
-        engagement_score: f64,
+        _engagement_score: f64,
     ) -> Result<Vec<ChurnFeatureImportance>> {
         let mut importances = vec![
             ChurnFeatureImportance {
@@ -329,19 +329,14 @@ impl ChurnPredictor {
             .as_secs() as i64;
 
         for (customer_id, recency, frequency, monetary, engagement, days) in customers {
-            let churn_prob = Self::predict_logistic(
-                *recency,
-                *frequency,
-                *monetary,
-                *days,
-                *engagement,
-                0.0,
-            )?;
+            let churn_prob =
+                Self::predict_logistic(*recency, *frequency, *monetary, *days, *engagement, 0.0)?;
 
             let risk_level = Self::classify_risk_level(churn_prob);
             let days_until = Self::estimate_days_until_churn(churn_prob, *recency);
 
-            let importances = Self::calculate_feature_importance(*recency, *frequency, *monetary, *engagement)?;
+            let importances =
+                Self::calculate_feature_importance(*recency, *frequency, *monetary, *engagement)?;
             let mut feature_map = HashMap::new();
             for imp in importances {
                 feature_map.insert(imp.feature_name, imp.importance_score);
@@ -379,7 +374,8 @@ impl ChurnPredictor {
             });
         }
 
-        let avg_churn = predictions.iter().map(|p| p.churn_probability).sum::<f64>() / predictions.len() as f64;
+        let avg_churn =
+            predictions.iter().map(|p| p.churn_probability).sum::<f64>() / predictions.len() as f64;
         let critical_count = predictions
             .iter()
             .filter(|p| p.risk_level == ChurnRiskLevel::Critical)
@@ -456,11 +452,66 @@ impl ChurnPredictor {
             precision,
             recall,
             f1_score: f1,
-            auc_roc: 0.82, // Simulated
+            auc_roc: compute_auc_roc(actual_churn, predicted_probability),
             training_samples: total,
             model_type: ChurnModelType::LogisticRegression,
         })
     }
+}
+
+/// Compute AUC-ROC via the trapezoidal rule over the ROC curve traced out by
+/// sweeping the decision threshold across every distinct predicted score
+/// (descending). This replaces a previously hardcoded `auc_roc: 0.82`
+/// placeholder with a real calculation over the same (actual, predicted)
+/// pairs already used for the confusion-matrix metrics above.
+fn compute_auc_roc(actual_churn: &[bool], predicted_probability: &[f64]) -> f64 {
+    let n_pos = actual_churn.iter().filter(|&&a| a).count();
+    let n_neg = actual_churn.len() - n_pos;
+
+    // AUC is undefined without at least one example of each class.
+    if n_pos == 0 || n_neg == 0 {
+        return 0.5;
+    }
+
+    // Sort (score, label) pairs by score descending; sweep the threshold
+    // down through every distinct score, tracing out (FPR, TPR) points.
+    let mut pairs: Vec<(f64, bool)> = predicted_probability
+        .iter()
+        .copied()
+        .zip(actual_churn.iter().copied())
+        .collect();
+    pairs.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
+
+    let mut tp = 0usize;
+    let mut fp = 0usize;
+    let mut prev_score = f64::INFINITY;
+    let mut prev_fpr = 0.0;
+    let mut prev_tpr = 0.0;
+    let mut auc = 0.0;
+
+    for (score, is_positive) in pairs {
+        if score != prev_score {
+            let fpr = fp as f64 / n_neg as f64;
+            let tpr = tp as f64 / n_pos as f64;
+            // Trapezoidal area under this segment of the ROC curve.
+            auc += (fpr - prev_fpr) * (tpr + prev_tpr) / 2.0;
+            prev_fpr = fpr;
+            prev_tpr = tpr;
+            prev_score = score;
+        }
+        if is_positive {
+            tp += 1;
+        } else {
+            fp += 1;
+        }
+    }
+
+    // Close out the curve to (1, 1).
+    let fpr = fp as f64 / n_neg as f64;
+    let tpr = tp as f64 / n_pos as f64;
+    auc += (fpr - prev_fpr) * (tpr + prev_tpr) / 2.0;
+
+    auc.clamp(0.0, 1.0)
 }
 
 #[cfg(test)]
@@ -470,20 +521,29 @@ mod tests {
     #[test]
     fn test_logistic_prediction() {
         let prob = ChurnPredictor::predict_logistic(45.0, 5.0, 500.0, 365.0, 0.7, 1.0).unwrap();
-        assert!(prob >= 0.0 && prob <= 1.0);
+        assert!((0.0..=1.0).contains(&prob));
     }
 
     #[test]
     fn test_ensemble_prediction() {
         let prob = ChurnPredictor::predict_ensemble(45.0, 5.0, 500.0, 365.0, 0.7, 1.0).unwrap();
-        assert!(prob >= 0.0 && prob <= 1.0);
+        assert!((0.0..=1.0).contains(&prob));
     }
 
     #[test]
     fn test_risk_level_classification() {
-        assert_eq!(ChurnPredictor::classify_risk_level(0.05), ChurnRiskLevel::VeryLow);
-        assert_eq!(ChurnPredictor::classify_risk_level(0.3), ChurnRiskLevel::Medium);
-        assert_eq!(ChurnPredictor::classify_risk_level(0.8), ChurnRiskLevel::Critical);
+        assert_eq!(
+            ChurnPredictor::classify_risk_level(0.05),
+            ChurnRiskLevel::VeryLow
+        );
+        assert_eq!(
+            ChurnPredictor::classify_risk_level(0.3),
+            ChurnRiskLevel::Medium
+        );
+        assert_eq!(
+            ChurnPredictor::classify_risk_level(0.8),
+            ChurnRiskLevel::Critical
+        );
     }
 
     #[test]
@@ -510,14 +570,7 @@ mod tests {
     #[test]
     fn test_batch_prediction() {
         let customers = vec![
-            (
-                "cust_1".to_string(),
-                45.0,
-                5.0,
-                500.0,
-                0.7,
-                365.0,
-            ),
+            ("cust_1".to_string(), 45.0, 5.0, 500.0, 0.7, 365.0),
             ("cust_2".to_string(), 75.0, 2.0, 100.0, 0.2, 100.0),
         ];
 
@@ -550,7 +603,8 @@ mod tests {
             },
         ];
 
-        let summary = ChurnPredictor::cohort_summary(&predictions, "High Value".to_string()).unwrap();
+        let summary =
+            ChurnPredictor::cohort_summary(&predictions, "High Value".to_string()).unwrap();
         assert_eq!(summary.customer_count, 2);
         assert!(summary.avg_churn_probability > 0.0);
     }
@@ -563,6 +617,47 @@ mod tests {
         let perf = ChurnPredictor::evaluate_model_performance(&actual, &predicted).unwrap();
         assert!(perf.accuracy >= 0.0 && perf.accuracy <= 1.0);
         assert!(perf.f1_score >= 0.0);
+        // Every positive score here strictly exceeds every negative score,
+        // so a real AUC-ROC calculation must yield perfect separation.
+        assert_eq!(perf.auc_roc, 1.0);
+    }
+
+    #[test]
+    fn test_auc_roc_perfect_separation() {
+        let actual = vec![true, true, false, false];
+        let predicted = vec![0.9, 0.8, 0.2, 0.1];
+        let perf = ChurnPredictor::evaluate_model_performance(&actual, &predicted).unwrap();
+        assert_eq!(perf.auc_roc, 1.0);
+    }
+
+    #[test]
+    fn test_auc_roc_perfectly_wrong() {
+        // Every negative scored higher than every positive: AUC must be 0.
+        let actual = vec![true, true, false, false];
+        let predicted = vec![0.1, 0.2, 0.8, 0.9];
+        let perf = ChurnPredictor::evaluate_model_performance(&actual, &predicted).unwrap();
+        assert_eq!(perf.auc_roc, 0.0);
+    }
+
+    #[test]
+    fn test_auc_roc_no_discrimination() {
+        // Identical scores for positives and negatives: coin-flip AUC.
+        let actual = vec![true, true, false, false];
+        let predicted = vec![0.5, 0.5, 0.5, 0.5];
+        let perf = ChurnPredictor::evaluate_model_performance(&actual, &predicted).unwrap();
+        assert_eq!(perf.auc_roc, 0.5);
+    }
+
+    #[test]
+    fn test_auc_roc_matches_hand_computed_value() {
+        // Hand-computable case: positives score 0.9 and 0.3; negatives
+        // score 0.35 and 0.2. Of the 4 (positive, negative) score pairs,
+        // exactly 3 are correctly ranked (positive > negative) and 1 is
+        // not (0.3 < 0.35) -> AUC = 3/4 = 0.75.
+        let actual = vec![true, false, true, false];
+        let predicted = vec![0.9, 0.35, 0.3, 0.2];
+        let perf = ChurnPredictor::evaluate_model_performance(&actual, &predicted).unwrap();
+        assert!((perf.auc_roc - 0.75).abs() < 1e-9, "got {}", perf.auc_roc);
     }
 
     #[test]

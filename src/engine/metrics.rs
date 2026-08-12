@@ -5,7 +5,11 @@ use ndarray::Array2;
 use std::collections::HashMap;
 
 fn euclidean(a: &[f64], b: &[f64]) -> f64 {
-    a.iter().zip(b.iter()).map(|(x, y)| (x - y).powi(2)).sum::<f64>().sqrt()
+    a.iter()
+        .zip(b.iter())
+        .map(|(x, y)| (x - y).powi(2))
+        .sum::<f64>()
+        .sqrt()
 }
 
 fn group_indices_by_label(labels: &[usize]) -> HashMap<usize, Vec<usize>> {
@@ -46,7 +50,12 @@ pub fn silhouette_score(data: &Array2<f64>, labels: &[usize]) -> Result<f64> {
             let sum: f64 = own_group
                 .iter()
                 .filter(|&&j| j != i)
-                .map(|&j| euclidean(data.row(i).as_slice().unwrap(), data.row(j).as_slice().unwrap()))
+                .map(|&j| {
+                    euclidean(
+                        data.row(i).as_slice().unwrap(),
+                        data.row(j).as_slice().unwrap(),
+                    )
+                })
                 .sum();
             sum / (own_group.len() - 1) as f64
         };
@@ -57,13 +66,22 @@ pub fn silhouette_score(data: &Array2<f64>, labels: &[usize]) -> Result<f64> {
             .map(|(_, indices)| {
                 let sum: f64 = indices
                     .iter()
-                    .map(|&j| euclidean(data.row(i).as_slice().unwrap(), data.row(j).as_slice().unwrap()))
+                    .map(|&j| {
+                        euclidean(
+                            data.row(i).as_slice().unwrap(),
+                            data.row(j).as_slice().unwrap(),
+                        )
+                    })
                     .sum();
                 sum / indices.len() as f64
             })
             .fold(f64::INFINITY, f64::min);
 
-        let s_i = if a_i.max(b_i) == 0.0 { 0.0 } else { (b_i - a_i) / a_i.max(b_i) };
+        let s_i = if a_i.max(b_i) == 0.0 {
+            0.0
+        } else {
+            (b_i - a_i) / a_i.max(b_i)
+        };
         total += s_i;
     }
 
@@ -75,7 +93,11 @@ pub fn silhouette_score(data: &Array2<f64>, labels: &[usize]) -> Result<f64> {
 /// the worst (maximum) such ratio for each cluster over all clusters. Lower
 /// is better (0 is the best possible score); unlike silhouette this is
 /// unbounded above.
-pub fn davies_bouldin_score(data: &Array2<f64>, labels: &[usize], centers: &Array2<f64>) -> Result<f64> {
+pub fn davies_bouldin_score(
+    data: &Array2<f64>,
+    labels: &[usize],
+    centers: &Array2<f64>,
+) -> Result<f64> {
     let n = data.nrows();
     if n != labels.len() {
         return Err(ClusterClusterAudienceKitError::DataValidation(
@@ -97,7 +119,12 @@ pub fn davies_bouldin_score(data: &Array2<f64>, labels: &[usize], centers: &Arra
             if !indices.is_empty() {
                 let sum: f64 = indices
                     .iter()
-                    .map(|&i| euclidean(data.row(i).as_slice().unwrap(), centers.row(c).as_slice().unwrap()))
+                    .map(|&i| {
+                        euclidean(
+                            data.row(i).as_slice().unwrap(),
+                            centers.row(c).as_slice().unwrap(),
+                        )
+                    })
                     .sum();
                 spread[c] = sum / indices.len() as f64;
             }
@@ -109,7 +136,10 @@ pub fn davies_bouldin_score(data: &Array2<f64>, labels: &[usize], centers: &Arra
         let worst = (0..k)
             .filter(|&j| j != i)
             .map(|j| {
-                let center_dist = euclidean(centers.row(i).as_slice().unwrap(), centers.row(j).as_slice().unwrap());
+                let center_dist = euclidean(
+                    centers.row(i).as_slice().unwrap(),
+                    centers.row(j).as_slice().unwrap(),
+                );
                 if center_dist == 0.0 {
                     f64::INFINITY // coincident centers: maximally bad separation
                 } else {
@@ -165,9 +195,14 @@ mod tests {
     /// snippet used to generate these reference values).
     fn fixed_case() -> (Array2<f64>, Vec<usize>, Array2<f64>) {
         let data = array![
-            [1.0, 1.0], [1.5, 2.0], [1.2, 1.8],
-            [8.0, 8.0], [8.5, 8.2], [8.1, 7.9],
-            [1.0, 8.0], [1.3, 8.4],
+            [1.0, 1.0],
+            [1.5, 2.0],
+            [1.2, 1.8],
+            [8.0, 8.0],
+            [8.5, 8.2],
+            [8.1, 7.9],
+            [1.0, 8.0],
+            [1.3, 8.4],
         ];
         let labels = vec![0, 0, 0, 1, 1, 1, 2, 2];
         let centers = array![
@@ -211,16 +246,27 @@ mod tests {
         let data = array![[0.0, 0.0], [0.01, 0.01], [100.0, 100.0], [100.01, 100.01]];
         let labels = vec![0, 0, 1, 1];
         let score = silhouette_score(&data, &labels).unwrap();
-        assert!(score > 0.99, "expected near-perfect separation, got {score}");
+        assert!(
+            score > 0.99,
+            "expected near-perfect separation, got {score}"
+        );
     }
 
     #[test]
     fn davies_bouldin_is_near_zero_for_extremely_well_separated_tight_clusters() {
-        let data = array![[0.0, 0.0], [0.001, 0.001], [100.0, 100.0], [100.001, 100.001]];
+        let data = array![
+            [0.0, 0.0],
+            [0.001, 0.001],
+            [100.0, 100.0],
+            [100.001, 100.001]
+        ];
         let labels = vec![0, 0, 1, 1];
         let centers = array![[0.0005, 0.0005], [100.0005, 100.0005]];
         let score = davies_bouldin_score(&data, &labels, &centers).unwrap();
-        assert!(score < 0.001, "expected near-zero for tight well-separated clusters, got {score}");
+        assert!(
+            score < 0.001,
+            "expected near-zero for tight well-separated clusters, got {score}"
+        );
     }
 
     #[test]

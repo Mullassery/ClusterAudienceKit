@@ -6,22 +6,22 @@ use std::collections::HashMap;
 /// CLV calculation model type
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
 pub enum CLVModel {
-    Simple,          // Avg transaction value × purchase frequency × customer lifespan
-    Probabilistic,   // Accounts for churn probability
-    Predictive,      // Time-series based forecasting
+    Simple,        // Avg transaction value × purchase frequency × customer lifespan
+    Probabilistic, // Accounts for churn probability
+    Predictive,    // Time-series based forecasting
 }
 
 /// Customer lifetime value metrics
 #[derive(Clone, Debug)]
 pub struct CustomerLTV {
     pub customer_id: String,
-    pub historical_value: f64,      // Total spent to date
-    pub annual_value: f64,           // Estimated annual spending
-    pub predicted_ltv: f64,          // Predicted lifetime value
-    pub predicted_ltv_3yr: f64,      // 3-year prediction
-    pub predicted_ltv_5yr: f64,      // 5-year prediction
-    pub churn_probability: f64,      // 0-1 probability of churn
-    pub confidence_score: f64,       // Model confidence 0-1
+    pub historical_value: f64,  // Total spent to date
+    pub annual_value: f64,      // Estimated annual spending
+    pub predicted_ltv: f64,     // Predicted lifetime value
+    pub predicted_ltv_3yr: f64, // 3-year prediction
+    pub predicted_ltv_5yr: f64, // 5-year prediction
+    pub churn_probability: f64, // 0-1 probability of churn
+    pub confidence_score: f64,  // Model confidence 0-1
     pub model_used: CLVModel,
 }
 
@@ -29,22 +29,22 @@ pub struct CustomerLTV {
 #[derive(Clone, Debug)]
 pub struct ChurnPrediction {
     pub customer_id: String,
-    pub churn_probability: f64,      // 0-1 risk of churn
-    pub confidence: f64,              // Model confidence
-    pub risk_level: String,           // "low", "medium", "high", "critical"
+    pub churn_probability: f64,        // 0-1 risk of churn
+    pub confidence: f64,               // Model confidence
+    pub risk_level: String,            // "low", "medium", "high", "critical"
     pub days_until_churn: Option<i32>, // Days until predicted churn
-    pub retention_score: f64,         // 0-1 likelihood to retain
+    pub retention_score: f64,          // 0-1 likelihood to retain
 }
 
 /// Revenue projection
 #[derive(Clone, Debug)]
 pub struct RevenueProjection {
-    pub period: String,              // "30d", "90d", "1y", "3y", "5y"
-    pub historical_avg: f64,         // Historical average revenue
-    pub projected_revenue: f64,      // Predicted total revenue
-    pub growth_rate: f64,            // Expected growth % per period
+    pub period: String,                  // "30d", "90d", "1y", "3y", "5y"
+    pub historical_avg: f64,             // Historical average revenue
+    pub projected_revenue: f64,          // Predicted total revenue
+    pub growth_rate: f64,                // Expected growth % per period
     pub confidence_interval: (f64, f64), // (lower, upper) bounds
-    pub risk_adjusted_revenue: f64,  // Accounting for churn risk
+    pub risk_adjusted_revenue: f64,      // Accounting for churn risk
 }
 
 /// CLV calculator
@@ -129,7 +129,7 @@ impl CLVCalculator {
         let annual_value = avg_order_value * purchase_frequency;
 
         // Apply RFM quality factor
-        let rfm_factor = (rfm_score / 15.0).min(1.0).max(0.5);
+        let rfm_factor = (rfm_score / 15.0).clamp(0.5, 1.0);
 
         // Adjust for recency (recent activity lowers churn risk)
         let recency_factor = if recency_days < 30 {
@@ -212,7 +212,7 @@ impl CLVCalculator {
             churn_score += 0.10;
         }
 
-        let churn_probability: f64 = (churn_score / 2.0).min(1.0).max(0.0);
+        let churn_probability: f64 = (churn_score / 2.0).clamp(0.0, 1.0);
 
         // Risk level classification
         let risk_level = if churn_probability > 0.65 {
@@ -227,7 +227,7 @@ impl CLVCalculator {
 
         // Estimate days until churn
         let days_until_churn = if churn_probability > 0.3 {
-            Some((recency_days + 30) as i32)
+            Some(recency_days + 30)
         } else {
             None
         };
@@ -250,7 +250,7 @@ impl CLVCalculator {
 
     /// Project revenue for a customer over specified period
     pub fn project_revenue(
-        customer_id: &str,
+        _customer_id: &str,
         historical_avg_monthly: f64,
         purchase_trend: f64, // -1 to 1, trend direction
         churn_risk: f64,     // 0-1
@@ -391,9 +391,10 @@ impl RevenueForecaster {
             return Ok(0.0);
         }
 
-        let first_half_avg: f64 =
-            historical_revenue[..historical_revenue.len() / 2].iter().sum::<f64>()
-                / (historical_revenue.len() / 2) as f64;
+        let first_half_avg: f64 = historical_revenue[..historical_revenue.len() / 2]
+            .iter()
+            .sum::<f64>()
+            / (historical_revenue.len() / 2) as f64;
         let second_half_avg: f64 = historical_revenue[historical_revenue.len() / 2..]
             .iter()
             .sum::<f64>()
@@ -401,7 +402,7 @@ impl RevenueForecaster {
 
         let trend = (second_half_avg - first_half_avg) / first_half_avg.max(0.01);
 
-        Ok(trend.max(-1.0).min(1.0))
+        Ok(trend.clamp(-1.0, 1.0))
     }
 }
 
@@ -411,8 +412,7 @@ mod tests {
 
     #[test]
     fn test_simple_ltv_calculation() {
-        let result =
-            CLVCalculator::calculate_simple_ltv("c1", 1000.0, 10, 365, 1095).unwrap();
+        let result = CLVCalculator::calculate_simple_ltv("c1", 1000.0, 10, 365, 1095).unwrap();
 
         assert_eq!(result.customer_id, "c1");
         assert_eq!(result.historical_value, 1000.0);
@@ -422,10 +422,9 @@ mod tests {
 
     #[test]
     fn test_probabilistic_ltv() {
-        let result = CLVCalculator::calculate_probabilistic_ltv(
-            "c1", 1000.0, 10, 365, 10, 12.0, 0.2,
-        )
-        .unwrap();
+        let result =
+            CLVCalculator::calculate_probabilistic_ltv("c1", 1000.0, 10, 365, 10, 12.0, 0.2)
+                .unwrap();
 
         assert!(result.churn_probability > 0.0 && result.churn_probability <= 1.0);
         assert!(result.predicted_ltv >= 0.0);
@@ -443,8 +442,7 @@ mod tests {
 
     #[test]
     fn test_revenue_projection() {
-        let result =
-            CLVCalculator::project_revenue("c1", 100.0, 0.1, 0.2, 365).unwrap();
+        let result = CLVCalculator::project_revenue("c1", 100.0, 0.1, 0.2, 365).unwrap();
 
         assert!(result.projected_revenue > 0.0);
         assert!(result.risk_adjusted_revenue > 0.0);

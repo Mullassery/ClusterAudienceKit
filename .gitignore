@@ -27,6 +27,14 @@ dist/
 build/
 .pytest_cache/
 
+# Compiled extension module (built in-place by `maturin develop` into
+# clusteraudiencekit/) and maturin/wheel build output
+*.so
+*.pyd
+*.dylib
+wheels/
+target/wheels/
+
 # Virtual environments
 venv/
 env/
@@ -34,7 +42,8 @@ env/
 
 # Rust
 target/
-Cargo.lock
+# NOTE: Cargo.lock is intentionally tracked (not ignored) for reproducible
+# `cargo build`/`maturin build` output across contributors and CI.
 
 # Temp files
 *.tmp

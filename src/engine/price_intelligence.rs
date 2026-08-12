@@ -64,7 +64,11 @@ impl ElasticityCalculator {
 
         let optimal_price = price_changes
             .iter()
-            .max_by(|a, b| (a.0 * a.1).partial_cmp(&(b.0 * b.1)).unwrap_or(std::cmp::Ordering::Equal))
+            .max_by(|a, b| {
+                (a.0 * a.1)
+                    .partial_cmp(&(b.0 * b.1))
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            })
             .map(|(p, _)| *p)
             .unwrap_or(0.0);
 
@@ -111,7 +115,10 @@ impl TierMigrationPredictor {
         };
 
         let mut probabilities = HashMap::new();
-        probabilities.insert("stay".to_string(), (1.0 - growth_rate.abs()).clamp(0.0, 1.0));
+        probabilities.insert(
+            "stay".to_string(),
+            (1.0 - growth_rate.abs()).clamp(0.0, 1.0),
+        );
         probabilities.insert("upgrade".to_string(), growth_rate.max(0.0));
         probabilities.insert("downgrade".to_string(), (-growth_rate).max(0.0));
 
@@ -230,10 +237,10 @@ impl SensitivityAnalyzer {
             ));
         }
 
-        let avg_discount = discount_history.iter().map(|(d, _)| d).sum::<f64>()
-            / discount_history.len() as f64;
-        let avg_response = discount_history.iter().map(|(_, r)| r).sum::<f64>()
-            / discount_history.len() as f64;
+        let avg_discount =
+            discount_history.iter().map(|(d, _)| d).sum::<f64>() / discount_history.len() as f64;
+        let avg_response =
+            discount_history.iter().map(|(_, r)| r).sum::<f64>() / discount_history.len() as f64;
 
         let sensitivity = if avg_discount > 0.0 {
             avg_response / avg_discount
@@ -283,7 +290,7 @@ pub struct DiscountOptimizer;
 impl DiscountOptimizer {
     pub fn optimize_discount(
         segment_id: &str,
-        baseline_conversion: f64,
+        _baseline_conversion: f64,
         price_sensitivity: f64,
         customer_ltv: f64,
     ) -> Result<DiscountStrategy> {
@@ -341,7 +348,8 @@ impl RevenueMaximizer {
             current_price * 1.1
         };
 
-        let price_adjustment = ((optimal_price - current_price) / current_price * 100.0).clamp(-20.0, 30.0);
+        let price_adjustment =
+            ((optimal_price - current_price) / current_price * 100.0).clamp(-20.0, 30.0);
         let volume_change = price_adjustment / elasticity / 100.0;
         let new_volume = current_volume * (1.0 + volume_change);
         let revenue_increase = ((optimal_price * new_volume) - (current_price * current_volume))
@@ -407,9 +415,19 @@ impl CompetitiveAnalyzer {
             "premium".to_string()
         };
 
-        let position = if your_price < competitor_prices.iter().cloned().fold(f64::INFINITY, f64::min) {
+        let position = if your_price
+            < competitor_prices
+                .iter()
+                .cloned()
+                .fold(f64::INFINITY, f64::min)
+        {
             "market_leader".to_string()
-        } else if your_price > competitor_prices.iter().cloned().fold(f64::NEG_INFINITY, f64::max) {
+        } else if your_price
+            > competitor_prices
+                .iter()
+                .cloned()
+                .fold(f64::NEG_INFINITY, f64::max)
+        {
             "premium_tier".to_string()
         } else {
             "middle_market".to_string()
@@ -443,15 +461,20 @@ pub struct PriceThreshold {
 pub struct ThresholdDetector;
 
 impl ThresholdDetector {
-    pub fn detect_thresholds(segment_id: &str, price_demand: &[(f64, f64)]) -> Result<PriceThreshold> {
+    pub fn detect_thresholds(
+        segment_id: &str,
+        price_demand: &[(f64, f64)],
+    ) -> Result<PriceThreshold> {
         if price_demand.len() < 3 {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Need at least 3 data points".to_string(),
             ));
         }
 
-        let avg_price = price_demand.iter().map(|(p, _)| p).sum::<f64>() / price_demand.len() as f64;
-        let avg_demand = price_demand.iter().map(|(_, d)| d).sum::<f64>() / price_demand.len() as f64;
+        let avg_price =
+            price_demand.iter().map(|(p, _)| p).sum::<f64>() / price_demand.len() as f64;
+        let _avg_demand =
+            price_demand.iter().map(|(_, d)| d).sum::<f64>() / price_demand.len() as f64;
 
         let acceptable = avg_price * 0.8;
         let breakeven = avg_price;
@@ -504,7 +527,11 @@ impl DemandForecaster {
             demand_predictions.push(period_demand);
         }
 
-        let confidence = if historical_demand.len() > 5 { 0.85 } else { 0.65 };
+        let confidence = if historical_demand.len() > 5 {
+            0.85
+        } else {
+            0.65
+        };
 
         Ok(DemandForecast {
             segment_id: segment_id.to_string(),
@@ -538,7 +565,7 @@ impl MarginOptimizer {
         segment_id: &str,
         current_price: f64,
         cost_per_unit: f64,
-        volume: usize,
+        _volume: usize,
     ) -> Result<MarginOptimization> {
         let current_margin = ((current_price - cost_per_unit) / current_price * 100.0).max(0.0);
         let optimal_price = cost_per_unit * 2.2;
@@ -580,7 +607,8 @@ impl BundleRecommender {
     ) -> Result<BundleRecommendation> {
         let individual_total: f64 = bundle_products.iter().map(|(_, p)| p).sum();
         let bundle_price = individual_total * 0.85;
-        let discount = ((individual_total - bundle_price) / individual_total * 100.0).clamp(0.0, 30.0);
+        let discount =
+            ((individual_total - bundle_price) / individual_total * 100.0).clamp(0.0, 30.0);
 
         let products: Vec<String> = bundle_products.iter().map(|(p, _)| p.clone()).collect();
 
@@ -674,11 +702,7 @@ impl ChurnAnalyzer {
             .map(|(n, _, _)| n.clone())
             .unwrap_or_default();
 
-        let correlation = if tier_churn_data.len() > 1 {
-            0.65
-        } else {
-            0.0
-        };
+        let correlation = if tier_churn_data.len() > 1 { 0.65 } else { 0.0 };
 
         Ok(PricePointChurnAnalysis {
             segment_id: segment_id.to_string(),
@@ -771,7 +795,7 @@ impl ImpactAnalyzer {
         segment_id: &str,
         price_change: f64,
         elasticity: f64,
-        current_revenue: f64,
+        _current_revenue: f64,
     ) -> Result<PriceChangeImpact> {
         let volume_change = price_change * elasticity;
         let revenue_change = ((1.0 + price_change) * (1.0 + volume_change) - 1.0) * 100.0;
@@ -810,7 +834,8 @@ mod tests {
     #[test]
     fn test_tier_migration() {
         let history = vec![100.0, 110.0, 120.0];
-        let migration = TierMigrationPredictor::predict_migration("seg1", "pro", 130.0, &history).unwrap();
+        let migration =
+            TierMigrationPredictor::predict_migration("seg1", "pro", 130.0, &history).unwrap();
         assert_eq!(migration.most_likely_tier, "upgrade");
     }
 
@@ -827,14 +852,14 @@ mod tests {
     #[test]
     fn test_price_sensitivity() {
         let discounts = vec![(0.1, 1.2), (0.2, 1.5)];
-        let sensitivity = SensitivityAnalyzer::analyze_price_sensitivity("seg1", &discounts).unwrap();
+        let sensitivity =
+            SensitivityAnalyzer::analyze_price_sensitivity("seg1", &discounts).unwrap();
         assert!(sensitivity.price_sensitivity_score > 0.0);
     }
 
     #[test]
     fn test_discount_optimization() {
-        let strategy =
-            DiscountOptimizer::optimize_discount("seg1", 0.3, 1.5, 5000.0).unwrap();
+        let strategy = DiscountOptimizer::optimize_discount("seg1", 0.3, 1.5, 5000.0).unwrap();
         assert!(strategy.optimal_discount >= 0.0);
     }
 
@@ -847,7 +872,8 @@ mod tests {
     #[test]
     fn test_competitive_pricing() {
         let competitors = vec![95.0, 105.0, 110.0];
-        let analysis = CompetitiveAnalyzer::analyze_competitive_pricing("seg1", 100.0, &competitors).unwrap();
+        let analysis =
+            CompetitiveAnalyzer::analyze_competitive_pricing("seg1", 100.0, &competitors).unwrap();
         assert!(analysis.price_gap >= -50.0);
     }
 
@@ -873,7 +899,10 @@ mod tests {
 
     #[test]
     fn test_bundle_recommendation() {
-        let products = vec![("Product A".to_string(), 50.0), ("Product B".to_string(), 75.0)];
+        let products = vec![
+            ("Product A".to_string(), 50.0),
+            ("Product B".to_string(), 75.0),
+        ];
         let bundle = BundleRecommender::recommend_bundle("seg1", &products).unwrap();
         assert!(bundle.bundle_discount > 0.0);
     }
@@ -906,7 +935,8 @@ mod tests {
 
     #[test]
     fn test_price_change_impact() {
-        let impact = ImpactAnalyzer::analyze_price_change_impact("seg1", 0.1, 1.5, 100000.0).unwrap();
+        let impact =
+            ImpactAnalyzer::analyze_price_change_impact("seg1", 0.1, 1.5, 100000.0).unwrap();
         assert!(impact.projected_volume_change.abs() > 0.0);
     }
 
@@ -920,7 +950,8 @@ mod tests {
     #[test]
     fn test_competitive_market_leader() {
         let competitors = vec![150.0, 160.0, 170.0];
-        let analysis = CompetitiveAnalyzer::analyze_competitive_pricing("seg1", 100.0, &competitors).unwrap();
+        let analysis =
+            CompetitiveAnalyzer::analyze_competitive_pricing("seg1", 100.0, &competitors).unwrap();
         assert_eq!(analysis.market_position, "market_leader");
     }
 }

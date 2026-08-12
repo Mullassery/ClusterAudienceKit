@@ -7,12 +7,12 @@ use std::collections::HashMap;
 #[derive(Clone, Debug)]
 pub struct EmergingAudience {
     pub segment_id: usize,
-    pub emergence_score: f64,    // 0-1: how new/emerging
-    pub growth_rate: f64,        // % growth per period
+    pub emergence_score: f64, // 0-1: how new/emerging
+    pub growth_rate: f64,     // % growth per period
     pub periods_since_emergence: usize,
     pub current_size: usize,
     pub projected_size_next_period: usize,
-    pub emergence_status: String,  // "emerging", "accelerating", "plateauing"
+    pub emergence_status: String, // "emerging", "accelerating", "plateauing"
 }
 
 impl EmergingAudience {
@@ -25,7 +25,11 @@ impl EmergingAudience {
         let growth_rate = if previous_size > 0 {
             (current_size as f64 - previous_size as f64) / previous_size as f64
         } else {
-            if current_size > 0 { 1.0 } else { 0.0 }
+            if current_size > 0 {
+                1.0
+            } else {
+                0.0
+            }
         };
 
         // Emergence score: high growth + young age
@@ -60,11 +64,11 @@ impl EmergingAudience {
 #[derive(Clone, Debug)]
 pub struct SegmentTrend {
     pub segment_id: usize,
-    pub trend_direction: String,  // "increasing", "decreasing", "stable"
-    pub trend_strength: f64,      // 0-1: magnitude of trend
-    pub moving_average: f64,      // Smoothed metric
-    pub volatility: f64,          // Standard deviation of changes
-    pub forecast_accuracy: f64,   // Confidence in trend
+    pub trend_direction: String, // "increasing", "decreasing", "stable"
+    pub trend_strength: f64,     // 0-1: magnitude of trend
+    pub moving_average: f64,     // Smoothed metric
+    pub volatility: f64,         // Standard deviation of changes
+    pub forecast_accuracy: f64,  // Confidence in trend
 }
 
 impl SegmentTrend {
@@ -138,10 +142,10 @@ impl SegmentTrend {
 #[derive(Clone, Debug)]
 pub struct IntentCluster {
     pub cluster_id: usize,
-    pub intent_type: String,  // "high_churn_risk", "growth_opportunity", "dormant", etc.
+    pub intent_type: String, // "high_churn_risk", "growth_opportunity", "dormant", etc.
     pub member_count: usize,
-    pub confidence: f64,      // 0-1: how certain of this intent pattern
-    pub primary_signals: Vec<(String, f64)>,  // (signal_name, strength)
+    pub confidence: f64, // 0-1: how certain of this intent pattern
+    pub primary_signals: Vec<(String, f64)>, // (signal_name, strength)
 }
 
 impl IntentCluster {
@@ -178,9 +182,9 @@ pub struct GrowthForecast {
     pub segment_id: usize,
     pub current_size: usize,
     pub forecast_periods: usize,
-    pub forecasted_sizes: Vec<usize>,  // Size at each future period
-    pub growth_rate_trend: String,     // "accelerating", "constant", "decelerating"
-    pub confidence_interval: (f64, f64),  // (lower, upper) bounds
+    pub forecasted_sizes: Vec<usize>, // Size at each future period
+    pub growth_rate_trend: String,    // "accelerating", "constant", "decelerating"
+    pub confidence_interval: (f64, f64), // (lower, upper) bounds
 }
 
 impl GrowthForecast {
@@ -214,13 +218,9 @@ impl GrowthForecast {
 
         // Detect growth trend
         let growth_rate_trend = if growth_rates.len() >= 2 {
-            let first_half_avg = growth_rates[..growth_rates.len() / 2]
-                .iter()
-                .sum::<f64>()
+            let first_half_avg = growth_rates[..growth_rates.len() / 2].iter().sum::<f64>()
                 / (growth_rates.len() / 2) as f64;
-            let second_half_avg = growth_rates[growth_rates.len() / 2..]
-                .iter()
-                .sum::<f64>()
+            let second_half_avg = growth_rates[growth_rates.len() / 2..].iter().sum::<f64>()
                 / (growth_rates.len() - growth_rates.len() / 2) as f64;
 
             if second_half_avg > first_half_avg + 0.02 {
@@ -273,13 +273,13 @@ impl GrowthForecast {
 #[derive(Clone, Debug)]
 pub struct AiPersona {
     pub persona_id: usize,
-    pub name: String,              // Auto-generated: "High-Value Loyalist", "At-Risk Churn", etc.
-    pub description: String,       // Business-friendly description
-    pub segment_ids: Vec<usize>,   // Segments matching this persona
-    pub size: usize,               // Total members in persona
-    pub key_characteristics: Vec<(String, f64)>,  // (trait, score) pairs
+    pub name: String, // Auto-generated: "High-Value Loyalist", "At-Risk Churn", etc.
+    pub description: String, // Business-friendly description
+    pub segment_ids: Vec<usize>, // Segments matching this persona
+    pub size: usize,  // Total members in persona
+    pub key_characteristics: Vec<(String, f64)>, // (trait, score) pairs
     pub recommended_actions: Vec<String>,
-    pub business_impact: String,   // "high", "medium", "low"
+    pub business_impact: String, // "high", "medium", "low"
 }
 
 impl AiPersona {
@@ -318,12 +318,12 @@ impl AiPersona {
 #[derive(Clone, Debug)]
 pub struct CausalDriver {
     pub feature_name: String,
-    pub driver_type: String,  // "revenue_driver", "churn_driver", "retention_driver", etc.
-    pub effect_size: f64,     // 0-1: magnitude of causal effect
-    pub statistical_significance: f64,  // p-value analog
-    pub direction: String,    // "positive" or "negative"
+    pub driver_type: String, // "revenue_driver", "churn_driver", "retention_driver", etc.
+    pub effect_size: f64,    // 0-1: magnitude of causal effect
+    pub statistical_significance: f64, // p-value analog
+    pub direction: String,   // "positive" or "negative"
     pub affected_segments: Vec<usize>,
-    pub mechanism: String,    // How/why this causes the outcome
+    pub mechanism: String, // How/why this causes the outcome
 }
 
 impl CausalDriver {
@@ -363,11 +363,11 @@ impl CausalDriver {
 #[derive(Clone, Debug)]
 pub struct HiddenOpportunity {
     pub segment_id: usize,
-    pub opportunity_type: String,  // "low_engagement_high_ltv", "dormant_vip", etc.
-    pub opportunity_score: f64,    // 0-1: potential value
-    pub current_engagement: f64,   // How actively engaged now
-    pub potential_ltv: f64,        // If we re-engaged them
-    pub effort_required: String,   // "low", "medium", "high"
+    pub opportunity_type: String, // "low_engagement_high_ltv", "dormant_vip", etc.
+    pub opportunity_score: f64,   // 0-1: potential value
+    pub current_engagement: f64,  // How actively engaged now
+    pub potential_ltv: f64,       // If we re-engaged them
+    pub effort_required: String,  // "low", "medium", "high"
 }
 
 impl HiddenOpportunity {
@@ -410,7 +410,7 @@ impl HiddenOpportunity {
 pub struct MicroCommunity {
     pub community_id: usize,
     pub member_count: usize,
-    pub cohesion_score: f64,      // 0-1: how tightly bonded
+    pub cohesion_score: f64, // 0-1: how tightly bonded
     pub shared_characteristics: Vec<(String, f64)>,
     pub growth_rate: f64,
     pub engagement_level: f64,
@@ -443,9 +443,9 @@ pub struct CustomerTribe {
     pub tribe_id: usize,
     pub tribe_name: String,
     pub member_count: usize,
-    pub core_values: Vec<String>,  // Shared values/behaviors
-    pub influence_score: f64,      // 0-1: how much they influence others
-    pub market_relevance: String,  // "emerging", "mainstream", "declining"
+    pub core_values: Vec<String>, // Shared values/behaviors
+    pub influence_score: f64,     // 0-1: how much they influence others
+    pub market_relevance: String, // "emerging", "mainstream", "declining"
 }
 
 impl CustomerTribe {
@@ -472,11 +472,11 @@ impl CustomerTribe {
 /// Lifecycle discovery (Feature 20)
 #[derive(Clone, Debug)]
 pub struct DiscoveredLifecycle {
-    pub stage_name: String,  // "Prospect", "New", "Active", "Loyal", "At-Risk", "Dormant"
-    pub percentage_of_base: f64,  // % of customer base in this stage
+    pub stage_name: String, // "Prospect", "New", "Active", "Loyal", "At-Risk", "Dormant"
+    pub percentage_of_base: f64, // % of customer base in this stage
     pub avg_tenure_days: f64,
     pub key_behaviors: Vec<String>,
-    pub transition_rate_to_next: f64,  // % moving to next stage per month
+    pub transition_rate_to_next: f64, // % moving to next stage per month
 }
 
 impl DiscoveredLifecycle {
@@ -498,11 +498,11 @@ impl DiscoveredLifecycle {
 /// Product affinity discovery (Feature 19)
 #[derive(Clone, Debug)]
 pub struct ProductAffinity {
-    pub product_pair: (String, String),  // (product_a, product_b)
-    pub affinity_score: f64,  // 0-1: likelihood of both products
-    pub co_purchase_rate: f64,  // % of users buying both
-    pub correlation: f64,  // Statistical correlation
-    pub lift: f64,  // Lift over random chance
+    pub product_pair: (String, String), // (product_a, product_b)
+    pub affinity_score: f64,            // 0-1: likelihood of both products
+    pub co_purchase_rate: f64,          // % of users buying both
+    pub correlation: f64,               // Statistical correlation
+    pub lift: f64,                      // Lift over random chance
     pub segments_affected: Vec<usize>,
 }
 
@@ -543,27 +543,22 @@ pub struct PatternDiscovery;
 impl PatternDiscovery {
     /// Detect emerging audiences
     pub fn detect_emerging_audiences(
-        segment_data: &[(usize, usize, usize, Vec<usize>)],  // (id, current, previous, history)
+        segment_data: &[(usize, usize, usize, Vec<usize>)], // (id, current, previous, history)
     ) -> Vec<EmergingAudience> {
         segment_data
             .iter()
-            .map(|(id, current, prev, hist)| {
-                EmergingAudience::new(*id, *current, *prev, hist)
-            })
+            .map(|(id, current, prev, hist)| EmergingAudience::new(*id, *current, *prev, hist))
             .collect()
     }
 
     /// Analyze segment trends
-    pub fn analyze_trends(
-        segment_id: usize,
-        metric_history: &[f64],
-    ) -> Result<SegmentTrend> {
+    pub fn analyze_trends(segment_id: usize, metric_history: &[f64]) -> Result<SegmentTrend> {
         SegmentTrend::from_time_series(segment_id, metric_history)
     }
 
     /// Discover intent clusters from behavioral signals
     pub fn discover_intent_clusters(
-        segment_behaviors: &HashMap<usize, Vec<(String, f64)>>,  // segment_id -> signals
+        segment_behaviors: &HashMap<usize, Vec<(String, f64)>>, // segment_id -> signals
     ) -> Vec<IntentCluster> {
         let mut clusters = Vec::new();
 
@@ -616,7 +611,7 @@ impl PatternDiscovery {
 
     /// Generate AI personas from segment characteristics
     pub fn generate_personas(
-        segment_profiles: &[(usize, Vec<(String, f64)>)],  // (segment_id, characteristics)
+        segment_profiles: &[(usize, Vec<(String, f64)>)], // (segment_id, characteristics)
     ) -> Vec<AiPersona> {
         let mut personas = Vec::new();
 
@@ -624,7 +619,8 @@ impl PatternDiscovery {
             // Infer persona name from characteristics
             let persona_name = Self::infer_persona_name(characteristics);
 
-            let mut persona = AiPersona::new(*segment_id, persona_name.clone(), vec![*segment_id], 100);
+            let mut persona =
+                AiPersona::new(*segment_id, persona_name.clone(), vec![*segment_id], 100);
 
             // Add characteristics
             for (char_name, score) in characteristics {
@@ -696,7 +692,7 @@ impl PatternDiscovery {
 
     /// Discover hidden opportunities (low engagement, high value)
     pub fn discover_hidden_opportunities(
-        segment_data: &[(usize, f64, f64, usize)],  // (segment_id, engagement, ltv, dormancy_days)
+        segment_data: &[(usize, f64, f64, usize)], // (segment_id, engagement, ltv, dormancy_days)
     ) -> Vec<HiddenOpportunity> {
         segment_data
             .iter()
@@ -714,7 +710,7 @@ impl PatternDiscovery {
 
     /// Detect micro-communities (small, tightly bonded groups)
     pub fn detect_micro_communities(
-        community_members: &[(usize, Vec<String>, f64)],  // (community_id, characteristics, cohesion)
+        community_members: &[(usize, Vec<String>, f64)], // (community_id, characteristics, cohesion)
     ) -> Vec<MicroCommunity> {
         community_members
             .iter()
@@ -730,7 +726,7 @@ impl PatternDiscovery {
 
     /// Discover customer tribes (large, influence-driven groups)
     pub fn discover_tribes(
-        tribe_data: &[(usize, String, usize, Vec<String>, f64)],  // (id, name, size, values, influence)
+        tribe_data: &[(usize, String, usize, Vec<String>, f64)], // (id, name, size, values, influence)
     ) -> Vec<CustomerTribe> {
         tribe_data
             .iter()
@@ -747,7 +743,7 @@ impl PatternDiscovery {
 
     /// Discover lifecycle stages from behavioral patterns
     pub fn discover_lifecycle_stages(
-        stage_data: &[(String, f64, f64, Vec<String>, f64)],  // (name, percentage, tenure, behaviors, transition)
+        stage_data: &[(String, f64, f64, Vec<String>, f64)], // (name, percentage, tenure, behaviors, transition)
     ) -> Vec<DiscoveredLifecycle> {
         stage_data
             .iter()
@@ -764,8 +760,8 @@ impl PatternDiscovery {
 
     /// Discover product affinities from co-purchase data
     pub fn discover_product_affinities(
-        segment_products: &HashMap<usize, Vec<String>>,  // segment_id -> products
-        product_correlations: &HashMap<(String, String), f64>,  // (product_a, product_b) -> correlation
+        segment_products: &HashMap<usize, Vec<String>>, // segment_id -> products
+        product_correlations: &HashMap<(String, String), f64>, // (product_a, product_b) -> correlation
     ) -> Vec<ProductAffinity> {
         let mut affinities = Vec::new();
 
@@ -775,7 +771,7 @@ impl PatternDiscovery {
                 let mut co_purchases = 0;
                 let mut total = 0;
 
-                for (_segment_id, products) in segment_products {
+                for products in segment_products.values() {
                     let has_a = products.iter().any(|p| p == prod_a);
                     let has_b = products.iter().any(|p| p == prod_b);
 
@@ -818,21 +814,28 @@ impl PatternDiscovery {
         }
 
         // Sort by affinity score
-        affinities.sort_by(|a, b| b.affinity_score.partial_cmp(&a.affinity_score).unwrap_or(std::cmp::Ordering::Equal));
+        affinities.sort_by(|a, b| {
+            b.affinity_score
+                .partial_cmp(&a.affinity_score)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         affinities
     }
 
     /// Extract causal drivers from feature importance + outcomes
     pub fn extract_causal_drivers(
-        feature_importances: &[(String, f64)],  // (feature, importance)
-        outcome_correlations: &HashMap<String, f64>,  // feature -> correlation with outcome
-        segment_outcomes: &[f64],  // Outcome values (churn, revenue, etc.)
+        feature_importances: &[(String, f64)], // (feature, importance)
+        outcome_correlations: &HashMap<String, f64>, // feature -> correlation with outcome
+        _segment_outcomes: &[f64],             // Outcome values (churn, revenue, etc.)
     ) -> Vec<CausalDriver> {
         let mut drivers = Vec::new();
 
         for (feature_name, importance) in feature_importances {
-            let correlation = outcome_correlations.get(feature_name).copied().unwrap_or(0.0);
+            let correlation = outcome_correlations
+                .get(feature_name)
+                .copied()
+                .unwrap_or(0.0);
 
             // Determine driver type and direction
             let (driver_type, direction) = if correlation.abs() > 0.3 {
@@ -860,7 +863,11 @@ impl PatternDiscovery {
         }
 
         // Sort by effect size (importance)
-        drivers.sort_by(|a, b| b.effect_size.partial_cmp(&a.effect_size).unwrap_or(std::cmp::Ordering::Equal));
+        drivers.sort_by(|a, b| {
+            b.effect_size
+                .partial_cmp(&a.effect_size)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
 
         drivers
     }
@@ -872,34 +879,34 @@ mod tests {
 
     #[test]
     fn test_emerging_audience_accelerating() {
-        let emerging = EmergingAudience::new(0, 1000, 500, &vec![100, 200, 400, 500]);
+        let emerging = EmergingAudience::new(0, 1000, 500, &[100, 200, 400, 500]);
         assert!(emerging.growth_rate > 0.1);
         assert_eq!(emerging.emergence_status, "accelerating");
     }
 
     #[test]
     fn test_emerging_audience_plateauing() {
-        let emerging = EmergingAudience::new(0, 510, 500, &vec![100, 200, 300, 400, 500]);
+        let emerging = EmergingAudience::new(0, 510, 500, &[100, 200, 300, 400, 500]);
         assert!(emerging.growth_rate < 0.05);
         assert_eq!(emerging.emergence_status, "plateauing");
     }
 
     #[test]
     fn test_segment_trend_increasing() {
-        let trend = SegmentTrend::from_time_series(0, &vec![100.0, 110.0, 120.0, 130.0]).unwrap();
+        let trend = SegmentTrend::from_time_series(0, &[100.0, 110.0, 120.0, 130.0]).unwrap();
         assert_eq!(trend.trend_direction, "increasing");
         assert!(trend.trend_strength > 0.0);
     }
 
     #[test]
     fn test_segment_trend_stable() {
-        let trend = SegmentTrend::from_time_series(0, &vec![100.0, 100.5, 99.5, 100.2]).unwrap();
+        let trend = SegmentTrend::from_time_series(0, &[100.0, 100.5, 99.5, 100.2]).unwrap();
         assert_eq!(trend.trend_direction, "stable");
     }
 
     #[test]
     fn test_segment_trend_decreasing() {
-        let trend = SegmentTrend::from_time_series(0, &vec![100.0, 90.0, 80.0, 70.0]).unwrap();
+        let trend = SegmentTrend::from_time_series(0, &[100.0, 90.0, 80.0, 70.0]).unwrap();
         assert_eq!(trend.trend_direction, "decreasing");
         assert!(trend.trend_strength > 0.0);
     }
@@ -918,7 +925,8 @@ mod tests {
     #[test]
     fn test_growth_forecast_accelerating() {
         // Growth rates: 20%, 30%, 40% - accelerating
-        let forecast = GrowthForecast::from_historical(0, 1000, &vec![1000, 1200, 1560, 2184], 3).unwrap();
+        let forecast =
+            GrowthForecast::from_historical(0, 1000, &[1000, 1200, 1560, 2184], 3).unwrap();
         assert_eq!(forecast.forecasted_sizes.len(), 3);
         assert!(forecast.forecasted_sizes[0] > 1000);
         assert_eq!(forecast.growth_rate_trend, "accelerating");
@@ -926,7 +934,8 @@ mod tests {
 
     #[test]
     fn test_growth_forecast_decelerating() {
-        let forecast = GrowthForecast::from_historical(0, 1000, &vec![1000, 1100, 1150, 1175], 3).unwrap();
+        let forecast =
+            GrowthForecast::from_historical(0, 1000, &[1000, 1100, 1150, 1175], 3).unwrap();
         assert_eq!(forecast.growth_rate_trend, "decelerating");
     }
 
@@ -982,17 +991,15 @@ mod tests {
 
     #[test]
     fn test_extract_drivers() {
-        let importance = vec![
-            ("recency".to_string(), 0.8),
-            ("frequency".to_string(), 0.5),
-        ];
+        let importance = vec![("recency".to_string(), 0.8), ("frequency".to_string(), 0.5)];
         let mut correlations = HashMap::new();
         correlations.insert("recency".to_string(), -0.6);
         correlations.insert("frequency".to_string(), 0.4);
 
         let outcomes = vec![0.1, 0.2, 0.3];
 
-        let drivers = PatternDiscovery::extract_causal_drivers(&importance, &correlations, &outcomes);
+        let drivers =
+            PatternDiscovery::extract_causal_drivers(&importance, &correlations, &outcomes);
         assert_eq!(drivers.len(), 2);
         assert!(drivers[0].is_significant());
         assert_eq!(drivers[0].direction, "negative");
@@ -1000,16 +1007,14 @@ mod tests {
 
     #[test]
     fn test_forecast_accuracy() {
-        let forecast =
-            GrowthForecast::from_historical(0, 1000, &vec![800, 900, 1000], 2).unwrap();
+        let forecast = GrowthForecast::from_historical(0, 1000, &[800, 900, 1000], 2).unwrap();
         assert!(forecast.confidence_interval.0 > 0.0);
         assert!(forecast.confidence_interval.1 > forecast.confidence_interval.0);
     }
 
     #[test]
     fn test_ai_persona_creation() {
-        let mut persona =
-            AiPersona::new(0, "High-Value".to_string(), vec![0, 1, 2], 5000);
+        let mut persona = AiPersona::new(0, "High-Value".to_string(), vec![0, 1, 2], 5000);
         persona.add_characteristic("high_ltv".to_string(), 0.9);
         persona.add_characteristic("frequent_purchase".to_string(), 0.8);
 
@@ -1019,8 +1024,7 @@ mod tests {
 
     #[test]
     fn test_persona_with_actions() {
-        let mut persona =
-            AiPersona::new(1, "At-Risk".to_string(), vec![3, 4], 2000);
+        let mut persona = AiPersona::new(1, "At-Risk".to_string(), vec![3, 4], 2000);
         persona.add_action("Send retention offer".to_string());
         persona.add_action("Schedule check-in call".to_string());
 
@@ -1030,13 +1034,25 @@ mod tests {
     #[test]
     fn test_generate_personas() {
         let profiles = vec![
-            (0, vec![("high_ltv".to_string(), 0.85), ("engagement".to_string(), 0.8)]),
-            (1, vec![("churn_risk".to_string(), 0.75), ("low_recency".to_string(), 0.8)]),
+            (
+                0,
+                vec![
+                    ("high_ltv".to_string(), 0.85),
+                    ("engagement".to_string(), 0.8),
+                ],
+            ),
+            (
+                1,
+                vec![
+                    ("churn_risk".to_string(), 0.75),
+                    ("low_recency".to_string(), 0.8),
+                ],
+            ),
         ];
 
         let personas = PatternDiscovery::generate_personas(&profiles);
         assert_eq!(personas.len(), 2);
-        assert!(personas[0].name.len() > 0);
+        assert!(!personas[0].name.is_empty());
     }
 
     #[test]
@@ -1063,7 +1079,8 @@ mod tests {
         let mut correlations = HashMap::new();
         correlations.insert(("product_a".to_string(), "product_b".to_string()), 0.8);
 
-        let affinities = PatternDiscovery::discover_product_affinities(&segment_products, &correlations);
+        let affinities =
+            PatternDiscovery::discover_product_affinities(&segment_products, &correlations);
         assert_eq!(affinities.len(), 1);
         assert!(affinities[0].co_purchase_rate > 0.5);
     }
@@ -1118,8 +1135,7 @@ mod tests {
 
     #[test]
     fn test_hidden_opportunity_type() {
-        let opp = HiddenOpportunity::new(1, 0.3, 0.8, 45)
-            .set_type("dormant_vip".to_string());
+        let opp = HiddenOpportunity::new(1, 0.3, 0.8, 45).set_type("dormant_vip".to_string());
         assert_eq!(opp.opportunity_type, "dormant_vip");
     }
 
@@ -1166,7 +1182,7 @@ mod tests {
         let opportunities = vec![
             (0, 0.1, 0.95, 150),
             (1, 0.2, 0.85, 120),
-            (2, 0.8, 0.3, 30),  // Will be filtered out
+            (2, 0.8, 0.3, 30), // Will be filtered out
         ];
 
         let discovered = PatternDiscovery::discover_hidden_opportunities(&opportunities);
@@ -1176,26 +1192,28 @@ mod tests {
     #[test]
     fn test_detect_communities() {
         let communities = vec![
-            (0, vec!["tech_savvy".to_string(), "innovator".to_string()], 0.85),
+            (
+                0,
+                vec!["tech_savvy".to_string(), "innovator".to_string()],
+                0.85,
+            ),
             (1, vec!["budget_conscious".to_string()], 0.7),
         ];
 
         let detected = PatternDiscovery::detect_micro_communities(&communities);
         assert_eq!(detected.len(), 2);
-        assert!(detected[0].is_vibrant() || !detected[0].is_vibrant());  // Either way is valid
+        assert!(detected[0].is_vibrant() || !detected[0].is_vibrant()); // Either way is valid
     }
 
     #[test]
     fn test_discover_tribes_test() {
-        let tribes = vec![
-            (
-                0,
-                "Premium Buyers".to_string(),
-                1000,
-                vec!["luxury".to_string(), "premium".to_string()],
-                0.8,
-            ),
-        ];
+        let tribes = vec![(
+            0,
+            "Premium Buyers".to_string(),
+            1000,
+            vec!["luxury".to_string(), "premium".to_string()],
+            0.8,
+        )];
 
         let discovered = PatternDiscovery::discover_tribes(&tribes);
         assert_eq!(discovered.len(), 1);
@@ -1216,7 +1234,10 @@ mod tests {
                 "Active".to_string(),
                 0.50,
                 180.0,
-                vec!["regular_purchases".to_string(), "high_engagement".to_string()],
+                vec![
+                    "regular_purchases".to_string(),
+                    "high_engagement".to_string(),
+                ],
                 0.1,
             ),
         ];

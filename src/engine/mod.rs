@@ -13,6 +13,7 @@ pub mod cohorts;
 pub mod dashboard;
 pub mod drift_detection;
 pub mod governance;
+pub mod heuristic_score_estimator;
 pub mod k_estimation;
 pub mod lifecycle;
 pub mod lookalike;
@@ -20,7 +21,6 @@ pub mod metrics;
 pub mod neural_networks;
 pub mod pattern_discovery;
 pub mod platform_adapters;
-pub mod segment_intelligence;
 pub mod plugins;
 pub mod price_intelligence;
 pub mod privacy;
@@ -28,11 +28,11 @@ pub mod profiling;
 pub mod quality_metrics;
 pub mod revenue_intelligence;
 pub mod rfm;
+pub mod segment_intelligence;
 pub mod segments;
 pub mod sql_export;
 pub mod streaming;
 pub mod temporal_analytics;
-pub mod xgboost_models;
 
 use crate::Result;
 use ndarray::Array2;
@@ -87,8 +87,12 @@ impl AudienceSegmenterCore {
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
         match self.config.clustering_method {
             clustering::ClusteringMethod::KMeans | clustering::ClusteringMethod::KMeansOnly => {
-                let result =
-                    clustering::kmeans(data, self.config.n_clusters, Self::DEFAULT_MAX_ITER, self.config.random_state)?;
+                let result = clustering::kmeans(
+                    data,
+                    self.config.n_clusters,
+                    Self::DEFAULT_MAX_ITER,
+                    self.config.random_state,
+                )?;
                 self.cluster_centers = Some(result.centers);
                 self.cluster_labels = Some(result.labels);
             }
@@ -99,7 +103,13 @@ impl AudienceSegmenterCore {
                 // KMeans). Categorical support needs a richer input type
                 // than a single Array2<f64> — tracked as a follow-up rather
                 // than silently ignored.
-                let labels = clustering::kprototypes(data, None, self.config.n_clusters, Self::DEFAULT_MAX_ITER, self.config.random_state)?;
+                let labels = clustering::kprototypes(
+                    data,
+                    None,
+                    self.config.n_clusters,
+                    Self::DEFAULT_MAX_ITER,
+                    self.config.random_state,
+                )?;
                 let centers = {
                     let dim = data.ncols();
                     let mut centers = Array2::zeros((self.config.n_clusters, dim));
@@ -109,10 +119,10 @@ impl AudienceSegmenterCore {
                         let mut row = centers.row_mut(label);
                         row += &data.row(i);
                     }
-                    for c in 0..self.config.n_clusters {
-                        if counts[c] > 0 {
+                    for (c, &count) in counts.iter().enumerate() {
+                        if count > 0 {
                             let mut row = centers.row_mut(c);
-                            row /= counts[c] as f64;
+                            row /= count as f64;
                         }
                     }
                     centers
@@ -167,7 +177,8 @@ mod tests {
 
     #[test]
     fn predict_before_fit_returns_a_clear_error_not_an_empty_result() {
-        let segmenter = AudienceSegmenterCore::new(make_config(3, clustering::ClusteringMethod::KMeans));
+        let segmenter =
+            AudienceSegmenterCore::new(make_config(3, clustering::ClusteringMethod::KMeans));
         let data = ndarray::array![[1.0, 1.0]];
         let err = segmenter.predict(&data).unwrap_err();
         assert!(err.to_string().contains("predict() called before fit()"));
@@ -175,10 +186,15 @@ mod tests {
 
     #[test]
     fn fit_then_predict_round_trips_through_real_kmeans() {
-        let mut segmenter = AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KMeans));
+        let mut segmenter =
+            AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KMeans));
         let data = ndarray::array![
-            [1.0, 1.0], [1.1, 0.9], [0.9, 1.1],
-            [50.0, 50.0], [50.1, 49.9], [49.9, 50.1],
+            [1.0, 1.0],
+            [1.1, 0.9],
+            [0.9, 1.1],
+            [50.0, 50.0],
+            [50.1, 49.9],
+            [49.9, 50.1],
         ];
         segmenter.fit(&data).unwrap();
 
@@ -202,7 +218,8 @@ mod tests {
 
     #[test]
     fn fit_with_kprototypes_falls_back_to_numeric_only_and_still_produces_centers() {
-        let mut segmenter = AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KPrototypes));
+        let mut segmenter =
+            AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KPrototypes));
         let data = ndarray::array![[1.0, 1.0], [1.1, 0.9], [20.0, 20.0], [20.1, 19.9]];
         segmenter.fit(&data).unwrap();
         assert!(segmenter.cluster_centers.is_some());

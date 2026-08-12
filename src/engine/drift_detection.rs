@@ -81,7 +81,7 @@ impl DistributionStats {
         let mut sorted = values.to_vec();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
-        let median = if sorted.len() % 2 == 0 {
+        let median = if sorted.len().is_multiple_of(2) {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
         } else {
             sorted[sorted.len() / 2]
@@ -162,11 +162,7 @@ pub struct DriftAlert {
 }
 
 impl DriftAlert {
-    pub fn new(
-        feature_name: String,
-        drift_score: f64,
-        severity: DriftSeverity,
-    ) -> Self {
+    pub fn new(feature_name: String, drift_score: f64, severity: DriftSeverity) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -213,10 +209,7 @@ impl DriftDetector {
             let baseline_cdf = (i + 1) as f64 / baseline_sorted.len() as f64;
             let current_val = baseline_sorted[i];
 
-            let current_cdf = current_sorted
-                .iter()
-                .filter(|v| **v <= current_val)
-                .count() as f64
+            let current_cdf = current_sorted.iter().filter(|v| **v <= current_val).count() as f64
                 / current_sorted.len() as f64;
 
             max_diff = max_diff.max((baseline_cdf - current_cdf).abs());
@@ -250,8 +243,9 @@ impl DriftDetector {
             return Ok(0.0);
         }
 
-        let term1 = ((baseline_mean - current_mean).powi(2) / (2.0 * (baseline_var + current_var)));
-        let term2 = 0.5 * (baseline_var / current_var).ln() + 0.5 * (current_var / baseline_var).ln();
+        let term1 = (baseline_mean - current_mean).powi(2) / (2.0 * (baseline_var + current_var));
+        let term2 =
+            0.5 * (baseline_var / current_var).ln() + 0.5 * (current_var / baseline_var).ln();
 
         let bhattacharyya = term1 + term2;
         let distance = (1.0 - (-bhattacharyya).exp()).sqrt();
@@ -309,7 +303,8 @@ impl DriftDetector {
             };
 
             let growth_rate = if previous_size > 0 {
-                ((*current_size as i32 - previous_size as i32) as f64 / previous_size as f64).max(0.0)
+                ((*current_size as i32 - previous_size as i32) as f64 / previous_size as f64)
+                    .max(0.0)
             } else {
                 1.0
             };
@@ -515,11 +510,7 @@ mod tests {
 
     #[test]
     fn test_drift_alert_creation() {
-        let alert = DriftAlert::new(
-            "feature_1".to_string(),
-            0.45,
-            DriftSeverity::High,
-        );
+        let alert = DriftAlert::new("feature_1".to_string(), 0.45, DriftSeverity::High);
 
         assert_eq!(alert.severity, DriftSeverity::High);
         assert!(!alert.acknowledged);

@@ -259,39 +259,28 @@ impl BehavioralSegment {
     }
 
     pub fn matches(&self, customer_data: &HashMap<String, f64>) -> bool {
-        self.rules.iter().all(|rule| {
-            match rule.logic {
-                LogicalOp::And => rule
-                    .conditions
-                    .iter()
-                    .all(|cond| {
-                        if let Some(value) = customer_data.get(&cond.field) {
-                            cond.evaluate(*value)
-                        } else {
-                            false
-                        }
-                    }),
-                LogicalOp::Or => rule
-                    .conditions
-                    .iter()
-                    .any(|cond| {
-                        if let Some(value) = customer_data.get(&cond.field) {
-                            cond.evaluate(*value)
-                        } else {
-                            false
-                        }
-                    }),
-                LogicalOp::Not => !rule
-                    .conditions
-                    .iter()
-                    .any(|cond| {
-                        if let Some(value) = customer_data.get(&cond.field) {
-                            cond.evaluate(*value)
-                        } else {
-                            false
-                        }
-                    }),
-            }
+        self.rules.iter().all(|rule| match rule.logic {
+            LogicalOp::And => rule.conditions.iter().all(|cond| {
+                if let Some(value) = customer_data.get(&cond.field) {
+                    cond.evaluate(*value)
+                } else {
+                    false
+                }
+            }),
+            LogicalOp::Or => rule.conditions.iter().any(|cond| {
+                if let Some(value) = customer_data.get(&cond.field) {
+                    cond.evaluate(*value)
+                } else {
+                    false
+                }
+            }),
+            LogicalOp::Not => !rule.conditions.iter().any(|cond| {
+                if let Some(value) = customer_data.get(&cond.field) {
+                    cond.evaluate(*value)
+                } else {
+                    false
+                }
+            }),
         })
     }
 }
@@ -380,16 +369,24 @@ mod tests {
 
     #[test]
     fn test_rule_with_aggregate() {
-        let cond = Condition::new("purchase_amount", ComparisonOp::GreaterThan, RuleValue::Number(1000.0))
-            .with_aggregate(AggregateFunction::Sum);
+        let cond = Condition::new(
+            "purchase_amount",
+            ComparisonOp::GreaterThan,
+            RuleValue::Number(1000.0),
+        )
+        .with_aggregate(AggregateFunction::Sum);
         let sql = cond.to_sql();
         assert!(sql.contains("SUM"));
     }
 
     #[test]
     fn test_rule_with_time_window() {
-        let cond = Condition::new("last_purchase", ComparisonOp::LessThan, RuleValue::Number(30.0))
-            .with_time_window(90);
+        let cond = Condition::new(
+            "last_purchase",
+            ComparisonOp::LessThan,
+            RuleValue::Number(30.0),
+        )
+        .with_time_window(90);
         let sql = cond.to_sql();
         assert!(sql.contains("last 90 days"));
     }
@@ -444,7 +441,9 @@ mod tests {
             ))
             .with_logic(LogicalOp::And);
 
-        let segment = BehavioralSegment::new("VIP", "VIP").add_rule(rule).with_priority(1);
+        let segment = BehavioralSegment::new("VIP", "VIP")
+            .add_rule(rule)
+            .with_priority(1);
 
         let segmenter = BehavioralSegmenter::new().add_segment(segment);
 

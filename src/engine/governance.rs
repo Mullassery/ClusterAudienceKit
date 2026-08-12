@@ -142,12 +142,7 @@ pub struct AuditEvent {
 }
 
 impl AuditEvent {
-    pub fn new(
-        user_id: String,
-        action: String,
-        resource: String,
-        resource_id: String,
-    ) -> Self {
+    pub fn new(user_id: String, action: String, resource: String, resource_id: String) -> Self {
         let now = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_default()
@@ -282,7 +277,8 @@ impl RBACManager {
                 Resource::AuditLog,
                 Resource::Integration,
             ] {
-                self.permissions.insert((Role::Admin, action.clone(), resource.clone()), true);
+                self.permissions
+                    .insert((Role::Admin, action.clone(), resource.clone()), true);
             }
         }
 
@@ -298,7 +294,8 @@ impl RBACManager {
         ];
 
         for (action, resource) in manager_permissions {
-            self.permissions.insert((Role::Manager, action, resource), true);
+            self.permissions
+                .insert((Role::Manager, action, resource), true);
         }
 
         // Analyst permissions
@@ -310,7 +307,8 @@ impl RBACManager {
         ];
 
         for (action, resource) in analyst_permissions {
-            self.permissions.insert((Role::Analyst, action, resource), true);
+            self.permissions
+                .insert((Role::Analyst, action, resource), true);
         }
 
         // Viewer permissions (read-only)
@@ -321,7 +319,8 @@ impl RBACManager {
         ];
 
         for (action, resource) in viewer_permissions {
-            self.permissions.insert((Role::Viewer, action, resource), true);
+            self.permissions
+                .insert((Role::Viewer, action, resource), true);
         }
     }
 
@@ -388,12 +387,7 @@ mod tests {
 
     #[test]
     fn test_permission_creation() {
-        let perm = Permission::new(
-            Role::Admin,
-            Action::View,
-            Resource::Segment,
-            true,
-        );
+        let perm = Permission::new(Role::Admin, Action::View, Resource::Segment, true);
 
         assert_eq!(perm.role, Role::Admin);
         assert!(perm.allowed);
@@ -443,15 +437,15 @@ mod tests {
     #[test]
     fn test_rbac_manager_admin() {
         let mut manager = RBACManager::new();
-        let admin = User::new("admin_1".to_string(), "admin@example.com".to_string(), Role::Admin);
+        let admin = User::new(
+            "admin_1".to_string(),
+            "admin@example.com".to_string(),
+            Role::Admin,
+        );
 
         manager.register_user(admin).unwrap();
 
-        assert!(manager.can_user_perform(
-            "admin_1",
-            &Action::Delete,
-            &Resource::Segment
-        ));
+        assert!(manager.can_user_perform("admin_1", &Action::Delete, &Resource::Segment));
     }
 
     #[test]
@@ -465,16 +459,8 @@ mod tests {
 
         manager.register_user(viewer).unwrap();
 
-        assert!(manager.can_user_perform(
-            "viewer_1",
-            &Action::View,
-            &Resource::Segment
-        ));
-        assert!(!manager.can_user_perform(
-            "viewer_1",
-            &Action::Delete,
-            &Resource::Segment
-        ));
+        assert!(manager.can_user_perform("viewer_1", &Action::View, &Resource::Segment));
+        assert!(!manager.can_user_perform("viewer_1", &Action::Delete, &Resource::Segment));
     }
 
     #[test]
@@ -482,33 +468,25 @@ mod tests {
         let mut manager = RBACManager::new();
 
         manager.grant_permission(Role::Viewer, Action::Create, Resource::Audience);
-        assert!(manager.check_permission(
-            &Role::Viewer,
-            &Action::Create,
-            &Resource::Audience
-        ));
+        assert!(manager.check_permission(&Role::Viewer, &Action::Create, &Resource::Audience));
 
         manager.revoke_permission(Role::Viewer, Action::Create, Resource::Audience);
-        assert!(!manager.check_permission(
-            &Role::Viewer,
-            &Action::Create,
-            &Resource::Audience
-        ));
+        assert!(!manager.check_permission(&Role::Viewer, &Action::Create, &Resource::Audience));
     }
 
     #[test]
     fn test_user_deactivation() {
         let mut manager = RBACManager::new();
-        let user = User::new("user_1".to_string(), "test@example.com".to_string(), Role::Analyst);
+        let user = User::new(
+            "user_1".to_string(),
+            "test@example.com".to_string(),
+            Role::Analyst,
+        );
 
         manager.register_user(user).unwrap();
         manager.deactivate_user("user_1").unwrap();
 
-        assert!(!manager.can_user_perform(
-            "user_1",
-            &Action::View,
-            &Resource::Segment
-        ));
+        assert!(!manager.can_user_perform("user_1", &Action::View, &Resource::Segment));
     }
 
     #[test]
@@ -557,8 +535,16 @@ mod tests {
     #[test]
     fn test_list_users() {
         let mut manager = RBACManager::new();
-        let user1 = User::new("user_1".to_string(), "test1@example.com".to_string(), Role::Admin);
-        let user2 = User::new("user_2".to_string(), "test2@example.com".to_string(), Role::Viewer);
+        let user1 = User::new(
+            "user_1".to_string(),
+            "test1@example.com".to_string(),
+            Role::Admin,
+        );
+        let user2 = User::new(
+            "user_2".to_string(),
+            "test2@example.com".to_string(),
+            Role::Viewer,
+        );
 
         manager.register_user(user1).unwrap();
         manager.register_user(user2).unwrap();

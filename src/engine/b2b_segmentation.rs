@@ -26,7 +26,7 @@ impl CompanySize {
 /// Industry classification
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Industry {
-    pub primary: String,   // "SaaS", "Finance", "Healthcare"
+    pub primary: String, // "SaaS", "Finance", "Healthcare"
     pub secondary: Option<String>,
     pub vertical: Option<String>,
 }
@@ -198,7 +198,7 @@ impl B2BSegmentation {
     /// Calculate account health score
     pub fn calculate_account_health(
         engagement: &AccountEngagement,
-        arr: f64,
+        _arr: f64,
         churn_risk_prediction: f64,
     ) -> Result<AccountHealthScore> {
         let engagement_score = Self::score_engagement(
@@ -346,9 +346,7 @@ impl B2BSegmentation {
     }
 
     /// Calculate Total Addressable Market (TAM) by segment
-    pub fn calculate_tam(
-        segments: &[B2BAccountSegment],
-    ) -> Result<HashMap<String, f64>> {
+    pub fn calculate_tam(segments: &[B2BAccountSegment]) -> Result<HashMap<String, f64>> {
         let mut tam = HashMap::new();
 
         for segment in segments {
@@ -361,7 +359,7 @@ impl B2BSegmentation {
 
     /// Score account-industry fit
     pub fn calculate_industry_fit(
-        industry: &Industry,
+        _industry: &Industry,
         company_size: CompanySize,
         growth_rate: f64,
     ) -> f64 {
@@ -384,10 +382,22 @@ mod tests {
 
     #[test]
     fn test_classify_company_size() {
-        assert_eq!(B2BSegmentation::classify_company_size(5), CompanySize::Micro);
-        assert_eq!(B2BSegmentation::classify_company_size(25), CompanySize::Small);
-        assert_eq!(B2BSegmentation::classify_company_size(200), CompanySize::MidMarket);
-        assert_eq!(B2BSegmentation::classify_company_size(2000), CompanySize::Enterprise);
+        assert_eq!(
+            B2BSegmentation::classify_company_size(5),
+            CompanySize::Micro
+        );
+        assert_eq!(
+            B2BSegmentation::classify_company_size(25),
+            CompanySize::Small
+        );
+        assert_eq!(
+            B2BSegmentation::classify_company_size(200),
+            CompanySize::MidMarket
+        );
+        assert_eq!(
+            B2BSegmentation::classify_company_size(2000),
+            CompanySize::Enterprise
+        );
     }
 
     #[test]
@@ -404,7 +414,7 @@ mod tests {
     #[test]
     fn test_score_engagement() {
         let score = B2BSegmentation::score_engagement(50, 0.8, 500, 2);
-        assert!(score >= 0.0 && score <= 1.0);
+        assert!((0.0..=1.0).contains(&score));
     }
 
     #[test]
@@ -510,7 +520,8 @@ mod tests {
             usage_trend: 0.4,
         };
 
-        let vips = B2BSegmentation::identify_vip_accounts(&[(profile, engagement, 300000.0)]).unwrap();
+        let vips =
+            B2BSegmentation::identify_vip_accounts(&[(profile, engagement, 300000.0)]).unwrap();
         assert_eq!(vips.len(), 1);
     }
 
@@ -547,7 +558,8 @@ mod tests {
             usage_trend: -0.5,
         };
 
-        let at_risk = B2BSegmentation::identify_at_risk_accounts(&[(profile, engagement, 10000.0)]).unwrap();
+        let at_risk =
+            B2BSegmentation::identify_at_risk_accounts(&[(profile, engagement, 10000.0)]).unwrap();
         assert_eq!(at_risk.len(), 1);
     }
 

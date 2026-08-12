@@ -39,11 +39,7 @@ pub struct PluginMetadata {
 }
 
 impl PluginMetadata {
-    pub fn new(
-        name: String,
-        version: String,
-        algorithm_type: AlgorithmType,
-    ) -> Self {
+    pub fn new(name: String, version: String, algorithm_type: AlgorithmType) -> Self {
         Self {
             name,
             version,
@@ -204,14 +200,22 @@ impl PluginRegistry {
     }
 
     /// Get a plugin by name
-    pub fn get(&self, name: &str) -> Option<&(dyn Algorithm)> {
+    pub fn get(&self, name: &str) -> Option<&dyn Algorithm> {
         self.algorithms.get(name).map(|a| a.as_ref())
     }
 
     /// Execute a plugin
-    pub fn execute(&self, name: &str, data: &[Vec<f64>], config: &PluginConfig) -> Result<PluginResult> {
+    pub fn execute(
+        &self,
+        name: &str,
+        data: &[Vec<f64>],
+        config: &PluginConfig,
+    ) -> Result<PluginResult> {
         let algo = self.get(name).ok_or_else(|| {
-            std::io::Error::new(std::io::ErrorKind::NotFound, format!("Plugin {} not found", name))
+            std::io::Error::new(
+                std::io::ErrorKind::NotFound,
+                format!("Plugin {} not found", name),
+            )
         })?;
 
         algo.validate(data)?;
@@ -258,14 +262,12 @@ impl Algorithm for MeanBasedClassifier {
     }
 
     fn parameters(&self) -> Vec<PluginParameter> {
-        vec![
-            PluginParameter::new(
-                "threshold".to_string(),
-                "float".to_string(),
-                "0.5".to_string(),
-            )
-            .with_description("Classification threshold".to_string()),
-        ]
+        vec![PluginParameter::new(
+            "threshold".to_string(),
+            "float".to_string(),
+            "0.5".to_string(),
+        )
+        .with_description("Classification threshold".to_string())]
     }
 
     fn execute(&self, data: &[Vec<f64>], config: &PluginConfig) -> Result<PluginResult> {
@@ -356,10 +358,7 @@ impl Algorithm for StdDevCalculator {
         for col_idx in 0..data[0].len() {
             let col_values: Vec<f64> = data.iter().map(|row| row[col_idx]).collect();
             let mean = col_values.iter().sum::<f64>() / col_values.len() as f64;
-            let variance: f64 = col_values
-                .iter()
-                .map(|v| (v - mean).powi(2))
-                .sum::<f64>()
+            let variance: f64 = col_values.iter().map(|v| (v - mean).powi(2)).sum::<f64>()
                 / col_values.len() as f64;
             stddevs.push(variance.sqrt());
         }
@@ -369,7 +368,7 @@ impl Algorithm for StdDevCalculator {
     }
 
     fn validate(&self, data: &[Vec<f64>]) -> Result<bool> {
-        Ok(!data.is_empty() && data[0].len() > 0)
+        Ok(!data.is_empty() && !data[0].is_empty())
     }
 }
 

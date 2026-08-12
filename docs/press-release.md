@@ -1,5 +1,14 @@
 # ClusterAudienceKit Press Release & Publication Content
 
+> **Note (post-audit honesty pass):** this document predates a remediation
+> pass that fixed two fabricated-data modules, wired 10 previously
+> Rust-only modules into the Python API, and rewrote the broken test suite.
+> Some API details below (e.g. constructor signatures, algorithm names, or
+> performance numbers) may be aspirational or out of date. For the current,
+> verified-accurate picture of what's real and callable, see
+> [`README.md`](../README.md) and [`docs/ROADMAP_HONEST.md`](ROADMAP_HONEST.md).
+
+
 **Status:** Ready to publish  
 **Package:** https://github.com/Mullassery/clusteraudiencekit  
 **License:** Proprietary

@@ -57,19 +57,37 @@ pub struct SegmentProfile {
 impl SegmentProfile {
     pub fn new(segment_type: SegmentType) -> Self {
         let description = match segment_type {
-            SegmentType::Champions => "Best customers with highest value and engagement".to_string(),
-            SegmentType::LoyalCustomers => "Consistent, valuable customers with steady engagement".to_string(),
-            SegmentType::PotentialLoyalists => "Recent high-value customers with growth potential".to_string(),
-            SegmentType::AtRisk => "Once valuable customers showing declining engagement".to_string(),
-            SegmentType::CannotLose => "High-value customers at risk of churn - critical retention".to_string(),
+            SegmentType::Champions => {
+                "Best customers with highest value and engagement".to_string()
+            }
+            SegmentType::LoyalCustomers => {
+                "Consistent, valuable customers with steady engagement".to_string()
+            }
+            SegmentType::PotentialLoyalists => {
+                "Recent high-value customers with growth potential".to_string()
+            }
+            SegmentType::AtRisk => {
+                "Once valuable customers showing declining engagement".to_string()
+            }
+            SegmentType::CannotLose => {
+                "High-value customers at risk of churn - critical retention".to_string()
+            }
             SegmentType::VIP => "Premium customers with exceptional value metrics".to_string(),
-            SegmentType::NewCustomers => "Recently acquired customers with high potential".to_string(),
-            SegmentType::NeedAttention => "Moderate-value customers requiring engagement".to_string(),
+            SegmentType::NewCustomers => {
+                "Recently acquired customers with high potential".to_string()
+            }
+            SegmentType::NeedAttention => {
+                "Moderate-value customers requiring engagement".to_string()
+            }
             SegmentType::AboutToSleep => "Low engagement customers at risk of dormancy".to_string(),
-            SegmentType::AtRiskSleeping => "Previously inactive customers showing re-engagement".to_string(),
+            SegmentType::AtRiskSleeping => {
+                "Previously inactive customers showing re-engagement".to_string()
+            }
             SegmentType::Promising => "New customers showing early signs of high value".to_string(),
             SegmentType::Lost => "Inactive customers unlikely to return".to_string(),
-            SegmentType::Hibernating => "Inactive but potentially recoverable customers".to_string(),
+            SegmentType::Hibernating => {
+                "Inactive but potentially recoverable customers".to_string()
+            }
         };
 
         Self {
@@ -168,13 +186,9 @@ impl SegmentClassifier {
         };
 
         // Calculate confidence based on RFM balance
-        let scores = vec![r as f64, f as f64, m as f64];
+        let scores = [r as f64, f as f64, m as f64];
         let avg = scores.iter().sum::<f64>() / scores.len() as f64;
-        let variance = scores
-            .iter()
-            .map(|s| (s - avg).powi(2))
-            .sum::<f64>()
-            / scores.len() as f64;
+        let variance = scores.iter().map(|s| (s - avg).powi(2)).sum::<f64>() / scores.len() as f64;
         let std_dev = variance.sqrt();
         let cv = if avg > 0.0 { std_dev / avg } else { 0.0 };
         let confidence = 1.0 / (1.0 + cv); // Higher confidence when scores are balanced
@@ -185,14 +199,12 @@ impl SegmentClassifier {
             recency_score: r,
             frequency_score: f,
             monetary_score: m,
-            confidence: confidence.min(1.0).max(0.0),
+            confidence: confidence.clamp(0.0, 1.0),
         })
     }
 
     /// Classify batch of customers
-    pub fn classify_batch(
-        customers: Vec<(String, u32, u32, u32)>,
-    ) -> Result<Vec<CustomerSegment>> {
+    pub fn classify_batch(customers: Vec<(String, u32, u32, u32)>) -> Result<Vec<CustomerSegment>> {
         let mut segments = Vec::new();
         for (customer_id, r, f, m) in customers {
             segments.push(Self::classify(&customer_id, r, f, m)?);
@@ -270,7 +282,10 @@ impl SegmentClassifier {
         let total_monetary: f64 = monetary_values.values().sum();
 
         for segment in segments {
-            let monetary = monetary_values.get(&segment.customer_id).copied().unwrap_or(0.0);
+            let monetary = monetary_values
+                .get(&segment.customer_id)
+                .copied()
+                .unwrap_or(0.0);
             let frequency = frequency_values
                 .get(&segment.customer_id)
                 .copied()

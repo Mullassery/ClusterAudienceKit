@@ -39,13 +39,15 @@ impl BrazeAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::Braze))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Bearer {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Bearer {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -62,7 +64,10 @@ impl IterableAdapter {
     pub fn format_event(&self, msg: &ActivationMessage) -> Result<HashMap<String, String>> {
         let mut event = HashMap::new();
 
-        event.insert("email".to_string(), msg.customer.email.as_ref().cloned().unwrap_or_default());
+        event.insert(
+            "email".to_string(),
+            msg.customer.email.as_ref().cloned().unwrap_or_default(),
+        );
         event.insert(
             "dataFields".to_string(),
             format!("{:?}", msg.customer.attributes),
@@ -78,8 +83,7 @@ impl IterableAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::Iterable))
     }
 
@@ -101,13 +105,19 @@ impl KlaviyoAdapter {
     pub fn format_event(&self, msg: &ActivationMessage) -> Result<HashMap<String, String>> {
         let mut event = HashMap::new();
 
-        event.insert("email".to_string(), msg.customer.email.as_ref().cloned().unwrap_or_default());
+        event.insert(
+            "email".to_string(),
+            msg.customer.email.as_ref().cloned().unwrap_or_default(),
+        );
 
         if let Some(phone) = &msg.customer.phone {
             event.insert("phone_number".to_string(), phone.clone());
         }
 
-        event.insert("properties".to_string(), format!("{:?}", msg.customer.attributes));
+        event.insert(
+            "properties".to_string(),
+            format!("{:?}", msg.customer.attributes),
+        );
 
         if let Some(segment) = &msg.customer.segment {
             event.insert("list_id".to_string(), segment.clone());
@@ -119,13 +129,15 @@ impl KlaviyoAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::Klaviyo))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Klaviyo-API-Key {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Klaviyo-API-Key {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -146,7 +158,10 @@ impl SalesforceAdapter {
             event.insert("Email".to_string(), email.clone());
         }
 
-        event.insert("External_Id__c".to_string(), msg.customer.customer_id.clone());
+        event.insert(
+            "External_Id__c".to_string(),
+            msg.customer.customer_id.clone(),
+        );
 
         if let Some(segment) = &msg.customer.segment {
             event.insert("Segment__c".to_string(), segment.clone());
@@ -162,13 +177,15 @@ impl SalesforceAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::Salesforce))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Bearer {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Bearer {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -189,7 +206,10 @@ impl HubSpotAdapter {
             event.insert("email".to_string(), email.clone());
         }
 
-        event.insert("hs_lead_status".to_string(), msg.customer.segment.as_ref().cloned().unwrap_or_default());
+        event.insert(
+            "hs_lead_status".to_string(),
+            msg.customer.segment.as_ref().cloned().unwrap_or_default(),
+        );
 
         for (key, value) in &msg.customer.attributes {
             event.insert(format!("custom_{}", key), value.clone());
@@ -201,13 +221,15 @@ impl HubSpotAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::HubSpot))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Bearer {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Bearer {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -243,13 +265,15 @@ impl SegmentAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::Segment))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Basic {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Basic {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -285,13 +309,15 @@ impl RudderStackAdapter {
     pub fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| ActivationEngine::get_platform_endpoint(&Platform::RudderStack))
     }
 
     pub fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Bearer {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Bearer {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -437,13 +463,15 @@ impl PlatformAdapter for CustomAdapter {
     fn get_endpoint(&self) -> String {
         self.credential
             .endpoint
-            .as_ref()
-            .map(|e| e.clone())
+            .clone()
             .unwrap_or_else(|| "https://example.com/activate".to_string())
     }
 
     fn get_auth_header(&self) -> Result<(String, String)> {
-        Ok(("Authorization".to_string(), format!("Bearer {}", self.credential.api_key)))
+        Ok((
+            "Authorization".to_string(),
+            format!("Bearer {}", self.credential.api_key),
+        ))
     }
 }
 
@@ -471,7 +499,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::Braze, "key_123".to_string());
         let adapter = BrazeAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("external_id"));
@@ -483,11 +515,18 @@ mod tests {
         let cred = PlatformCredential::new(Platform::Iterable, "key_123".to_string());
         let adapter = IterableAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Iterable);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Iterable,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("email"));
-        assert_eq!(formatted.get("email"), Some(&"test@example.com".to_string()));
+        assert_eq!(
+            formatted.get("email"),
+            Some(&"test@example.com".to_string())
+        );
     }
 
     #[test]
@@ -495,7 +534,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::Klaviyo, "key_123".to_string());
         let adapter = KlaviyoAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Klaviyo);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Klaviyo,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("phone_number"));
@@ -507,7 +550,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::Salesforce, "key_123".to_string());
         let adapter = SalesforceAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Salesforce);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Salesforce,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("Email"));
@@ -519,7 +566,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::HubSpot, "key_123".to_string());
         let adapter = HubSpotAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::HubSpot);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::HubSpot,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("email"));
@@ -531,7 +582,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::Segment, "key_123".to_string());
         let adapter = SegmentAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Segment);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Segment,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("userId"));
@@ -543,7 +598,11 @@ mod tests {
         let cred = PlatformCredential::new(Platform::RudderStack, "key_123".to_string());
         let adapter = RudderStackAdapter::new(cred);
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::RudderStack);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::RudderStack,
+        );
 
         let formatted = adapter.format_event(&msg).unwrap();
         assert!(formatted.contains_key("anonymousId"));
@@ -554,7 +613,10 @@ mod tests {
     fn test_adapter_factory() {
         let cred = PlatformCredential::new(Platform::Braze, "key_123".to_string());
         let adapter = AdapterFactory::create_adapter(cred).unwrap();
-        assert_eq!(adapter.get_endpoint(), ActivationEngine::get_platform_endpoint(&Platform::Braze));
+        assert_eq!(
+            adapter.get_endpoint(),
+            ActivationEngine::get_platform_endpoint(&Platform::Braze)
+        );
     }
 
     #[test]

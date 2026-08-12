@@ -1,5 +1,14 @@
 # Performance Comparison: ClusterAudienceKit vs Alternatives
 
+> **Note (post-audit honesty pass):** this document predates a remediation
+> pass that fixed two fabricated-data modules, wired 10 previously
+> Rust-only modules into the Python API, and rewrote the broken test suite.
+> Some API details below (e.g. constructor signatures, algorithm names, or
+> performance numbers) may be aspirational or out of date. For the current,
+> verified-accurate picture of what's real and callable, see
+> [`README.md`](../README.md) and [`docs/ROADMAP_HONEST.md`](ROADMAP_HONEST.md).
+
+
 ## Executive Summary
 
 ClusterAudienceKit is designed to be **10-25x faster** than scikit-learn for audience segmentation workloads while providing a **unified API** that combines RFM + clustering + metrics in a single library.

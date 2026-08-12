@@ -8,7 +8,7 @@ use std::collections::HashMap;
 pub struct SegmentConfidence {
     pub segment_id: usize,
     pub member_id: String,
-    pub confidence_score: f64,  // 0.0-1.0: higher = more certain
+    pub confidence_score: f64, // 0.0-1.0: higher = more certain
     pub distance_to_centroid: f64,
     pub distance_to_nearest_other: f64,
 }
@@ -43,10 +43,10 @@ impl SegmentConfidence {
 #[derive(Clone, Debug)]
 pub struct SegmentEntropy {
     pub segment_id: usize,
-    pub shannon_entropy: f64,      // 0.0 = homogeneous, higher = more diverse
-    pub gini_coefficient: f64,     // 0.0 = uniform, 1.0 = concentrated
+    pub shannon_entropy: f64,  // 0.0 = homogeneous, higher = more diverse
+    pub gini_coefficient: f64, // 0.0 = uniform, 1.0 = concentrated
     pub member_count: usize,
-    pub feature_diversity: HashMap<String, f64>,  // Entropy per feature
+    pub feature_diversity: HashMap<String, f64>, // Entropy per feature
 }
 
 impl SegmentEntropy {
@@ -107,19 +107,15 @@ impl SegmentEntropy {
 #[derive(Clone, Debug)]
 pub struct SegmentDifferentiation {
     pub segment_id: usize,
-    pub differentiation_score: f64,  // 0.0 = identical to others, 1.0 = unique
-    pub similarity_to_nearest: f64,   // Distance to most similar segment
-    pub similarity_to_farthest: f64,  // Distance to most different segment
+    pub differentiation_score: f64, // 0.0 = identical to others, 1.0 = unique
+    pub similarity_to_nearest: f64, // Distance to most similar segment
+    pub similarity_to_farthest: f64, // Distance to most different segment
 }
 
 impl SegmentDifferentiation {
     /// Compute differentiation as inverse of nearest similarity
     /// Formula: 1.0 - similarity_to_nearest
-    pub fn new(
-        segment_id: usize,
-        similarity_to_nearest: f64,
-        similarity_to_farthest: f64,
-    ) -> Self {
+    pub fn new(segment_id: usize, similarity_to_nearest: f64, similarity_to_farthest: f64) -> Self {
         let differentiation_score = 1.0 - similarity_to_nearest;
 
         Self {
@@ -135,18 +131,14 @@ impl SegmentDifferentiation {
 #[derive(Clone, Debug)]
 pub struct SegmentPredictability {
     pub segment_id: usize,
-    pub predictability_score: f64,   // 0.0 = unpredictable, 1.0 = highly stable
-    pub assignment_variance: f64,    // Variance in member confidence over time
-    pub churn_rate: f64,             // Fraction of members changing segments
-    pub stability_trend: String,     // "stable", "declining", "improving"
+    pub predictability_score: f64, // 0.0 = unpredictable, 1.0 = highly stable
+    pub assignment_variance: f64,  // Variance in member confidence over time
+    pub churn_rate: f64,           // Fraction of members changing segments
+    pub stability_trend: String,   // "stable", "declining", "improving"
 }
 
 impl SegmentPredictability {
-    pub fn new(
-        segment_id: usize,
-        assignment_variance: f64,
-        churn_rate: f64,
-    ) -> Self {
+    pub fn new(segment_id: usize, assignment_variance: f64, churn_rate: f64) -> Self {
         // Predictability = 1.0 - variance - churn
         let predictability_score = (1.0 - assignment_variance * 0.5 - churn_rate * 0.5).max(0.0);
 
@@ -177,15 +169,11 @@ pub struct SegmentAging {
     pub newest_member_days_ago: f64,
     pub oldest_member_days_ago: f64,
     pub member_churn_rate_30d: f64,
-    pub segment_lifespan_stage: String,  // "emerging", "growth", "mature", "declining"
+    pub segment_lifespan_stage: String, // "emerging", "growth", "mature", "declining"
 }
 
 impl SegmentAging {
-    pub fn new(
-        segment_id: usize,
-        tenure_days: Vec<f64>,
-        member_churn_30d: f64,
-    ) -> Result<Self> {
+    pub fn new(segment_id: usize, tenure_days: Vec<f64>, member_churn_30d: f64) -> Result<Self> {
         if tenure_days.is_empty() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Empty tenure data".to_string(),
@@ -196,7 +184,7 @@ impl SegmentAging {
 
         let mut sorted = tenure_days.clone();
         sorted.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
-        let median = if sorted.len() % 2 == 0 {
+        let median = if sorted.len().is_multiple_of(2) {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
         } else {
             sorted[sorted.len() / 2]
@@ -233,7 +221,7 @@ impl SegmentAging {
 pub struct ExplainabilityReport {
     pub segment_id: usize,
     pub member_id: String,
-    pub top_contributing_features: Vec<(String, f64)>,  // (feature_name, importance_score)
+    pub top_contributing_features: Vec<(String, f64)>, // (feature_name, importance_score)
     pub bottom_contributing_features: Vec<(String, f64)>,
     pub feature_explanations: HashMap<String, String>,
 }
@@ -270,12 +258,12 @@ impl ExplainabilityReport {
 #[derive(Clone, Debug)]
 pub struct SegmentHealth {
     pub segment_id: usize,
-    pub health_score: f64,  // 0-100: higher = healthier
-    pub confidence: f64,    // 0-100: membership certainty
-    pub stability: f64,     // 0-100: churn resistance
-    pub differentiation: f64,  // 0-100: uniqueness
-    pub size_health: f64,   // 0-100: optimal size?
-    pub trend: String,      // "improving", "stable", "declining"
+    pub health_score: f64,    // 0-100: higher = healthier
+    pub confidence: f64,      // 0-100: membership certainty
+    pub stability: f64,       // 0-100: churn resistance
+    pub differentiation: f64, // 0-100: uniqueness
+    pub size_health: f64,     // 0-100: optimal size?
+    pub trend: String,        // "improving", "stable", "declining"
     pub alerts: Vec<String>,
 }
 
@@ -297,8 +285,10 @@ impl SegmentHealth {
         };
 
         // Composite health (normalize size_health from 0-100 to 0-1)
-        let health_score = (avg_confidence * 30.0 + predictability * 30.0
-                           + differentiation * 20.0 + (size_health / 100.0) * 20.0);
+        let health_score = avg_confidence * 30.0
+            + predictability * 30.0
+            + differentiation * 20.0
+            + (size_health / 100.0) * 20.0;
 
         let trend = if predictability > 0.7 && avg_confidence > 0.7 {
             "improving".to_string()
@@ -340,9 +330,9 @@ impl SegmentHealth {
 pub struct FeatureAttribution {
     pub segment_id: usize,
     pub feature_name: String,
-    pub importance_score: f64,  // 0-1: normalized importance
-    pub direction: String,      // "high" = feature high in segment, "low" = feature low
-    pub prevalence: f64,        // % of segment members exhibiting this pattern
+    pub importance_score: f64, // 0-1: normalized importance
+    pub direction: String,     // "high" = feature high in segment, "low" = feature low
+    pub prevalence: f64,       // % of segment members exhibiting this pattern
 }
 
 /// SHAP-like value for model explainability
@@ -350,28 +340,24 @@ pub struct FeatureAttribution {
 pub struct ShapValue {
     pub segment_id: usize,
     pub feature_name: String,
-    pub shap_value: f64,        // Contribution to segment membership probability
-    pub base_value: f64,        // Average prediction across all segments
-    pub feature_value: f64,     // This segment's feature value
+    pub shap_value: f64,    // Contribution to segment membership probability
+    pub base_value: f64,    // Average prediction across all segments
+    pub feature_value: f64, // This segment's feature value
 }
 
 /// Segment stability metric (Feature 3 - complements Drift Detection)
 #[derive(Clone, Debug)]
 pub struct SegmentStability {
     pub segment_id: usize,
-    pub stability_score: f64,   // 0-1: 1.0 = very stable, 0.0 = unstable
-    pub member_retention_rate: f64,  // % of members staying in segment
-    pub size_change_rate: f64,  // % change in segment size
-    pub trend: String,          // "stable", "growing", "shrinking", "volatile"
-    pub risk_level: String,     // "low", "medium", "high"
+    pub stability_score: f64,       // 0-1: 1.0 = very stable, 0.0 = unstable
+    pub member_retention_rate: f64, // % of members staying in segment
+    pub size_change_rate: f64,      // % change in segment size
+    pub trend: String,              // "stable", "growing", "shrinking", "volatile"
+    pub risk_level: String,         // "low", "medium", "high"
 }
 
 impl SegmentStability {
-    pub fn new(
-        segment_id: usize,
-        retention_rate: f64,
-        size_change: f64,
-    ) -> Self {
+    pub fn new(segment_id: usize, retention_rate: f64, size_change: f64) -> Self {
         // Stability = retention_rate × (1 - |size_change|)
         let stability_score = retention_rate * (1.0 - size_change.abs()).max(0.0);
 
@@ -408,18 +394,18 @@ impl SegmentStability {
 #[derive(Clone, Debug)]
 pub struct SegmentDecay {
     pub segment_id: usize,
-    pub decay_rate: f64,        // % loss per period
-    pub half_life_periods: f64, // Periods until 50% decay
-    pub is_decaying: bool,      // decay_rate > 0.05
-    pub decay_status: String,   // "healthy", "slow_decay", "rapid_decay"
-    pub estimated_extinction_periods: f64,  // Periods until segment disappears
+    pub decay_rate: f64,                   // % loss per period
+    pub half_life_periods: f64,            // Periods until 50% decay
+    pub is_decaying: bool,                 // decay_rate > 0.05
+    pub decay_status: String,              // "healthy", "slow_decay", "rapid_decay"
+    pub estimated_extinction_periods: f64, // Periods until segment disappears
 }
 
 impl SegmentDecay {
     pub fn new(
         segment_id: usize,
         current_size: usize,
-        historical_sizes: &[usize],  // Sizes over time periods
+        historical_sizes: &[usize], // Sizes over time periods
     ) -> Result<Self> {
         if historical_sizes.is_empty() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
@@ -480,7 +466,7 @@ pub struct SegmentExplainability {
     pub primary_drivers: Vec<FeatureAttribution>,
     pub secondary_features: Vec<FeatureAttribution>,
     pub shap_values: Vec<ShapValue>,
-    pub summary: String,  // Natural language summary
+    pub summary: String, // Natural language summary
 }
 
 impl SegmentExplainability {
@@ -495,7 +481,13 @@ impl SegmentExplainability {
     }
 
     /// Add primary driver features
-    pub fn add_driver(&mut self, feature_name: String, importance: f64, direction: String, prevalence: f64) {
+    pub fn add_driver(
+        &mut self,
+        feature_name: String,
+        importance: f64,
+        direction: String,
+        prevalence: f64,
+    ) {
         self.primary_drivers.push(FeatureAttribution {
             segment_id: self.segment_id,
             feature_name,
@@ -506,7 +498,13 @@ impl SegmentExplainability {
     }
 
     /// Add secondary features
-    pub fn add_secondary(&mut self, feature_name: String, importance: f64, direction: String, prevalence: f64) {
+    pub fn add_secondary(
+        &mut self,
+        feature_name: String,
+        importance: f64,
+        direction: String,
+        prevalence: f64,
+    ) {
         self.secondary_features.push(FeatureAttribution {
             segment_id: self.segment_id,
             feature_name,
@@ -517,7 +515,13 @@ impl SegmentExplainability {
     }
 
     /// Add SHAP value for feature contribution
-    pub fn add_shap(&mut self, feature_name: String, shap_value: f64, base_value: f64, feature_value: f64) {
+    pub fn add_shap(
+        &mut self,
+        feature_name: String,
+        shap_value: f64,
+        base_value: f64,
+        feature_value: f64,
+    ) {
         self.shap_values.push(ShapValue {
             segment_id: self.segment_id,
             feature_name,
@@ -530,7 +534,10 @@ impl SegmentExplainability {
     /// Generate human-readable summary
     pub fn generate_summary(&mut self) -> String {
         if self.primary_drivers.is_empty() {
-            self.summary = format!("Segment {} has no primary drivers identified.", self.segment_id);
+            self.summary = format!(
+                "Segment {} has no primary drivers identified.",
+                self.segment_id
+            );
             return self.summary.clone();
         }
 
@@ -580,10 +587,7 @@ impl SegmentIntelligence {
             if segment_id < distances.len() {
                 distances[segment_id] = f64::INFINITY;
             }
-            let dist_to_nearest_other = distances
-                .iter()
-                .copied()
-                .fold(f64::INFINITY, f64::min);
+            let dist_to_nearest_other = distances.iter().copied().fold(f64::INFINITY, f64::min);
 
             confidences.push(SegmentConfidence::new(
                 segment_id,
@@ -599,7 +603,7 @@ impl SegmentIntelligence {
     /// Calculate entropy for segments
     pub fn calculate_entropy(
         segment_members: &HashMap<usize, Vec<usize>>,
-        feature_counts: &HashMap<usize, Vec<usize>>,  // segment_id -> category frequencies
+        feature_counts: &HashMap<usize, Vec<usize>>, // segment_id -> category frequencies
     ) -> HashMap<usize, SegmentEntropy> {
         let mut entropies = HashMap::new();
 
@@ -651,12 +655,13 @@ impl SegmentIntelligence {
     /// Maps global feature importance to segment-specific context
     pub fn build_explainability(
         segment_id: usize,
-        feature_importances: &[(String, f64)],  // (feature_name, importance_score)
-        segment_features: &[f64],                // This segment's feature values
-        global_feature_means: &[f64],            // Population mean for each feature
+        feature_importances: &[(String, f64)], // (feature_name, importance_score)
+        segment_features: &[f64],              // This segment's feature values
+        global_feature_means: &[f64],          // Population mean for each feature
     ) -> Result<SegmentExplainability> {
         if feature_importances.len() != segment_features.len()
-            || segment_features.len() != global_feature_means.len() {
+            || segment_features.len() != global_feature_means.len()
+        {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Feature array length mismatch".to_string(),
             ));
@@ -666,7 +671,8 @@ impl SegmentIntelligence {
 
         // Sort by importance
         let mut sorted_importance = feature_importances.to_vec();
-        sorted_importance.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        sorted_importance
+            .sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
         // Normalize importances
         let max_importance = sorted_importance[0].1.max(0.001);
@@ -677,7 +683,11 @@ impl SegmentIntelligence {
             let segment_value = segment_features.get(i).copied().unwrap_or(0.0);
             let global_mean = global_feature_means.get(i).copied().unwrap_or(0.0);
 
-            let direction = if segment_value > global_mean { "high" } else { "low" };
+            let direction = if segment_value > global_mean {
+                "high"
+            } else {
+                "low"
+            };
             let prevalence = (normalized_importance).min(1.0);
 
             explainability.add_driver(
@@ -689,12 +699,17 @@ impl SegmentIntelligence {
         }
 
         // Add next 3 as secondary
-        for (i, (feature_name, importance)) in sorted_importance.iter().skip(3).take(3).enumerate() {
+        for (i, (feature_name, importance)) in sorted_importance.iter().skip(3).take(3).enumerate()
+        {
             let normalized_importance = importance / max_importance;
             let segment_value = segment_features.get(i + 3).copied().unwrap_or(0.0);
             let global_mean = global_feature_means.get(i + 3).copied().unwrap_or(0.0);
 
-            let direction = if segment_value > global_mean { "high" } else { "low" };
+            let direction = if segment_value > global_mean {
+                "high"
+            } else {
+                "low"
+            };
 
             explainability.add_secondary(
                 feature_name.clone(),
@@ -798,8 +813,7 @@ impl SegmentIntelligence {
         member_count: usize,
     ) -> SegmentHealth {
         let avg_confidence = if !confidences.is_empty() {
-            confidences.iter().map(|c| c.confidence_score).sum::<f64>()
-                / confidences.len() as f64
+            confidences.iter().map(|c| c.confidence_score).sum::<f64>() / confidences.len() as f64
         } else {
             0.5
         };
@@ -928,14 +942,14 @@ mod tests {
     fn test_calculate_confidence() {
         let assignments = vec![0, 1, 0];
         let distances_to_centroid = vec![0.5, 0.3, 0.8];
-        let all_distances = vec![
-            vec![0.5, 2.0],
-            vec![3.0, 0.3],
-            vec![1.0, 1.5],
-        ];
+        let all_distances = vec![vec![0.5, 2.0], vec![3.0, 0.3], vec![1.0, 1.5]];
 
-        let confidences =
-            SegmentIntelligence::calculate_confidence(&assignments, &distances_to_centroid, &all_distances).unwrap();
+        let confidences = SegmentIntelligence::calculate_confidence(
+            &assignments,
+            &distances_to_centroid,
+            &all_distances,
+        )
+        .unwrap();
         assert_eq!(confidences.len(), 3);
         assert!(confidences[0].confidence_score > 0.0);
     }
@@ -1000,7 +1014,13 @@ mod tests {
         let segment_features = vec![15.0, 8.0, 500.0];
         let global_means = vec![30.0, 4.0, 250.0];
 
-        let explain = SegmentIntelligence::build_explainability(0, &importance, &segment_features, &global_means).unwrap();
+        let explain = SegmentIntelligence::build_explainability(
+            0,
+            &importance,
+            &segment_features,
+            &global_means,
+        )
+        .unwrap();
 
         assert_eq!(explain.segment_id, 0);
         assert!(!explain.primary_drivers.is_empty());
@@ -1013,7 +1033,13 @@ mod tests {
         let feature_names = vec!["f1".to_string(), "f2".to_string(), "f3".to_string()];
         let base_value = 0.5;
 
-        let shap = SegmentIntelligence::calculate_shap_approximation(0, &segment_features, &feature_names, base_value).unwrap();
+        let shap = SegmentIntelligence::calculate_shap_approximation(
+            0,
+            &segment_features,
+            &feature_names,
+            base_value,
+        )
+        .unwrap();
 
         assert_eq!(shap.len(), 3);
         assert!(shap[0].shap_value.is_finite());
@@ -1065,7 +1091,7 @@ mod tests {
 
     #[test]
     fn test_segment_decay_healthy() {
-        let historical = vec![1000, 990, 980, 971];  // ~1% decay per period
+        let historical = vec![1000, 990, 980, 971]; // ~1% decay per period
         let decay = SegmentDecay::new(0, 971, &historical).unwrap();
         assert!(decay.decay_rate < 0.015);
         assert_eq!(decay.decay_status, "healthy");
@@ -1074,7 +1100,7 @@ mod tests {
 
     #[test]
     fn test_segment_decay_rapid() {
-        let historical = vec![1000, 800, 640, 512];  // 20% decay per period
+        let historical = vec![1000, 800, 640, 512]; // 20% decay per period
         let decay = SegmentDecay::new(0, 512, &historical).unwrap();
         assert!(decay.decay_rate > 0.1);
         assert_eq!(decay.decay_status, "rapid_decay");
@@ -1083,7 +1109,7 @@ mod tests {
 
     #[test]
     fn test_segment_decay_half_life() {
-        let historical = vec![1000, 500, 250];  // 50% decay per period
+        let historical = vec![1000, 500, 250]; // 50% decay per period
         let decay = SegmentDecay::new(0, 250, &historical).unwrap();
         assert!((decay.half_life_periods - 1.0).abs() < 0.1);
     }

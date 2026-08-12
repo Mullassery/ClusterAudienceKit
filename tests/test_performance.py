@@ -52,60 +52,80 @@ class TestClusterAudienceKitPerformance:
         """10000 customers for stress tests."""
         return generate_transaction_data(n_customers=10000, transactions_per_customer=3)
 
+    @staticmethod
+    def _rfm_features(df):
+        """Turn a raw-transactions DataFrame into an RFM numeric feature
+        matrix via the real Rust-backed `calculate_rfm`."""
+        from clusteraudiencekit import RFMConfig, calculate_rfm
+
+        transactions = list(
+            df[["customer_id", "transaction_date", "amount"]]
+            .assign(transaction_date=lambda d: d["transaction_date"] + "T00:00:00+00:00")
+            .itertuples(index=False, name=None)
+        )
+        scores = calculate_rfm(transactions, RFMConfig())
+        return [[s.recency, s.frequency, s.monetary] for s in scores]
+
     def test_segmenter_creation(self):
         """Test segmenter instantiation time."""
-        pytest.skip("Placeholder - implementation coming in Phase 1")
-        # from clusteraudiencekit import AudienceSegmenter
-        # start = time.time()
-        # segmenter = AudienceSegmenter(n_clusters=4)
-        # elapsed = time.time() - start
-        # assert elapsed < 0.1  # Should be < 100ms
+        from clusteraudiencekit import AudienceSegmenter
+
+        start = time.time()
+        segmenter = AudienceSegmenter(4)
+        elapsed = time.time() - start
+        assert segmenter.get_n_clusters() == 4
+        assert elapsed < 0.1  # Should be < 100ms
 
     def test_fit_performance_small(self, sample_data_small):
         """Test fit performance on 100 customers."""
-        pytest.skip("Placeholder - implementation coming in Phase 1")
-        # from clusteraudiencekit import AudienceSegmenter
-        # segmenter = AudienceSegmenter(n_clusters=4)
-        # start = time.time()
-        # segmenter.fit(sample_data_small)
-        # elapsed = time.time() - start
-        # print(f"\nFit (100 customers): {elapsed*1000:.1f}ms")
-        # assert elapsed < 1.0  # Should be < 1 second
+        from clusteraudiencekit import AudienceSegmenter
+
+        features = self._rfm_features(sample_data_small)
+        segmenter = AudienceSegmenter(4)
+        start = time.time()
+        segmenter.fit(features)
+        elapsed = time.time() - start
+        print(f"\nFit (100 customers): {elapsed*1000:.1f}ms")
+        assert elapsed < 1.0  # Should be < 1 second
 
     def test_fit_performance_medium(self, sample_data_medium):
         """Test fit performance on 1000 customers."""
-        pytest.skip("Placeholder - implementation coming in Phase 1")
-        # from clusteraudiencekit import AudienceSegmenter
-        # segmenter = AudienceSegmenter(n_clusters=4)
-        # start = time.time()
-        # segmenter.fit(sample_data_medium)
-        # elapsed = time.time() - start
-        # print(f"\nFit (1000 customers): {elapsed*1000:.1f}ms")
-        # assert elapsed < 2.0  # Should be < 2 seconds
+        from clusteraudiencekit import AudienceSegmenter
+
+        features = self._rfm_features(sample_data_medium)
+        segmenter = AudienceSegmenter(4)
+        start = time.time()
+        segmenter.fit(features)
+        elapsed = time.time() - start
+        print(f"\nFit (1000 customers): {elapsed*1000:.1f}ms")
+        assert elapsed < 2.0  # Should be < 2 seconds
 
     def test_predict_performance(self, sample_data_small):
         """Test predict performance."""
-        pytest.skip("Placeholder - implementation coming in Phase 1")
-        # from clusteraudiencekit import AudienceSegmenter
-        # segmenter = AudienceSegmenter(n_clusters=4)
-        # segmenter.fit(sample_data_small)
-        # start = time.time()
-        # segments = segmenter.predict(sample_data_small)
-        # elapsed = time.time() - start
-        # print(f"\nPredict (100 customers): {elapsed*1000:.1f}ms")
-        # assert len(segments) == len(sample_data_small)
+        from clusteraudiencekit import AudienceSegmenter
+
+        features = self._rfm_features(sample_data_small)
+        segmenter = AudienceSegmenter(4)
+        segmenter.fit(features)
+        start = time.time()
+        segments = segmenter.predict(features)
+        elapsed = time.time() - start
+        print(f"\nPredict (100 customers): {elapsed*1000:.1f}ms")
+        assert len(segments) == len(features)
 
     def test_silhouette_performance(self, sample_data_small):
         """Test silhouette score calculation."""
-        pytest.skip("Placeholder - implementation coming in Phase 1")
-        # from clusteraudiencekit import AudienceSegmenter
-        # segmenter = AudienceSegmenter(n_clusters=4)
-        # segmenter.fit(sample_data_small)
-        # start = time.time()
-        # score = segmenter.silhouette_score()
-        # elapsed = time.time() - start
-        # print(f"\nSilhouette (100 customers): {elapsed*1000:.1f}ms")
-        # assert 0 <= score <= 1
+        from clusteraudiencekit import AudienceSegmenter, silhouette_score
+
+        features = self._rfm_features(sample_data_small)
+        segmenter = AudienceSegmenter(4)
+        segmenter.fit(features)
+        labels = segmenter.predict(features)
+        start = time.time()
+        score = silhouette_score(features, labels)
+        elapsed = time.time() - start
+        print(f"\nSilhouette (100 customers): {elapsed*1000:.1f}ms")
+        assert -1 <= score <= 1
 
 
 @pytest.mark.skipif(not HAS_SKLEARN, reason="scikit-learn not installed")

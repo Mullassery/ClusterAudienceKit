@@ -4,8 +4,8 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "7.1.0"
-description = "Production audience intelligence platform. RFM analysis, advanced clustering, real-time streaming, customer lifetime value prediction, lifecycle management, churn prediction, B2B governance."
+version = "7.1.1"
+description = "Rust-powered customer segmentation: RFM analysis, KMeans/K-Prototypes clustering, churn prediction, customer lifetime value, real-time streaming segmentation, drift detection, lookalike audiences, cohort analytics, lifecycle tracking, and differential privacy / k-anonymity."
 readme = "README.md"
 
 authors = [{ name = "Georgi Mammen Mullassery", email = "mullassery@gmail.com" }]
@@ -19,12 +19,10 @@ keywords = [
     "audience-segmentation",
     "customer-analytics",
     "machine-learning",
-    "deep-learning",
-    "neural-networks",
-    "xgboost",
-    "gradient-boosting",
-    "automl",
     "k-means",
+    "k-prototypes",
+    "differential-privacy",
+    "k-anonymity",
     "segmentation-engine",
     "crm",
     "customer-lifetime-value",

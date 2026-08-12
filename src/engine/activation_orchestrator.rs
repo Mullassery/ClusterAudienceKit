@@ -83,7 +83,8 @@ impl ActivationOrchestrator {
     }
 
     pub fn register_platform(&mut self, credential: PlatformCredential) -> Result<()> {
-        self.platforms.insert(credential.platform.clone(), credential);
+        self.platforms
+            .insert(credential.platform.clone(), credential);
         Ok(())
     }
 
@@ -100,7 +101,10 @@ impl ActivationOrchestrator {
     }
 
     /// Process a batch of activation messages
-    pub fn process_batch(&mut self, messages: Vec<ActivationMessage>) -> Result<Vec<ActivationResult>> {
+    pub fn process_batch(
+        &mut self,
+        messages: Vec<ActivationMessage>,
+    ) -> Result<Vec<ActivationResult>> {
         let mut results = Vec::new();
 
         for message in messages {
@@ -214,7 +218,12 @@ impl SegmentActivationManager {
         segment_name: String,
         platforms: &[Platform],
     ) -> Result<Vec<ActivationMessage>> {
-        Self::activate_segment(customers, segment_name, platforms, ActivationEvent::SegmentRemoval)
+        Self::activate_segment(
+            customers,
+            segment_name,
+            platforms,
+            ActivationEvent::SegmentRemoval,
+        )
     }
 
     /// Update customer attributes across platforms
@@ -253,7 +262,7 @@ impl WebhookManager {
     pub fn register_trigger(&mut self, trigger: WebhookTrigger) -> Result<()> {
         self.triggers
             .entry(trigger.event_type.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(trigger);
 
         Ok(())
@@ -309,7 +318,11 @@ mod tests {
         let mut queue = ActivationQueue::new(3);
         let customer = create_test_customer();
 
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
         assert!(queue.push(msg).unwrap());
         assert_eq!(queue.size(), 1);
         assert!(!queue.is_full());
@@ -320,9 +333,21 @@ mod tests {
         let mut queue = ActivationQueue::new(2);
         let customer = create_test_customer();
 
-        let msg1 = ActivationMessage::new(customer.clone(), ActivationEvent::SegmentAssignment, Platform::Braze);
-        let msg2 = ActivationMessage::new(customer.clone(), ActivationEvent::SegmentAssignment, Platform::Braze);
-        let msg3 = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg1 = ActivationMessage::new(
+            customer.clone(),
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
+        let msg2 = ActivationMessage::new(
+            customer.clone(),
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
+        let msg3 = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
 
         queue.push(msg1).unwrap();
         queue.push(msg2).unwrap();
@@ -336,7 +361,11 @@ mod tests {
         let mut queue = ActivationQueue::new(3);
         let customer = create_test_customer();
 
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
         queue.push(msg).unwrap();
 
         let flushed = queue.flush().unwrap();
@@ -361,7 +390,11 @@ mod tests {
         orch.register_platform(cred).unwrap();
 
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
 
         let results = orch.process_batch(vec![msg]).unwrap();
         assert_eq!(results.len(), 1);
@@ -374,7 +407,11 @@ mod tests {
         orch.register_platform(cred).unwrap();
 
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
 
         orch.process_batch(vec![msg]).unwrap();
         let stats = orch.get_stats().unwrap();
@@ -404,9 +441,12 @@ mod tests {
         let customers = vec![create_test_customer()];
         let platforms = vec![Platform::Braze];
 
-        let messages =
-            SegmentActivationManager::deactivate_segment(&customers, "Champions".to_string(), &platforms)
-                .unwrap();
+        let messages = SegmentActivationManager::deactivate_segment(
+            &customers,
+            "Champions".to_string(),
+            &platforms,
+        )
+        .unwrap();
 
         assert_eq!(messages.len(), 1);
         assert_eq!(messages[0].event_type, ActivationEvent::SegmentRemoval);
@@ -471,7 +511,11 @@ mod tests {
         orch.register_platform(cred).unwrap();
 
         let customer = create_test_customer();
-        let msg = ActivationMessage::new(customer, ActivationEvent::SegmentAssignment, Platform::Braze);
+        let msg = ActivationMessage::new(
+            customer,
+            ActivationEvent::SegmentAssignment,
+            Platform::Braze,
+        );
 
         orch.process_batch(vec![msg]).unwrap();
         let success_rate = orch.success_rate().unwrap();

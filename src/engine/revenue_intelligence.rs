@@ -38,7 +38,10 @@ impl SegmentRevenueCalculator {
         let member_count = member_revenues.len();
         let revenue_per_member = total_revenue / member_count as f64;
 
-        let max_revenue = member_revenues.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+        let max_revenue = member_revenues
+            .iter()
+            .cloned()
+            .fold(f64::NEG_INFINITY, f64::max);
         let top_contribution = if total_revenue > 0.0 {
             max_revenue / total_revenue
         } else {
@@ -100,7 +103,7 @@ impl ROICalculator {
         segment_id: &str,
         revenue: f64,
         investment: f64,
-        clv: f64,
+        _clv: f64,
     ) -> Result<SegmentROI> {
         let roi = if investment > 0.0 {
             ((revenue - investment) / investment) * 100.0
@@ -280,11 +283,7 @@ impl RevenueAlerter {
         if values.len() < 2 {
             return 0.0;
         }
-        let variance = values
-            .iter()
-            .map(|v| (v - mean).powi(2))
-            .sum::<f64>()
-            / values.len() as f64;
+        let variance = values.iter().map(|v| (v - mean).powi(2)).sum::<f64>() / values.len() as f64;
         variance.sqrt()
     }
 }
@@ -1036,11 +1035,8 @@ impl HealthScorer {
         let eff = efficiency.clamp(0.0, 1.0);
         let concentration = (1.0 - concentration_risk).clamp(0.0, 1.0);
 
-        let overall = (profitability * 0.35
-            + growth * 0.25
-            + eff * 0.25
-            + concentration * 0.15)
-            * 100.0;
+        let overall =
+            (profitability * 0.35 + growth * 0.25 + eff * 0.25 + concentration * 0.15) * 100.0;
 
         let status = if overall >= 80.0 {
             "excellent".to_string()
@@ -1071,7 +1067,9 @@ mod tests {
     #[test]
     fn test_segment_revenue_calculation() {
         let revenues = vec![1000.0, 2000.0, 1500.0, 3000.0];
-        let result = SegmentRevenueCalculator::calculate_segment_revenue("seg1", "Segment 1", &revenues).unwrap();
+        let result =
+            SegmentRevenueCalculator::calculate_segment_revenue("seg1", "Segment 1", &revenues)
+                .unwrap();
         assert_eq!(result.total_revenue, 7500.0);
         assert_eq!(result.revenue_per_member, 1875.0);
     }
@@ -1089,14 +1087,17 @@ mod tests {
         let products = vec![("Pro".to_string(), 5000.0), ("Basic".to_string(), 2000.0)];
         let cohorts = vec![("2024-Q1".to_string(), 3500.0)];
 
-        let attribution = AttributionEngine::calculate_attribution("seg1", &channels, &products, &cohorts).unwrap();
+        let attribution =
+            AttributionEngine::calculate_attribution("seg1", &channels, &products, &cohorts)
+                .unwrap();
         assert_eq!(attribution.channel_attributions.len(), 2);
     }
 
     #[test]
     fn test_revenue_alert_detection() {
         let history = vec![1000.0, 1050.0, 1100.0, 1150.0];
-        let alert = RevenueAlerter::detect_revenue_anomaly("seg1", 2000.0, 1100.0, &history).unwrap();
+        let alert =
+            RevenueAlerter::detect_revenue_anomaly("seg1", 2000.0, 1100.0, &history).unwrap();
         assert!(alert.is_some());
     }
 
@@ -1121,7 +1122,8 @@ mod tests {
 
     #[test]
     fn test_upsell_opportunities() {
-        let opp = UpsellIdentifier::identify_opportunities("seg1", "Premium", 0.3, 1000, 500.0).unwrap();
+        let opp =
+            UpsellIdentifier::identify_opportunities("seg1", "Premium", 0.3, 1000, 500.0).unwrap();
         assert_eq!(opp.addressable_market, 700);
     }
 
@@ -1134,7 +1136,8 @@ mod tests {
 
     #[test]
     fn test_efficiency_scoring() {
-        let eff = EfficiencyScorer::calculate_efficiency("seg1", 50000.0, 10000.0, 1000.0, 100).unwrap();
+        let eff =
+            EfficiencyScorer::calculate_efficiency("seg1", 50000.0, 10000.0, 1000.0, 100).unwrap();
         assert!(eff.efficiency_score >= 0.0);
     }
 
@@ -1147,7 +1150,9 @@ mod tests {
 
     #[test]
     fn test_cohort_revenue() {
-        let cohort = CohortRevenueAnalyzer::analyze_cohort_revenue("2024-Q1", 6, 950, 5000.0, 1000, 15000.0).unwrap();
+        let cohort =
+            CohortRevenueAnalyzer::analyze_cohort_revenue("2024-Q1", 6, 950, 5000.0, 1000, 15000.0)
+                .unwrap();
         assert!(cohort.retention_rate < 1.0);
     }
 
@@ -1160,7 +1165,8 @@ mod tests {
 
     #[test]
     fn test_growth_rate_calculation() {
-        let growth = GrowthRateCalculator::calculate_growth("seg1", 10000.0, 12000.0, 9000.0).unwrap();
+        let growth =
+            GrowthRateCalculator::calculate_growth("seg1", 10000.0, 12000.0, 9000.0).unwrap();
         assert_eq!(growth.percentage_growth, 20.0);
     }
 

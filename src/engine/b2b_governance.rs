@@ -65,7 +65,7 @@ impl HierarchyBuilder {
         }
 
         let mut node_updates: Vec<(usize, String)> = Vec::new();
-        for (idx, node) in nodes.iter().enumerate() {
+        for node in nodes.iter() {
             if let Some(parent_id) = &node.parent_id {
                 if let Some(parent_idx) = nodes.iter().position(|n| &n.company_id == parent_id) {
                     node_updates.push((parent_idx, node.company_id.clone()));
@@ -714,7 +714,7 @@ impl PolicyEnforcer {
         rules: &[String],
         enforcement_level: &str,
     ) -> Result<SegmentationPolicy> {
-        let compliance = if rules.len() > 0 {
+        let compliance = if !rules.is_empty() {
             (1.0 - (1.0 / (rules.len() as f64 + 1.0))).min(0.95)
         } else {
             1.0
@@ -881,7 +881,7 @@ impl ChangeTracker {
             .map(|c| c.timestamp.clone())
             .unwrap_or_default();
 
-        let velocity = if changes.len() > 0 {
+        let velocity = if !changes.is_empty() {
             changes.len() as f64 / 30.0
         } else {
             0.0
@@ -964,7 +964,11 @@ mod tests {
     fn test_account_hierarchy() {
         let companies = vec![
             ("corp1".to_string(), "Acme Corp".to_string(), None),
-            ("sub1".to_string(), "Acme USA".to_string(), Some("corp1".to_string())),
+            (
+                "sub1".to_string(),
+                "Acme USA".to_string(),
+                Some("corp1".to_string()),
+            ),
         ];
         let hierarchy = HierarchyBuilder::build_hierarchy(&companies).unwrap();
         assert_eq!(hierarchy.total_nodes, 2);
@@ -973,8 +977,18 @@ mod tests {
     #[test]
     fn test_buying_committee() {
         let members = vec![
-            ("m1".to_string(), "CEO".to_string(), "Exec".to_string(), 0.95),
-            ("m2".to_string(), "CFO".to_string(), "Finance".to_string(), 0.85),
+            (
+                "m1".to_string(),
+                "CEO".to_string(),
+                "Exec".to_string(),
+                0.95,
+            ),
+            (
+                "m2".to_string(),
+                "CFO".to_string(),
+                "Finance".to_string(),
+                0.85,
+            ),
         ];
         let committee = CommitteeDetector::identify_committee("acc1", &members).unwrap();
         assert_eq!(committee.committee_size, 2);
@@ -1000,8 +1014,16 @@ mod tests {
     fn test_data_lineage() {
         let sources = vec!["raw_db".to_string()];
         let transforms = vec![
-            ("raw_db".to_string(), "cleaned".to_string(), "deduplicate".to_string()),
-            ("cleaned".to_string(), "final".to_string(), "aggregate".to_string()),
+            (
+                "raw_db".to_string(),
+                "cleaned".to_string(),
+                "deduplicate".to_string(),
+            ),
+            (
+                "cleaned".to_string(),
+                "final".to_string(),
+                "aggregate".to_string(),
+            ),
         ];
         let lineage = LineageTracker::track_lineage("ds1", &sources, &transforms).unwrap();
         assert_eq!(lineage.transformation_steps, 2);
@@ -1009,7 +1031,12 @@ mod tests {
 
     #[test]
     fn test_ownership_assignment() {
-        let primary = ("o1".to_string(), "John".to_string(), "Manager".to_string(), "john@company.com".to_string());
+        let primary = (
+            "o1".to_string(),
+            "John".to_string(),
+            "Manager".to_string(),
+            "john@company.com".to_string(),
+        );
         let secondary = vec![];
         let ownership = OwnershipManager::assign_ownership("seg1", primary, &secondary).unwrap();
         assert_eq!(ownership.primary_owner.owner_id, "o1");
@@ -1020,15 +1047,30 @@ mod tests {
         let mut changes = HashMap::new();
         changes.insert("threshold".to_string(), 0.1);
         let constraints = vec!["budget_limited".to_string()];
-        let scenario = AdvancedSimulator::simulate_with_constraints("Test", &changes, &constraints).unwrap();
+        let scenario =
+            AdvancedSimulator::simulate_with_constraints("Test", &changes, &constraints).unwrap();
         assert!(scenario.feasibility_score > 0.0);
     }
 
     #[test]
     fn test_segment_genealogy() {
         let versions = vec![
-            (1, "2026-01-01".to_string(), "alice".to_string(), None, "created".to_string(), 1000),
-            (2, "2026-02-01".to_string(), "bob".to_string(), Some("seg_old".to_string()), "split".to_string(), 500),
+            (
+                1,
+                "2026-01-01".to_string(),
+                "alice".to_string(),
+                None,
+                "created".to_string(),
+                1000,
+            ),
+            (
+                2,
+                "2026-02-01".to_string(),
+                "bob".to_string(),
+                Some("seg_old".to_string()),
+                "split".to_string(),
+                500,
+            ),
         ];
         let genealogy = Genealogist::track_genealogy("seg1", &versions).unwrap();
         assert_eq!(genealogy.current_version, 2);
@@ -1038,15 +1080,28 @@ mod tests {
     fn test_feature_provenance() {
         let sources = vec![("crm".to_string(), "2026-07-16".to_string())];
         let transforms = vec!["normalize".to_string()];
-        let provenance = ProvenanceTracker::track_feature_provenance("feature1", &sources, &transforms).unwrap();
+        let provenance =
+            ProvenanceTracker::track_feature_provenance("feature1", &sources, &transforms).unwrap();
         assert!(provenance.reliability_score > 0.8);
     }
 
     #[test]
     fn test_audit_trail() {
         let events = vec![
-            ("2026-07-01".to_string(), "create".to_string(), "alice".to_string(), "initial".to_string(), "new_segment".to_string()),
-            ("2026-07-02".to_string(), "modify".to_string(), "bob".to_string(), "rules updated".to_string(), "members changed".to_string()),
+            (
+                "2026-07-01".to_string(),
+                "create".to_string(),
+                "alice".to_string(),
+                "initial".to_string(),
+                "new_segment".to_string(),
+            ),
+            (
+                "2026-07-02".to_string(),
+                "modify".to_string(),
+                "bob".to_string(),
+                "rules updated".to_string(),
+                "members changed".to_string(),
+            ),
         ];
         let trail = AuditTracker::track_decision("seg1", &events).unwrap();
         assert_eq!(trail.total_changes, 2);
@@ -1061,7 +1116,11 @@ mod tests {
 
     #[test]
     fn test_access_control() {
-        let grants = vec![("user1".to_string(), "segment".to_string(), "read".to_string())];
+        let grants = vec![(
+            "user1".to_string(),
+            "segment".to_string(),
+            "read".to_string(),
+        )];
         let acl = AccessController::manage_access("seg1", &grants).unwrap();
         assert_eq!(acl.grants.len(), 1);
     }
@@ -1074,9 +1133,14 @@ mod tests {
 
     #[test]
     fn test_change_tracking() {
-        let changes = vec![
-            ("rule_update".to_string(), "2026-07-01".to_string(), "alice".to_string(), "old_rule".to_string(), "new_rule".to_string(), 50),
-        ];
+        let changes = vec![(
+            "rule_update".to_string(),
+            "2026-07-01".to_string(),
+            "alice".to_string(),
+            "old_rule".to_string(),
+            "new_rule".to_string(),
+            50,
+        )];
         let changelog = ChangeTracker::track_changes("seg1", &changes).unwrap();
         assert_eq!(changelog.total_modifications, 1);
     }
@@ -1091,8 +1155,16 @@ mod tests {
     fn test_hierarchy_subsidiaries() {
         let companies = vec![
             ("parent".to_string(), "Parent Corp".to_string(), None),
-            ("child1".to_string(), "Child 1".to_string(), Some("parent".to_string())),
-            ("child2".to_string(), "Child 2".to_string(), Some("parent".to_string())),
+            (
+                "child1".to_string(),
+                "Child 1".to_string(),
+                Some("parent".to_string()),
+            ),
+            (
+                "child2".to_string(),
+                "Child 2".to_string(),
+                Some("parent".to_string()),
+            ),
         ];
         let hierarchy = HierarchyBuilder::build_hierarchy(&companies).unwrap();
         assert!(hierarchy.subsidiaries_count >= 2);

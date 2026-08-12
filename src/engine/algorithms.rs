@@ -1,7 +1,7 @@
 //! Multiple clustering algorithms implementation
 
 use crate::Result;
-use ndarray::{Array1, Array2, s};
+use ndarray::{s, Array1, Array2};
 
 /// Distance metric types
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
@@ -14,19 +14,13 @@ pub enum DistanceMetric {
 impl DistanceMetric {
     pub fn distance(&self, a: &Array1<f64>, b: &Array1<f64>) -> f64 {
         match self {
-            DistanceMetric::Euclidean => {
-                a.iter()
-                    .zip(b.iter())
-                    .map(|(x, y)| (x - y).powi(2))
-                    .sum::<f64>()
-                    .sqrt()
-            }
-            DistanceMetric::Manhattan => {
-                a.iter()
-                    .zip(b.iter())
-                    .map(|(x, y)| (x - y).abs())
-                    .sum()
-            }
+            DistanceMetric::Euclidean => a
+                .iter()
+                .zip(b.iter())
+                .map(|(x, y)| (x - y).powi(2))
+                .sum::<f64>()
+                .sqrt(),
+            DistanceMetric::Manhattan => a.iter().zip(b.iter()).map(|(x, y)| (x - y).abs()).sum(),
             DistanceMetric::Cosine => {
                 let dot_product: f64 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
                 let norm_a: f64 = a.iter().map(|x| x * x).sum::<f64>().sqrt();
@@ -73,8 +67,7 @@ impl KMeans {
         if n_samples == 0 || self.n_clusters == 0 || self.n_clusters > n_samples {
             return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
                 "Invalid cluster count".to_string(),
-            )
-            .into());
+            ));
         }
 
         // Initialize centers randomly
@@ -120,7 +113,9 @@ impl KMeans {
 
             for i in 0..self.n_clusters {
                 if counts[i] > 0 {
-                    new_centers.slice_mut(s![i, ..]).mapv_inplace(|x| x / counts[i] as f64);
+                    new_centers
+                        .slice_mut(s![i, ..])
+                        .mapv_inplace(|x| x / counts[i] as f64);
                 } else {
                     // Empty cluster: reinitialize with random data point
                     let idx = (i * 7) % n_samples;
@@ -134,7 +129,10 @@ impl KMeans {
             let mut inertia = 0.0;
             for (i, sample) in data.outer_iter().enumerate() {
                 let center = new_centers.slice(s![labels[i], ..]);
-                inertia += self.metric.distance(&sample.to_owned(), &center.to_owned()).powi(2);
+                inertia += self
+                    .metric
+                    .distance(&sample.to_owned(), &center.to_owned())
+                    .powi(2);
             }
 
             if (prev_inertia - inertia).abs() < 1e-6 {
@@ -291,14 +289,14 @@ impl HierarchicalClustering {
         if n_samples == 0 || self.n_clusters == 0 || self.n_clusters > n_samples {
             return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
                 "Invalid cluster count".to_string(),
-            )
-            .into());
+            ));
         }
 
         // Simple agglomerative clustering
         let mut clusters: Vec<Vec<usize>> = (0..n_samples).map(|i| vec![i]).collect();
-        let mut cluster_data: Vec<Array1<f64>> =
-            (0..n_samples).map(|i| data.slice(s![i, ..]).to_owned()).collect();
+        let mut cluster_data: Vec<Array1<f64>> = (0..n_samples)
+            .map(|i| data.slice(s![i, ..]).to_owned())
+            .collect();
 
         while clusters.len() > self.n_clusters {
             let mut min_dist = f64::MAX;
@@ -387,8 +385,7 @@ impl GaussianMixture {
         if n_samples == 0 || self.n_components == 0 || self.n_components > n_samples {
             return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
                 "Invalid component count".to_string(),
-            )
-            .into());
+            ));
         }
 
         // Simple implementation: soft k-means
@@ -416,10 +413,7 @@ impl GaussianMixture {
                     distances.push(dist);
                 }
 
-                let sum: f64 = distances
-                    .iter()
-                    .map(|d| (-(d * d)).exp())
-                    .sum();
+                let sum: f64 = distances.iter().map(|d| (-(d * d)).exp()).sum();
 
                 for (j, prob) in probabilities[i].iter_mut().enumerate() {
                     *prob = if sum > 0.0 {
@@ -488,11 +482,8 @@ mod tests {
 
     #[test]
     fn test_kmeans_clustering() {
-        let data = Array2::from_shape_vec(
-            (4, 2),
-            vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0],
-        )
-        .unwrap();
+        let data =
+            Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0]).unwrap();
 
         let kmeans = KMeans::new(2);
         let result = kmeans.fit(&data).unwrap();
@@ -519,11 +510,8 @@ mod tests {
 
     #[test]
     fn test_hierarchical_clustering() {
-        let data = Array2::from_shape_vec(
-            (4, 2),
-            vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0],
-        )
-        .unwrap();
+        let data =
+            Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0]).unwrap();
 
         let hc = HierarchicalClustering::new(2);
         let result = hc.fit(&data).unwrap();
@@ -536,9 +524,7 @@ mod tests {
     fn test_gmm_clustering() {
         let data = Array2::from_shape_vec(
             (6, 2),
-            vec![
-                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0,
-            ],
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
         )
         .unwrap();
 

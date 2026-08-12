@@ -40,6 +40,11 @@ impl SQLDialect {
         }
     }
 
+    // Named `from_str` (not the `std::str::FromStr` trait) to match the
+    // simple `Option`-returning style already used throughout this codebase
+    // and its existing call sites/tests; implementing the real trait would
+    // be a larger, purely cosmetic churn for no behavior change.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s.to_lowercase().as_str() {
             "ansi" => Some(SQLDialect::Ansi),
@@ -102,10 +107,26 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Champions".to_string(),
             description: "Best customers with highest value and engagement".to_string(),
             patterns: vec![
-                RFMPattern { recency: 5, frequency: 5, monetary: 5 },
-                RFMPattern { recency: 5, frequency: 5, monetary: 4 },
-                RFMPattern { recency: 5, frequency: 4, monetary: 5 },
-                RFMPattern { recency: 4, frequency: 5, monetary: 5 },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 5,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 5,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 4,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 5,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -117,9 +138,21 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "VIP".to_string(),
             description: "Premium customers with exceptional value metrics".to_string(),
             patterns: vec![
-                RFMPattern { recency: 5, frequency: 3, monetary: 5 },
-                RFMPattern { recency: 5, frequency: 2, monetary: 5 },
-                RFMPattern { recency: 5, frequency: 1, monetary: 5 },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 3,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 2,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 1,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -131,9 +164,21 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Loyal Customers".to_string(),
             description: "Consistent, valuable customers with steady engagement".to_string(),
             patterns: vec![
-                RFMPattern { recency: 4, frequency: 4, monetary: 4 },
-                RFMPattern { recency: 4, frequency: 4, monetary: 5 },
-                RFMPattern { recency: 4, frequency: 5, monetary: 4 },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 4,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 4,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 5,
+                    monetary: 4,
+                },
             ],
         },
     );
@@ -145,8 +190,16 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Potential Loyalists".to_string(),
             description: "Recent high-value customers with growth potential".to_string(),
             patterns: vec![
-                RFMPattern { recency: 5, frequency: 3, monetary: 4 },
-                RFMPattern { recency: 4, frequency: 3, monetary: 5 },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 3,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 3,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -158,10 +211,26 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Cannot Lose Them".to_string(),
             description: "High-value customers at risk of churn - critical retention".to_string(),
             patterns: vec![
-                RFMPattern { recency: 3, frequency: 4, monetary: 5 },
-                RFMPattern { recency: 3, frequency: 5, monetary: 5 },
-                RFMPattern { recency: 2, frequency: 4, monetary: 5 },
-                RFMPattern { recency: 2, frequency: 5, monetary: 5 },
+                RFMPattern {
+                    recency: 3,
+                    frequency: 4,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 3,
+                    frequency: 5,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 4,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 5,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -173,12 +242,36 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "At Risk".to_string(),
             description: "Once valuable customers showing declining engagement".to_string(),
             patterns: vec![
-                RFMPattern { recency: 2, frequency: 2, monetary: 4 },
-                RFMPattern { recency: 2, frequency: 2, monetary: 5 },
-                RFMPattern { recency: 2, frequency: 3, monetary: 4 },
-                RFMPattern { recency: 2, frequency: 3, monetary: 5 },
-                RFMPattern { recency: 3, frequency: 2, monetary: 4 },
-                RFMPattern { recency: 3, frequency: 2, monetary: 5 },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 2,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 2,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 3,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 3,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 3,
+                    frequency: 2,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 3,
+                    frequency: 2,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -190,10 +283,26 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "About to Sleep".to_string(),
             description: "Low engagement customers at risk of dormancy".to_string(),
             patterns: vec![
-                RFMPattern { recency: 2, frequency: 2, monetary: 3 },
-                RFMPattern { recency: 2, frequency: 2, monetary: 2 },
-                RFMPattern { recency: 2, frequency: 3, monetary: 2 },
-                RFMPattern { recency: 2, frequency: 3, monetary: 3 },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 2,
+                    monetary: 3,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 2,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 3,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 2,
+                    frequency: 3,
+                    monetary: 3,
+                },
             ],
         },
     );
@@ -205,10 +314,26 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "New Customers".to_string(),
             description: "Recently acquired customers with high potential".to_string(),
             patterns: vec![
-                RFMPattern { recency: 5, frequency: 4, monetary: 3 },
-                RFMPattern { recency: 5, frequency: 4, monetary: 2 },
-                RFMPattern { recency: 5, frequency: 3, monetary: 3 },
-                RFMPattern { recency: 5, frequency: 3, monetary: 2 },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 4,
+                    monetary: 3,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 4,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 3,
+                    monetary: 3,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 3,
+                    monetary: 2,
+                },
             ],
         },
     );
@@ -220,8 +345,16 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Promising".to_string(),
             description: "New customers showing early signs of high value".to_string(),
             patterns: vec![
-                RFMPattern { recency: 5, frequency: 2, monetary: 3 },
-                RFMPattern { recency: 5, frequency: 2, monetary: 4 },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 2,
+                    monetary: 3,
+                },
+                RFMPattern {
+                    recency: 5,
+                    frequency: 2,
+                    monetary: 4,
+                },
             ],
         },
     );
@@ -233,9 +366,21 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Need Attention".to_string(),
             description: "Moderate-value customers requiring engagement".to_string(),
             patterns: vec![
-                RFMPattern { recency: 4, frequency: 2, monetary: 2 },
-                RFMPattern { recency: 4, frequency: 3, monetary: 2 },
-                RFMPattern { recency: 4, frequency: 3, monetary: 3 },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 2,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 3,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 4,
+                    frequency: 3,
+                    monetary: 3,
+                },
             ],
         },
     );
@@ -247,9 +392,21 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Lost".to_string(),
             description: "Inactive customers unlikely to return".to_string(),
             patterns: vec![
-                RFMPattern { recency: 1, frequency: 1, monetary: 1 },
-                RFMPattern { recency: 1, frequency: 1, monetary: 2 },
-                RFMPattern { recency: 1, frequency: 2, monetary: 1 },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 1,
+                    monetary: 1,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 1,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 2,
+                    monetary: 1,
+                },
             ],
         },
     );
@@ -261,10 +418,26 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "At Risk - Sleeping".to_string(),
             description: "Previously inactive customers showing re-engagement".to_string(),
             patterns: vec![
-                RFMPattern { recency: 1, frequency: 3, monetary: 4 },
-                RFMPattern { recency: 1, frequency: 3, monetary: 5 },
-                RFMPattern { recency: 1, frequency: 4, monetary: 4 },
-                RFMPattern { recency: 1, frequency: 4, monetary: 5 },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 3,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 3,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 4,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 4,
+                    monetary: 5,
+                },
             ],
         },
     );
@@ -276,16 +449,82 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
             name: "Hibernating".to_string(),
             description: "Inactive but potentially recoverable customers".to_string(),
             patterns: vec![
-                RFMPattern { recency: 1, frequency: 2, monetary: 3 },
-                RFMPattern { recency: 1, frequency: 2, monetary: 4 },
-                RFMPattern { recency: 1, frequency: 2, monetary: 5 },
-                RFMPattern { recency: 1, frequency: 3, monetary: 2 },
-                RFMPattern { recency: 1, frequency: 3, monetary: 3 },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 2,
+                    monetary: 3,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 2,
+                    monetary: 4,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 2,
+                    monetary: 5,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 3,
+                    monetary: 2,
+                },
+                RFMPattern {
+                    recency: 1,
+                    frequency: 3,
+                    monetary: 3,
+                },
             ],
         },
     );
 
     segments
+}
+
+/// Validate a SQL identifier (table name or column name) against a strict
+/// allow-list before it's interpolated into a query string. Table names may
+/// be schema-qualified with dots (e.g. `project.dataset.customers` for
+/// BigQuery); each dot-separated segment must otherwise be alphanumeric or
+/// underscore, and may not start with a digit. This closes a SQL-injection
+/// vector: `table_name` and the column names in `ColumnMapping` previously
+/// flowed straight into `format!()`-built SQL with no validation, so a
+/// caller-supplied value like `customers; DROP TABLE users; --` would have
+/// been emitted verbatim.
+fn validate_identifier(identifier: &str) -> Result<()> {
+    if identifier.is_empty() {
+        return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+            "SQL identifier cannot be empty".to_string(),
+        ));
+    }
+
+    for part in identifier.split('.') {
+        let mut chars = part.chars();
+        let valid = match chars.next() {
+            Some(c) if c.is_ascii_alphabetic() || c == '_' => {
+                chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+            }
+            _ => false,
+        };
+        if !valid {
+            return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+                format!(
+                    "Invalid SQL identifier '{}': identifiers must be alphanumeric/underscore \
+                 (optionally dot-qualified) and cannot start with a digit",
+                    identifier
+                ),
+            ));
+        }
+    }
+
+    Ok(())
+}
+
+fn validate_column_mapping(mapping: &ColumnMapping) -> Result<()> {
+    validate_identifier(&mapping.customer_id)?;
+    validate_identifier(&mapping.recency_score)?;
+    validate_identifier(&mapping.frequency_score)?;
+    validate_identifier(&mapping.monetary_score)?;
+    Ok(())
 }
 
 /// SQL query builder
@@ -299,12 +538,17 @@ impl SQLExporter {
         table_name: &str,
         column_mapping: &ColumnMapping,
     ) -> Result<String> {
+        validate_identifier(table_name)?;
+        validate_column_mapping(column_mapping)?;
+
         let definitions = get_segment_definitions();
 
         let segment = definitions.get(segment_name).ok_or_else(|| {
-            let msg = format!("Segment '{}' not found. Available segments: {:?}",
+            let msg = format!(
+                "Segment '{}' not found. Available segments: {:?}",
                 segment_name,
-                definitions.keys().collect::<Vec<_>>());
+                definitions.keys().collect::<Vec<_>>()
+            );
             crate::ClusterClusterAudienceKitError::InvalidConfig(msg)
         })?;
 
@@ -329,7 +573,7 @@ impl SQLExporter {
         let definitions = get_segment_definitions();
         let mut queries = HashMap::new();
 
-        for (key, _) in &definitions {
+        for key in definitions.keys() {
             let query = Self::export_segment(key, dialect, table_name, column_mapping)?;
             queries.insert(key.clone(), query);
         }
@@ -339,7 +583,16 @@ impl SQLExporter {
 
     /// Get list of supported dialects
     pub fn supported_dialects() -> Vec<&'static str> {
-        vec!["ansi", "snowflake", "bigquery", "redshift", "postgresql", "oracle", "sqlserver", "mysql"]
+        vec![
+            "ansi",
+            "snowflake",
+            "bigquery",
+            "redshift",
+            "postgresql",
+            "oracle",
+            "sqlserver",
+            "mysql",
+        ]
     }
 
     /// Get segment pattern details
@@ -351,7 +604,11 @@ impl SQLExporter {
             crate::ClusterClusterAudienceKitError::InvalidConfig(msg)
         })?;
 
-        Ok(segment.patterns.iter().map(|p| (p.recency, p.frequency, p.monetary)).collect())
+        Ok(segment
+            .patterns
+            .iter()
+            .map(|p| (p.recency, p.frequency, p.monetary))
+            .collect())
     }
 
     fn build_where_clause(
@@ -368,7 +625,12 @@ impl SQLExporter {
                 // Standard: Use OR conditions
                 let conditions: Vec<String> = patterns
                     .iter()
-                    .map(|p| format!("({} = {} AND {} = {} AND {} = {})", r, p.recency, f, p.frequency, m, p.monetary))
+                    .map(|p| {
+                        format!(
+                            "({} = {} AND {} = {} AND {} = {})",
+                            r, p.recency, f, p.frequency, m, p.monetary
+                        )
+                    })
                     .collect();
                 conditions.join(" OR ")
             }
@@ -381,7 +643,10 @@ impl SQLExporter {
                 let conditions: Vec<String> = patterns
                     .iter()
                     .map(|p| {
-                        format!("({}={} AND {}={} AND {}={})", r, p.recency, f, p.frequency, m, p.monetary)
+                        format!(
+                            "({}={} AND {}={} AND {}={})",
+                            r, p.recency, f, p.frequency, m, p.monetary
+                        )
                     })
                     .collect();
                 conditions.join(" OR ")
@@ -394,7 +659,12 @@ impl SQLExporter {
                 // MySQL: Simple OR conditions
                 let conditions: Vec<String> = patterns
                     .iter()
-                    .map(|p| format!("({} = {} AND {} = {} AND {} = {})", r, p.recency, f, p.frequency, m, p.monetary))
+                    .map(|p| {
+                        format!(
+                            "({} = {} AND {} = {} AND {} = {})",
+                            r, p.recency, f, p.frequency, m, p.monetary
+                        )
+                    })
                     .collect();
                 conditions.join(" OR ")
             }
@@ -408,19 +678,34 @@ impl SQLExporter {
 
         let mut grouped: HashMap<(u32, u32), Vec<u32>> = HashMap::new();
         for p in patterns {
-            grouped.entry((p.recency, p.frequency)).or_insert_with(Vec::new).push(p.monetary);
+            grouped
+                .entry((p.recency, p.frequency))
+                .or_default()
+                .push(p.monetary);
         }
 
         let conditions: Vec<String> = grouped
             .iter()
             .map(|((rec, freq), monetaries)| {
                 if monetaries.len() > 1 {
-                    format!("({} = {} AND {} = {} AND {} IN ({}))",
-                        r, rec, f, freq, m,
-                        monetaries.iter().map(|x| x.to_string()).collect::<Vec<_>>().join(", "))
+                    format!(
+                        "({} = {} AND {} = {} AND {} IN ({}))",
+                        r,
+                        rec,
+                        f,
+                        freq,
+                        m,
+                        monetaries
+                            .iter()
+                            .map(|x| x.to_string())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    )
                 } else {
-                    format!("({} = {} AND {} = {} AND {} = {})",
-                        r, rec, f, freq, m, monetaries[0])
+                    format!(
+                        "({} = {} AND {} = {} AND {} = {})",
+                        r, rec, f, freq, m, monetaries[0]
+                    )
                 }
             })
             .collect();
@@ -440,13 +725,13 @@ impl SQLExporter {
                 "SELECT {} AS customer_id, '{}' AS segment",
                 customer_id_col, segment_name
             ),
-            _ => format!(
-                "SELECT {}, '{}' AS segment",
-                customer_id_col, segment_name
-            ),
+            _ => format!("SELECT {}, '{}' AS segment", customer_id_col, segment_name),
         };
 
-        format!("{}\nFROM {}\nWHERE {};", select_part, table_name, where_clause)
+        format!(
+            "{}\nFROM {}\nWHERE {};",
+            select_part, table_name, where_clause
+        )
     }
 }
 
@@ -464,21 +749,26 @@ mod tests {
 
     #[test]
     fn test_sql_dialect_from_str() {
-        assert_eq!(SQLDialect::from_str("snowflake"), Some(SQLDialect::Snowflake));
+        assert_eq!(
+            SQLDialect::from_str("snowflake"),
+            Some(SQLDialect::Snowflake)
+        );
         assert_eq!(SQLDialect::from_str("bigquery"), Some(SQLDialect::BigQuery));
-        assert_eq!(SQLDialect::from_str("postgresql"), Some(SQLDialect::PostgreSQL));
-        assert_eq!(SQLDialect::from_str("postgres"), Some(SQLDialect::PostgreSQL));
+        assert_eq!(
+            SQLDialect::from_str("postgresql"),
+            Some(SQLDialect::PostgreSQL)
+        );
+        assert_eq!(
+            SQLDialect::from_str("postgres"),
+            Some(SQLDialect::PostgreSQL)
+        );
     }
 
     #[test]
     fn test_export_champions_ansi() {
         let mapping = ColumnMapping::default();
-        let sql = SQLExporter::export_segment(
-            "Champions",
-            SQLDialect::Ansi,
-            "customers",
-            &mapping,
-        ).unwrap();
+        let sql = SQLExporter::export_segment("Champions", SQLDialect::Ansi, "customers", &mapping)
+            .unwrap();
 
         assert!(sql.contains("Champions"));
         assert!(sql.contains("FROM customers"));
@@ -490,12 +780,9 @@ mod tests {
     #[test]
     fn test_export_champions_snowflake() {
         let mapping = ColumnMapping::default();
-        let sql = SQLExporter::export_segment(
-            "Champions",
-            SQLDialect::Snowflake,
-            "customers",
-            &mapping,
-        ).unwrap();
+        let sql =
+            SQLExporter::export_segment("Champions", SQLDialect::Snowflake, "customers", &mapping)
+                .unwrap();
 
         assert!(sql.contains("Champions"));
         assert!(sql.contains("customers"));
@@ -509,7 +796,8 @@ mod tests {
             SQLDialect::BigQuery,
             "project.dataset.customers",
             &mapping,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(sql.contains("Champions"));
         assert!(sql.contains("project.dataset.customers"));
@@ -518,12 +806,8 @@ mod tests {
     #[test]
     fn test_export_lost_segment() {
         let mapping = ColumnMapping::default();
-        let sql = SQLExporter::export_segment(
-            "Lost",
-            SQLDialect::Ansi,
-            "customers",
-            &mapping,
-        ).unwrap();
+        let sql =
+            SQLExporter::export_segment("Lost", SQLDialect::Ansi, "customers", &mapping).unwrap();
 
         assert!(sql.contains("Lost"));
         assert!(sql.contains("recency_score = 1"));
@@ -542,12 +826,8 @@ mod tests {
             SQLDialect::SqlServer,
             SQLDialect::MySQL,
         ] {
-            let sql = SQLExporter::export_segment(
-                "Champions",
-                *dialect,
-                "customers",
-                &mapping,
-            ).expect(&format!("Failed to generate SQL for {:?}", dialect));
+            let sql = SQLExporter::export_segment("Champions", *dialect, "customers", &mapping)
+                .unwrap_or_else(|_| panic!("Failed to generate SQL for {:?}", dialect));
 
             assert!(!sql.is_empty());
             assert!(sql.contains("Champions"));
@@ -568,7 +848,8 @@ mod tests {
             SQLDialect::Ansi,
             "customer_segments",
             &mapping,
-        ).unwrap();
+        )
+        .unwrap();
 
         assert!(sql.contains("cust_id"));
         assert!(sql.contains("r_score"));
@@ -586,11 +867,8 @@ mod tests {
     #[test]
     fn test_export_all_segments() {
         let mapping = ColumnMapping::default();
-        let queries = SQLExporter::export_all_segments(
-            SQLDialect::Snowflake,
-            "customers",
-            &mapping,
-        ).unwrap();
+        let queries =
+            SQLExporter::export_all_segments(SQLDialect::Snowflake, "customers", &mapping).unwrap();
 
         assert_eq!(queries.len(), 13);
         assert!(queries.contains_key("Champions"));
@@ -598,14 +876,55 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_segment() {
+    fn test_rejects_sql_injection_in_table_name() {
         let mapping = ColumnMapping::default();
         let result = SQLExporter::export_segment(
-            "InvalidSegment",
+            "Champions",
             SQLDialect::Ansi,
-            "customers",
+            "customers; DROP TABLE users; --",
             &mapping,
         );
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_rejects_sql_injection_in_column_mapping() {
+        let mapping = ColumnMapping {
+            customer_id: "customer_id".to_string(),
+            recency_score: "r_score' OR '1'='1".to_string(),
+            frequency_score: "frequency_score".to_string(),
+            monetary_score: "monetary_score".to_string(),
+        };
+        let result =
+            SQLExporter::export_segment("Champions", SQLDialect::Ansi, "customers", &mapping);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_accepts_schema_qualified_table_name() {
+        // BigQuery-style dot-qualified table names must still work.
+        let mapping = ColumnMapping::default();
+        let result = SQLExporter::export_segment(
+            "Champions",
+            SQLDialect::BigQuery,
+            "project.dataset.customers",
+            &mapping,
+        );
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_rejects_empty_table_name() {
+        let mapping = ColumnMapping::default();
+        let result = SQLExporter::export_segment("Champions", SQLDialect::Ansi, "", &mapping);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_invalid_segment() {
+        let mapping = ColumnMapping::default();
+        let result =
+            SQLExporter::export_segment("InvalidSegment", SQLDialect::Ansi, "customers", &mapping);
 
         assert!(result.is_err());
     }

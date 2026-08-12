@@ -316,4 +316,4 @@ exporter.export(metrics)
 
 ---
 
-Need help? See `DASHBOARD_SHORTCUTS.md` or check individual package documentation.
+Need help? Check individual package documentation.

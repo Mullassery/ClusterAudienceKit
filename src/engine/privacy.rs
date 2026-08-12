@@ -6,8 +6,8 @@ use std::collections::HashMap;
 /// Differential privacy mechanism
 #[derive(Clone, Debug, Copy, Eq, PartialEq)]
 pub enum DPMechanism {
-    Laplace,   // Laplace mechanism for counts/sums
-    Gaussian,  // Gaussian mechanism for range queries
+    Laplace,     // Laplace mechanism for counts/sums
+    Gaussian,    // Gaussian mechanism for range queries
     Exponential, // Exponential mechanism for selection
 }
 
@@ -96,12 +96,12 @@ impl DifferentialPrivacy {
         let scale = sensitivity / epsilon;
         // Simplified: use uniform random in place of exponential for deterministic testing
         let u: f64 = 0.5; // In practice, sample uniform(0,1)
-        let noise = if u < 0.5 {
-            scale * (2.0 * u as f64).ln()
+
+        if u < 0.5 {
+            scale * (2.0 * u).ln()
         } else {
-            -scale * (2.0 * (1.0 - u as f64)).ln()
-        };
-        noise
+            -scale * (2.0 * (1.0 - u)).ln()
+        }
     }
 
     /// Generate Gaussian noise for range queries
@@ -112,11 +112,7 @@ impl DifferentialPrivacy {
     }
 
     /// Add Laplace mechanism noise to counts
-    pub fn add_laplace_noise(
-        data: &[f64],
-        epsilon: f64,
-        sensitivity: f64,
-    ) -> Result<Vec<f64>> {
+    pub fn add_laplace_noise(data: &[f64], epsilon: f64, sensitivity: f64) -> Result<Vec<f64>> {
         let mut noisy = Vec::new();
 
         for value in data {
@@ -190,7 +186,7 @@ impl KAnonymity {
             anonymized,
             generalized_rows: data.len() - suppressed,
             suppressed_rows: suppressed,
-            information_loss: if data.len() > 0 {
+            information_loss: if !data.is_empty() {
                 (suppressed as f64 / data.len() as f64) * 100.0
             } else {
                 0.0
@@ -216,7 +212,7 @@ impl KAnonymity {
             for qi in quasi_identifiers {
                 key.push(row.get(qi).cloned().unwrap_or_default());
             }
-            groups.entry(key).or_insert_with(Vec::new).push(row.clone());
+            groups.entry(key).or_default().push(row.clone());
         }
 
         // Keep only groups with size >= k
@@ -231,10 +227,7 @@ impl KAnonymity {
     }
 
     /// Generalize values to intervals
-    pub fn generalize_numeric(
-        data: &[f64],
-        intervals: usize,
-    ) -> Result<Vec<usize>> {
+    pub fn generalize_numeric(data: &[f64], intervals: usize) -> Result<Vec<usize>> {
         if data.is_empty() {
             return Ok(vec![]);
         }
@@ -303,6 +296,12 @@ pub struct PrivacyAuditResult {
     pub dp_budget_sufficient: bool,
     pub issues: Vec<String>,
     pub recommendations: Vec<String>,
+}
+
+impl Default for PrivacyAuditResult {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PrivacyAuditResult {
@@ -422,7 +421,7 @@ mod tests {
         let generalized = vec![0, 1, 2];
 
         let loss = KAnonymity::calculate_information_loss(&original, &generalized, 3);
-        assert!(loss >= 0.0 && loss <= 1.0);
+        assert!((0.0..=1.0).contains(&loss));
     }
 
     #[test]

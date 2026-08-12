@@ -245,10 +245,7 @@ pub struct ActivationEngine;
 
 impl ActivationEngine {
     /// Format customer record for platform-specific requirements
-    pub fn format_for_platform(
-        customer: &CustomerRecord,
-        platform: &Platform,
-    ) -> Result<String> {
+    pub fn format_for_platform(customer: &CustomerRecord, platform: &Platform) -> Result<String> {
         let mut formatted = format!("customer_id:{}", customer.customer_id);
 
         match platform {
@@ -322,10 +319,7 @@ impl ActivationEngine {
     }
 
     /// Validate customer record has required fields for platform
-    pub fn validate_for_platform(
-        customer: &CustomerRecord,
-        platform: &Platform,
-    ) -> Result<bool> {
+    pub fn validate_for_platform(customer: &CustomerRecord, platform: &Platform) -> Result<bool> {
         match platform {
             Platform::Braze => Ok(customer.email.is_some() || customer.external_id.is_some()),
             Platform::Iterable => Ok(customer.email.is_some()),
@@ -393,7 +387,9 @@ impl ActivationEngine {
             Platform::Iterable => "https://api.iterable.com/api/users/bulkUpdate".to_string(),
             Platform::Klaviyo => "https://a.klaviyo.com/api/v1/person".to_string(),
             Platform::Segment => "https://api.segment.com/v1/batch".to_string(),
-            Platform::Salesforce => "https://instance.salesforce.com/services/data/v57.0/sobjects/Contact".to_string(),
+            Platform::Salesforce => {
+                "https://instance.salesforce.com/services/data/v57.0/sobjects/Contact".to_string()
+            }
             Platform::HubSpot => "https://api.hubapi.com/crm/v3/objects/contacts".to_string(),
             Platform::RudderStack => "https://api.rudderstack.com/v1/identify".to_string(),
             Platform::Custom => "https://example.com/activate".to_string(),
@@ -408,7 +404,9 @@ impl ActivationEngine {
         for msg in messages {
             let key = format!(
                 "{}:{}:{:?}",
-                msg.customer.customer_id, msg.platform.as_str(), msg.event_type
+                msg.customer.customer_id,
+                msg.platform.as_str(),
+                msg.event_type
             );
 
             if !seen.contains(&key) {
@@ -480,7 +478,8 @@ mod tests {
     #[test]
     fn test_format_for_klaviyo() {
         let customer = create_test_customer();
-        let formatted = ActivationEngine::format_for_platform(&customer, &Platform::Klaviyo).unwrap();
+        let formatted =
+            ActivationEngine::format_for_platform(&customer, &Platform::Klaviyo).unwrap();
 
         assert!(formatted.contains("customer_id:cust_123"));
         assert!(formatted.contains("email:test@example.com"));
@@ -558,7 +557,7 @@ mod tests {
 
     #[test]
     fn test_deduplicate_messages() {
-        let mut customer1 = create_test_customer();
+        let customer1 = create_test_customer();
         let mut customer2 = create_test_customer();
         customer2.customer_id = "cust_456".to_string();
 
@@ -581,9 +580,11 @@ mod tests {
 
     #[test]
     fn test_webhook_trigger_creation() {
-        let webhook =
-            WebhookTrigger::new("https://example.com/webhook".to_string(), ActivationEvent::SegmentAssignment)
-                .with_header("Authorization".to_string(), "Bearer token".to_string());
+        let webhook = WebhookTrigger::new(
+            "https://example.com/webhook".to_string(),
+            ActivationEvent::SegmentAssignment,
+        )
+        .with_header("Authorization".to_string(), "Bearer token".to_string());
 
         assert_eq!(webhook.url, "https://example.com/webhook");
         assert!(webhook.active);

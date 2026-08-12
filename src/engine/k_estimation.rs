@@ -1,8 +1,8 @@
 //! Automatic K estimation for optimal cluster count
 
+use crate::engine::algorithms::{DistanceMetric, KMeans};
 use crate::Result;
-use ndarray::{Array1, Array2, s};
-use crate::engine::algorithms::{KMeans, DistanceMetric};
+use ndarray::{s, Array1, Array2};
 
 /// K estimation result
 #[derive(Clone, Debug)]
@@ -88,7 +88,8 @@ impl GapStatistic {
             let mut within_cluster_dispersion = 0.0;
             for (i, sample) in data.outer_iter().enumerate() {
                 let cluster_center = result.centers.slice(s![result.labels[i], ..]);
-                let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &cluster_center.to_owned());
+                let dist = DistanceMetric::Euclidean
+                    .distance(&sample.to_owned(), &cluster_center.to_owned());
                 within_cluster_dispersion += dist;
             }
 
@@ -114,7 +115,7 @@ impl GapStatistic {
 
         let confidence = if !gaps.is_empty() {
             let max_gap = gaps.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
-            (max_gap / 10.0).min(1.0).max(0.0)
+            (max_gap / 10.0).clamp(0.0, 1.0)
         } else {
             0.0
         };
@@ -176,7 +177,10 @@ impl SilhouetteEstimation {
             .map(|(k, _)| *k)
             .unwrap_or(k_min);
 
-        let max_score = scores.iter().map(|(_, s)| *s).fold(f64::NEG_INFINITY, f64::max);
+        let max_score = scores
+            .iter()
+            .map(|(_, s)| *s)
+            .fold(f64::NEG_INFINITY, f64::max);
         let confidence = max_score;
 
         Ok(KEstimationResult {
@@ -204,7 +208,8 @@ impl SilhouetteEstimation {
 
             for (j, other_sample) in data.outer_iter().enumerate() {
                 if labels[j] == cluster_id && i != j {
-                    let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &other_sample.to_owned());
+                    let dist = DistanceMetric::Euclidean
+                        .distance(&sample.to_owned(), &other_sample.to_owned());
                     intra_sum += dist;
                     intra_count += 1;
                 }
@@ -230,7 +235,8 @@ impl SilhouetteEstimation {
 
                 for (j, other_sample) in data.outer_iter().enumerate() {
                     if labels[j] == c {
-                        let dist = DistanceMetric::Euclidean.distance(&sample.to_owned(), &other_sample.to_owned());
+                        let dist = DistanceMetric::Euclidean
+                            .distance(&sample.to_owned(), &other_sample.to_owned());
                         inter_sum += dist;
                         inter_count += 1;
                     }
@@ -305,8 +311,8 @@ mod tests {
         let data = Array2::from_shape_vec(
             (10, 2),
             vec![
-                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5,
-                10.5, 11.0, 11.0, 11.5, 11.5,
+                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5, 10.5,
+                11.0, 11.0, 11.5, 11.5,
             ],
         )
         .unwrap();
@@ -321,8 +327,8 @@ mod tests {
         let data = Array2::from_shape_vec(
             (10, 2),
             vec![
-                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5,
-                10.5, 11.0, 11.0, 11.5, 11.5,
+                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5, 10.5,
+                11.0, 11.0, 11.5, 11.5,
             ],
         )
         .unwrap();
@@ -337,8 +343,8 @@ mod tests {
         let data = Array2::from_shape_vec(
             (10, 2),
             vec![
-                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5,
-                10.5, 11.0, 11.0, 11.5, 11.5,
+                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5, 10.5,
+                11.0, 11.0, 11.5, 11.5,
             ],
         )
         .unwrap();
@@ -349,11 +355,15 @@ mod tests {
 
     #[test]
     fn test_silhouette_score() {
-        let data = Array2::from_shape_vec((6, 2), vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0]).unwrap();
+        let data = Array2::from_shape_vec(
+            (6, 2),
+            vec![0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0],
+        )
+        .unwrap();
         let labels = vec![0, 0, 0, 1, 1, 1];
 
         let score = SilhouetteEstimation::calculate_silhouette_score(&data, &labels).unwrap();
-        assert!(score >= -1.0 && score <= 1.0);
+        assert!((-1.0..=1.0).contains(&score));
     }
 
     #[test]
@@ -361,8 +371,8 @@ mod tests {
         let data = Array2::from_shape_vec(
             (10, 2),
             vec![
-                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5,
-                10.5, 11.0, 11.0, 11.5, 11.5,
+                0.0, 0.0, 0.5, 0.5, 1.0, 1.0, 5.0, 5.0, 5.5, 5.5, 6.0, 6.0, 10.0, 10.0, 10.5, 10.5,
+                11.0, 11.0, 11.5, 11.5,
             ],
         )
         .unwrap();
@@ -374,7 +384,8 @@ mod tests {
 
     #[test]
     fn test_k_range_validation() {
-        let data = Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0]).unwrap();
+        let data =
+            Array2::from_shape_vec((4, 2), vec![0.0, 0.0, 1.0, 1.0, 5.0, 5.0, 6.0, 6.0]).unwrap();
 
         let result = ElbowMethod::estimate(&data, (1, 3)).unwrap();
         assert!(result.k >= 1 && result.k <= 3);

@@ -1,9 +1,10 @@
 //! RFM (Recency-Frequency-Monetary) calculation engine
 
 use crate::Result;
-use chrono::{DateTime, Utc};
 #[cfg(test)]
 use chrono::Duration;
+use chrono::{DateTime, Utc};
+use rayon::prelude::*;
 use std::collections::HashMap;
 
 /// Decay function for RFM weighting
@@ -27,8 +28,8 @@ impl std::fmt::Display for DecayFunction {
 /// Scoring method for RFM
 #[derive(Clone, Debug, Copy)]
 pub enum ScoringMethod {
-    Quintile,  // 1-5 scale
-    Decile,    // 1-10 scale
+    Quintile,   // 1-5 scale
+    Decile,     // 1-10 scale
     Percentile, // 0-100 scale
 }
 
@@ -79,10 +80,7 @@ impl RFMScore {
 }
 
 /// Calculate RFM scores from transaction data
-pub fn calculate_rfm(
-    transactions: Vec<Transaction>,
-    config: &RFMConfig,
-) -> Result<Vec<RFMScore>> {
+pub fn calculate_rfm(transactions: Vec<Transaction>, config: &RFMConfig) -> Result<Vec<RFMScore>> {
     if transactions.is_empty() {
         return Ok(vec![]);
     }
@@ -92,19 +90,21 @@ pub fn calculate_rfm(
     for tx in transactions {
         customer_data
             .entry(tx.customer_id.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(tx);
     }
 
     let reference_date = Utc::now();
-    let mut scores = Vec::new();
 
-    // Calculate RFM for each customer
-    for (customer_id, txs) in customer_data {
-        if let Ok(score) = calculate_customer_rfm(&customer_id, &txs, &reference_date, config) {
-            scores.push(score);
-        }
-    }
+    // Per-customer RFM computation is independent across customers, so for
+    // datasets with many distinct customers this is a straightforward
+    // rayon parallel map/filter over the grouped transaction lists.
+    let mut scores: Vec<RFMScore> = customer_data
+        .into_par_iter()
+        .filter_map(|(customer_id, txs)| {
+            calculate_customer_rfm(&customer_id, &txs, &reference_date, config).ok()
+        })
+        .collect();
 
     // Apply scoring
     apply_scoring(&mut scores, config.scoring_method)?;
@@ -143,7 +143,11 @@ fn calculate_customer_rfm(
     // Calculate recency in days
     let recency = if let Some(latest) = latest_date {
         let days_since = (*reference_date - latest).num_days() as f64;
-        apply_decay_function(days_since, config.decay_function, config.decay_half_life_days)
+        apply_decay_function(
+            days_since,
+            config.decay_function,
+            config.decay_half_life_days,
+        )
     } else {
         0.0
     };
@@ -165,7 +169,7 @@ fn apply_decay_function(days: f64, decay: DecayFunction, half_life: u32) -> f64 
         DecayFunction::Linear => {
             // Linear decay: higher recency (fewer days) = higher score
             let max_days = (half_life * 3) as f64;
-            ((max_days - days) / max_days).max(0.0).min(1.0)
+            ((max_days - days) / max_days).clamp(0.0, 1.0)
         }
         DecayFunction::Exponential => {
             // Exponential decay with half-life

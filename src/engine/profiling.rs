@@ -37,7 +37,7 @@ impl SegmentStatistics {
         let variance = values.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / values.len() as f64;
         let std_dev = variance.sqrt();
 
-        let median = if sorted.len() % 2 == 0 {
+        let median = if sorted.len().is_multiple_of(2) {
             (sorted[sorted.len() / 2 - 1] + sorted[sorted.len() / 2]) / 2.0
         } else {
             sorted[sorted.len() / 2]
@@ -69,10 +69,10 @@ pub struct FeatureImportance {
 /// Segment health indicator
 #[derive(Clone, Debug)]
 pub struct SegmentHealth {
-    pub stability: f64,        // 0-1 measure of cluster stability
-    pub cohesion: f64,         // 0-1 within-cluster tightness
-    pub separation: f64,       // 0-1 between-cluster distance
-    pub health_score: f64,     // 0-100 overall health
+    pub stability: f64,    // 0-1 measure of cluster stability
+    pub cohesion: f64,     // 0-1 within-cluster tightness
+    pub separation: f64,   // 0-1 between-cluster distance
+    pub health_score: f64, // 0-100 overall health
 }
 
 /// Complete segment profile with insights
@@ -105,7 +105,7 @@ impl ProfilingEngine {
         let mut feature_importance = Vec::new();
 
         // Collect feature statistics
-        for (feature_name, _) in features {
+        for feature_name in features.keys() {
             let name = feature_names
                 .and_then(|names| names.get(*feature_name))
                 .cloned()
@@ -114,7 +114,9 @@ impl ProfilingEngine {
             let values: Vec<f64> = members
                 .iter()
                 .filter_map(|&member_id| {
-                    features.get(&member_id).and_then(|v| v.get(*feature_name).copied())
+                    features
+                        .get(&member_id)
+                        .and_then(|v| v.get(*feature_name).copied())
                 })
                 .collect();
 
@@ -187,7 +189,10 @@ impl ProfilingEngine {
             if statistics.is_empty() {
                 "limited feature data".to_string()
             } else {
-                format!("mean score of {:.2}", statistics.values().next().map(|s| s.mean).unwrap_or(0.0))
+                format!(
+                    "mean score of {:.2}",
+                    statistics.values().next().map(|s| s.mean).unwrap_or(0.0)
+                )
             }
         )
     }
@@ -229,7 +234,13 @@ impl ProfilingEngine {
 
         let avg_cv: f64 = statistics
             .values()
-            .map(|s| if s.mean > 1e-10 { s.std_dev / s.mean } else { 0.0 })
+            .map(|s| {
+                if s.mean > 1e-10 {
+                    s.std_dev / s.mean
+                } else {
+                    0.0
+                }
+            })
             .sum::<f64>()
             / statistics.len() as f64;
 
@@ -237,7 +248,10 @@ impl ProfilingEngine {
     }
 
     /// Calculate actionability score
-    fn calculate_actionability(statistics: &HashMap<String, SegmentStatistics>, size: usize) -> f64 {
+    fn calculate_actionability(
+        statistics: &HashMap<String, SegmentStatistics>,
+        size: usize,
+    ) -> f64 {
         let size_factor = (size as f64).min(1000.0) / 1000.0;
 
         let variance_factor = statistics
@@ -270,8 +284,8 @@ impl ProfilingEngine {
 pub struct BusinessMetrics {
     pub segment_size_distribution: HashMap<usize, f64>, // segment_id -> percentage
     pub feature_importance_across_segments: HashMap<String, f64>, // feature -> avg importance
-    pub segment_diversity: f64, // 0-1 measure of segment heterogeneity
-    pub overall_health: f64,    // 0-100 health score
+    pub segment_diversity: f64,                         // 0-1 measure of segment heterogeneity
+    pub overall_health: f64,                            // 0-100 health score
 }
 
 impl BusinessMetrics {
@@ -299,9 +313,11 @@ impl BusinessMetrics {
             *importance /= profiles.len() as f64;
         }
 
-        let segment_diversity = profiles.iter().map(|p| p.actionability_score).sum::<f64>() / profiles.len() as f64;
+        let segment_diversity =
+            profiles.iter().map(|p| p.actionability_score).sum::<f64>() / profiles.len() as f64;
 
-        let overall_health = profiles.iter().map(|p| p.health.health_score).sum::<f64>() / profiles.len() as f64;
+        let overall_health =
+            profiles.iter().map(|p| p.health.health_score).sum::<f64>() / profiles.len() as f64;
 
         Self {
             segment_size_distribution,

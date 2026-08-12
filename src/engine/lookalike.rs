@@ -161,7 +161,9 @@ impl LookalikeGenerator {
 
         for candidate in candidate_customers {
             let similarity = match metric {
-                SimilarityMetric::Cosine => Self::cosine_similarity(&avg_seed_features, &candidate.features),
+                SimilarityMetric::Cosine => {
+                    Self::cosine_similarity(&avg_seed_features, &candidate.features)
+                }
                 SimilarityMetric::Euclidean => {
                     let max_dist = 100.0; // Normalize
                     Self::euclidean_to_similarity(
@@ -194,8 +196,8 @@ impl LookalikeGenerator {
         candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
         // Apply percentile threshold
-        let threshold_score = if similarities.len() > 0 {
-            let sorted: Vec<f64> = similarities.iter().copied().collect();
+        let threshold_score = if !similarities.is_empty() {
+            let sorted: Vec<f64> = similarities.to_vec();
             let idx = ((1.0 - percentile_threshold) * sorted.len() as f64) as usize;
             sorted.get(idx).copied().unwrap_or(0.0)
         } else {
@@ -213,7 +215,10 @@ impl LookalikeGenerator {
             .collect::<Vec<_>>();
 
         // Calculate metrics
-        let min_sim = lookalikes.iter().map(|(s, _)| *s).fold(f64::INFINITY, f64::min);
+        let min_sim = lookalikes
+            .iter()
+            .map(|(s, _)| *s)
+            .fold(f64::INFINITY, f64::min);
         let max_sim = lookalikes.iter().map(|(s, _)| *s).fold(0.0, f64::max);
         let avg_sim = if !lookalikes.is_empty() {
             lookalikes.iter().map(|(s, _)| s).sum::<f64>() / lookalikes.len() as f64
@@ -221,7 +226,8 @@ impl LookalikeGenerator {
             0.0
         };
 
-        let avg_seed_ltv = seed_customers.iter().map(|c| c.ltv).sum::<f64>() / seed_customers.len() as f64;
+        let avg_seed_ltv =
+            seed_customers.iter().map(|c| c.ltv).sum::<f64>() / seed_customers.len() as f64;
         let predicted_ltv = avg_sim * avg_seed_ltv;
 
         Ok(LookalikeAudience {
@@ -266,7 +272,7 @@ impl LookalikeGenerator {
             for (key, val) in &seed.categorical_features {
                 feature_counts
                     .entry(key.clone())
-                    .or_insert_with(HashMap::new)
+                    .or_default()
                     .entry(val.clone())
                     .and_modify(|c| *c += 1)
                     .or_insert(1);
@@ -275,7 +281,10 @@ impl LookalikeGenerator {
 
         let mut result = HashMap::new();
         for (key, val_counts) in feature_counts {
-            let most_common = val_counts.into_iter().max_by_key(|(_, count)| *count).map(|(v, _)| v);
+            let most_common = val_counts
+                .into_iter()
+                .max_by_key(|(_, count)| *count)
+                .map(|(v, _)| v);
             if let Some(val) = most_common {
                 result.insert(key, val);
             }
@@ -295,22 +304,21 @@ impl LookalikeGenerator {
 
         for candidate in candidates {
             let similarity = match metric {
-                SimilarityMetric::Cosine => Self::cosine_similarity(&seed.features, &candidate.features),
-                SimilarityMetric::Euclidean => {
-                    Self::euclidean_to_similarity(
-                        Self::euclidean_distance(&seed.features, &candidate.features),
-                        100.0,
-                    )
+                SimilarityMetric::Cosine => {
+                    Self::cosine_similarity(&seed.features, &candidate.features)
                 }
-                SimilarityMetric::Manhattan => {
-                    Self::euclidean_to_similarity(
-                        Self::manhattan_distance(&seed.features, &candidate.features),
-                        200.0,
-                    )
-                }
-                SimilarityMetric::Jaccard => {
-                    Self::jaccard_similarity(&seed.categorical_features, &candidate.categorical_features)
-                }
+                SimilarityMetric::Euclidean => Self::euclidean_to_similarity(
+                    Self::euclidean_distance(&seed.features, &candidate.features),
+                    100.0,
+                ),
+                SimilarityMetric::Manhattan => Self::euclidean_to_similarity(
+                    Self::manhattan_distance(&seed.features, &candidate.features),
+                    200.0,
+                ),
+                SimilarityMetric::Jaccard => Self::jaccard_similarity(
+                    &seed.categorical_features,
+                    &candidate.categorical_features,
+                ),
             };
 
             scored.push((similarity, candidate.clone()));

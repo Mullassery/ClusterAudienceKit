@@ -6,13 +6,13 @@ use std::collections::HashMap;
 /// Customer lifecycle stage
 #[derive(Clone, Debug, Copy, Eq, PartialEq, Hash, PartialOrd, Ord)]
 pub enum LifecycleStage {
-    Prospect,       // 0: Pre-purchase, awareness stage
-    Onboarding,     // 1: New customer, first 30 days
-    Active,         // 2: Regular purchaser, healthy engagement
-    Mature,         // 3: Long-term customer, stable behavior
-    AtRisk,         // 4: Declining engagement, needs attention
-    Dormant,        // 5: Inactive for extended period
-    Churned,        // 6: Inactive, likely lost
+    Prospect,   // 0: Pre-purchase, awareness stage
+    Onboarding, // 1: New customer, first 30 days
+    Active,     // 2: Regular purchaser, healthy engagement
+    Mature,     // 3: Long-term customer, stable behavior
+    AtRisk,     // 4: Declining engagement, needs attention
+    Dormant,    // 5: Inactive for extended period
+    Churned,    // 6: Inactive, likely lost
 }
 
 impl LifecycleStage {
@@ -44,9 +44,9 @@ impl LifecycleStage {
 /// Customer journey event
 #[derive(Clone, Debug)]
 pub struct JourneyEvent {
-    pub timestamp: i64,           // Unix timestamp
-    pub event_type: String,       // "purchase", "login", "signup", "abandoned_cart", etc.
-    pub value: f64,               // Transaction amount, if applicable
+    pub timestamp: i64,                    // Unix timestamp
+    pub event_type: String,                // "purchase", "login", "signup", "abandoned_cart", etc.
+    pub value: f64,                        // Transaction amount, if applicable
     pub metadata: HashMap<String, String>, // Custom event data
 }
 
@@ -56,16 +56,16 @@ pub struct LifecycleProfile {
     pub customer_id: String,
     pub current_stage: LifecycleStage,
     pub previous_stage: Option<LifecycleStage>,
-    pub stage_confidence: f64,                    // 0-1
+    pub stage_confidence: f64, // 0-1
     pub days_in_current_stage: i32,
     pub total_purchase_count: usize,
     pub total_value: f64,
     pub avg_order_value: f64,
-    pub purchase_frequency: f64,                 // Purchases per year
+    pub purchase_frequency: f64, // Purchases per year
     pub days_since_first_purchase: i32,
     pub days_since_last_purchase: i32,
-    pub retention_score: f64,                    // 0-1
-    pub expansion_potential: f64,                // 0-1 likelihood to increase spend
+    pub retention_score: f64,     // 0-1
+    pub expansion_potential: f64, // 0-1 likelihood to increase spend
 }
 
 /// Stage transition probability
@@ -73,7 +73,7 @@ pub struct LifecycleProfile {
 pub struct StageTransition {
     pub from_stage: LifecycleStage,
     pub to_stage: LifecycleStage,
-    pub probability: f64,                        // 0-1
+    pub probability: f64, // 0-1
     pub avg_time_in_days: i32,
     pub sample_count: usize,
 }
@@ -167,8 +167,7 @@ impl LifecycleTracker {
             HashMap::new();
         let mut transition_counts: HashMap<(LifecycleStage, LifecycleStage), usize> =
             HashMap::new();
-        let mut transition_times: HashMap<(LifecycleStage, LifecycleStage), i32> =
-            HashMap::new();
+        let mut transition_times: HashMap<(LifecycleStage, LifecycleStage), i32> = HashMap::new();
 
         for (_customer_id, events) in customer_journeys {
             let mut prev_stage: Option<LifecycleStage> = None;
@@ -299,18 +298,14 @@ impl LifecycleTracker {
                 "Incentivized return offer",
                 "Survey for feedback",
             ],
-            LifecycleStage::Churned => vec![
-                "Final win-back attempt",
-                "Exit survey",
-                "Sunset workflow",
-            ],
+            LifecycleStage::Churned => {
+                vec!["Final win-back attempt", "Exit survey", "Sunset workflow"]
+            }
         }
     }
 
     /// Calculate segment composition by lifecycle stage
-    pub fn stage_distribution(
-        profiles: &[LifecycleProfile],
-    ) -> Result<HashMap<String, f64>> {
+    pub fn stage_distribution(profiles: &[LifecycleProfile]) -> Result<HashMap<String, f64>> {
         let mut distribution = HashMap::new();
 
         if profiles.is_empty() {
@@ -445,23 +440,21 @@ mod tests {
 
     #[test]
     fn test_vip_at_risk() {
-        let profiles = vec![
-            LifecycleProfile {
-                customer_id: "c1".to_string(),
-                current_stage: LifecycleStage::AtRisk,
-                previous_stage: None,
-                stage_confidence: 0.8,
-                days_in_current_stage: 100,
-                total_purchase_count: 50,
-                total_value: 5000.0,
-                avg_order_value: 100.0,
-                purchase_frequency: 30.0,
-                days_since_first_purchase: 365,
-                days_since_last_purchase: 100,
-                retention_score: 0.3,
-                expansion_potential: 0.1,
-            },
-        ];
+        let profiles = vec![LifecycleProfile {
+            customer_id: "c1".to_string(),
+            current_stage: LifecycleStage::AtRisk,
+            previous_stage: None,
+            stage_confidence: 0.8,
+            days_in_current_stage: 100,
+            total_purchase_count: 50,
+            total_value: 5000.0,
+            avg_order_value: 100.0,
+            purchase_frequency: 30.0,
+            days_since_first_purchase: 365,
+            days_since_last_purchase: 100,
+            retention_score: 0.3,
+            expansion_potential: 0.1,
+        }];
 
         let vip_at_risk = LifecycleTracker::identify_vip_at_risk(&profiles, 1000.0);
         assert_eq!(vip_at_risk.len(), 1);

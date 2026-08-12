@@ -23,7 +23,6 @@
 
 pub mod engine;
 pub mod python;
-pub mod streaming;
 pub mod utils;
 
 pub use engine::{

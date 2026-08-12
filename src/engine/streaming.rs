@@ -1,7 +1,5 @@
 //! Real-time streaming segmentation engine
 
-use crate::engine::rfm::*;
-use crate::engine::segments::*;
 use crate::Result;
 use std::collections::HashMap;
 
@@ -25,7 +23,12 @@ pub struct StreamingEvent {
 }
 
 impl StreamingEvent {
-    pub fn new(customer_id: String, event_type: StreamEventType, value: f64, timestamp: i64) -> Self {
+    pub fn new(
+        customer_id: String,
+        event_type: StreamEventType,
+        value: f64,
+        timestamp: i64,
+    ) -> Self {
         Self {
             customer_id,
             event_type,
@@ -45,9 +48,9 @@ impl StreamingEvent {
 #[derive(Clone, Debug)]
 pub struct StreamingRFMState {
     pub customer_id: String,
-    pub recency: i64,           // Days since last event
-    pub frequency: usize,       // Total event count
-    pub monetary: f64,          // Total value
+    pub recency: i64,     // Days since last event
+    pub frequency: usize, // Total event count
+    pub monetary: f64,    // Total value
     pub last_event_timestamp: i64,
     pub event_count: usize,
     pub total_value: f64,
@@ -277,10 +280,7 @@ impl StreamingAggregator {
     }
 
     /// Detect high-value customers (exponential smoothing)
-    pub fn detect_high_value(
-        states: &[StreamingRFMState],
-        threshold: f64,
-    ) -> Result<Vec<String>> {
+    pub fn detect_high_value(states: &[StreamingRFMState], threshold: f64) -> Result<Vec<String>> {
         Ok(states
             .iter()
             .filter(|s| s.monetary > threshold)
@@ -303,7 +303,7 @@ impl StreamingAggregator {
     /// Calculate windowed statistics
     pub fn calculate_window_stats(
         events: &[StreamingEvent],
-        window_seconds: i64,
+        _window_seconds: i64,
     ) -> Result<HashMap<String, f64>> {
         let mut stats = HashMap::new();
 
@@ -319,7 +319,10 @@ impl StreamingAggregator {
         stats.insert("average_value".to_string(), total_value / event_count);
         stats.insert(
             "max_value".to_string(),
-            events.iter().map(|e| e.value).fold(f64::NEG_INFINITY, f64::max),
+            events
+                .iter()
+                .map(|e| e.value)
+                .fold(f64::NEG_INFINITY, f64::max),
         );
         stats.insert(
             "min_value".to_string(),
@@ -330,11 +333,7 @@ impl StreamingAggregator {
     }
 
     /// Apply exponential smoothing to metric
-    pub fn exponential_smoothing(
-        current_value: f64,
-        new_value: f64,
-        alpha: f64,
-    ) -> Result<f64> {
+    pub fn exponential_smoothing(current_value: f64, new_value: f64, alpha: f64) -> Result<f64> {
         Ok(alpha * new_value + (1.0 - alpha) * current_value)
     }
 }
@@ -358,7 +357,10 @@ impl StreamingSegmentationEngine {
     }
 
     /// Process single event
-    pub fn process_event(&mut self, event: StreamingEvent) -> Result<Option<StreamingSegmentUpdate>> {
+    pub fn process_event(
+        &mut self,
+        event: StreamingEvent,
+    ) -> Result<Option<StreamingSegmentUpdate>> {
         let pushed = self.buffer.push(event.clone())?;
 
         if !pushed {
@@ -398,7 +400,10 @@ impl StreamingSegmentationEngine {
     }
 
     /// Process batch of events
-    pub fn process_batch(&mut self, events: Vec<StreamingEvent>) -> Result<Vec<StreamingSegmentUpdate>> {
+    pub fn process_batch(
+        &mut self,
+        events: Vec<StreamingEvent>,
+    ) -> Result<Vec<StreamingSegmentUpdate>> {
         let mut updates = Vec::new();
 
         for event in events {
@@ -438,6 +443,12 @@ impl StreamingSegmentationEngine {
     /// Buffer size
     pub fn buffer_size(&self) -> usize {
         self.buffer.size()
+    }
+
+    /// The batching/windowing configuration this engine was constructed
+    /// with (batch size, flush timeout, aggregation window, decay factor).
+    pub fn config(&self) -> &StreamingConfig {
+        &self.config
     }
 
     /// Segment distribution
@@ -525,9 +536,24 @@ mod tests {
     #[test]
     fn test_aggregate_by_customer() {
         let events = vec![
-            StreamingEvent::new("cust_1".to_string(), StreamEventType::Purchase, 100.0, 1704067200),
-            StreamingEvent::new("cust_1".to_string(), StreamEventType::Purchase, 200.0, 1704067300),
-            StreamingEvent::new("cust_2".to_string(), StreamEventType::Purchase, 150.0, 1704067400),
+            StreamingEvent::new(
+                "cust_1".to_string(),
+                StreamEventType::Purchase,
+                100.0,
+                1704067200,
+            ),
+            StreamingEvent::new(
+                "cust_1".to_string(),
+                StreamEventType::Purchase,
+                200.0,
+                1704067300,
+            ),
+            StreamingEvent::new(
+                "cust_2".to_string(),
+                StreamEventType::Purchase,
+                150.0,
+                1704067400,
+            ),
         ];
 
         let aggregated = StreamingAggregator::aggregate_by_customer(&events).unwrap();
@@ -661,9 +687,24 @@ mod tests {
     #[test]
     fn test_streaming_window_stats() {
         let events = vec![
-            StreamingEvent::new("cust_1".to_string(), StreamEventType::Purchase, 100.0, 1704067200),
-            StreamingEvent::new("cust_1".to_string(), StreamEventType::Purchase, 200.0, 1704067200),
-            StreamingEvent::new("cust_1".to_string(), StreamEventType::Purchase, 50.0, 1704067200),
+            StreamingEvent::new(
+                "cust_1".to_string(),
+                StreamEventType::Purchase,
+                100.0,
+                1704067200,
+            ),
+            StreamingEvent::new(
+                "cust_1".to_string(),
+                StreamEventType::Purchase,
+                200.0,
+                1704067200,
+            ),
+            StreamingEvent::new(
+                "cust_1".to_string(),
+                StreamEventType::Purchase,
+                50.0,
+                1704067200,
+            ),
         ];
 
         let stats = StreamingAggregator::calculate_window_stats(&events, 3600).unwrap();

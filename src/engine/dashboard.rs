@@ -156,12 +156,7 @@ impl DashboardMetrics {
     }
 
     /// Create KPI
-    pub fn create_kpi(
-        name: String,
-        value: f64,
-        unit: String,
-        previous_value: Option<f64>,
-    ) -> KPI {
+    pub fn create_kpi(name: String, value: f64, unit: String, previous_value: Option<f64>) -> KPI {
         let (change_percent, trend) = match previous_value {
             Some(prev) if prev > 0.0 => {
                 let change = ((value - prev) / prev) * 100.0;
@@ -449,14 +444,8 @@ mod tests {
         segments.insert("Champions".to_string(), 100);
         segments.insert("Loyal".to_string(), 200);
 
-        let summary = DashboardMetrics::build_summary(
-            300,
-            &segments,
-            50000.0,
-            166.67,
-            0.85,
-        )
-        .unwrap();
+        let summary =
+            DashboardMetrics::build_summary(300, &segments, 50000.0, 166.67, 0.85).unwrap();
 
         assert_eq!(summary.total_customers, 300);
         assert_eq!(summary.total_segments, 2);
@@ -499,13 +488,7 @@ mod tests {
 
     #[test]
     fn test_streaming_metrics() {
-        let metrics = DashboardMetrics::create_streaming_metrics(
-            1000.5,
-            5000,
-            100,
-            500,
-            45.3,
-        );
+        let metrics = DashboardMetrics::create_streaming_metrics(1000.5, 5000, 100, 500, 45.3);
 
         assert_eq!(metrics.events_per_second, 1000.5);
         assert_eq!(metrics.customers_updated_today, 5000);
@@ -513,18 +496,9 @@ mod tests {
 
     #[test]
     fn test_segment_health_classification() {
-        assert_eq!(
-            DashboardMetrics::classify_segment_health(0.9),
-            "healthy"
-        );
-        assert_eq!(
-            DashboardMetrics::classify_segment_health(0.7),
-            "at_risk"
-        );
-        assert_eq!(
-            DashboardMetrics::classify_segment_health(0.3),
-            "declining"
-        );
+        assert_eq!(DashboardMetrics::classify_segment_health(0.9), "healthy");
+        assert_eq!(DashboardMetrics::classify_segment_health(0.7), "at_risk");
+        assert_eq!(DashboardMetrics::classify_segment_health(0.3), "declining");
     }
 
     #[test]
@@ -634,13 +608,7 @@ mod tests {
 
     #[test]
     fn test_metrics_point() {
-        let point = DashboardMetrics::calculate_metrics_point(
-            1704067200,
-            1000,
-            900,
-            0.1,
-            50000.0,
-        );
+        let point = DashboardMetrics::calculate_metrics_point(1704067200, 1000, 900, 0.1, 50000.0);
 
         assert_eq!(point.segment_size, 1000);
         assert_eq!(point.active_customers, 900);
@@ -653,10 +621,7 @@ mod tests {
             total_alerts: 5,
             critical_alerts: 1,
             high_alerts: 2,
-            features_with_drift: vec![
-                "recency".to_string(),
-                "frequency".to_string(),
-            ],
+            features_with_drift: vec!["recency".to_string(), "frequency".to_string()],
         };
 
         assert_eq!(summary.total_alerts, 5);

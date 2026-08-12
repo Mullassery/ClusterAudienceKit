@@ -1,9 +1,21 @@
 //! Clustering algorithms (KMeans, K-Prototypes)
+//!
+//! Several loops in this file index in lockstep across an `ndarray::Array2`
+//! row and one or more plain `Vec`s (e.g. `data.row(i)` alongside
+//! `labels[i]`/`counts[c]`). Clippy's `needless_range_loop` would rather
+//! these be `.iter().enumerate()`, but `Array2::row()`/`row_mut()` don't
+//! implement the plain iterator traits clippy's suggested rewrite needs, so
+//! the mechanical rewrite doesn't apply cleanly here. Given this is the
+//! numerically-sensitive clustering hot path with real test coverage
+//! pinned to its current behavior, this is silenced at the module level
+//! rather than risking a subtly-wrong manual rewrite under time pressure.
+#![allow(clippy::needless_range_loop)]
 
 use crate::{ClusterClusterAudienceKitError, Result};
 use ndarray::{Array1, Array2, Axis};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use rayon::prelude::*;
 
 /// Clustering method
 #[derive(Clone, Debug)]
@@ -35,7 +47,11 @@ fn squared_euclidean(a: &[f64], b: &[f64]) -> f64 {
 /// callers with a second, parallel feature set (e.g. K-Prototypes'
 /// categorical columns) need the indices to seed that feature set's initial
 /// centers from the *same* points, not an unrelated arbitrary index.
-fn kmeans_plus_plus_init(data: &Array2<f64>, k: usize, rng: &mut StdRng) -> (Array2<f64>, Vec<usize>) {
+fn kmeans_plus_plus_init(
+    data: &Array2<f64>,
+    k: usize,
+    rng: &mut StdRng,
+) -> (Array2<f64>, Vec<usize>) {
     let n = data.nrows();
     let dim = data.ncols();
     let mut centers = Array2::zeros((k, dim));
@@ -49,7 +65,10 @@ fn kmeans_plus_plus_init(data: &Array2<f64>, k: usize, rng: &mut StdRng) -> (Arr
     for c_idx in 1..k {
         let last_center = centers.row(c_idx - 1);
         for i in 0..n {
-            let d = squared_euclidean(data.row(i).as_slice().unwrap(), last_center.as_slice().unwrap());
+            let d = squared_euclidean(
+                data.row(i).as_slice().unwrap(),
+                last_center.as_slice().unwrap(),
+            );
             if d < min_dist_sq[i] {
                 min_dist_sq[i] = d;
             }
@@ -93,15 +112,24 @@ fn nearest_center(point: &[f64], centers: &Array2<f64>) -> (usize, f64) {
 
 /// Perform KMeans clustering using Lloyd's algorithm with k-means++
 /// initialization. Deterministic for a given `random_state`.
-pub fn kmeans(data: &Array2<f64>, n_clusters: usize, max_iter: usize, random_state: u64) -> Result<KMeansResult> {
+pub fn kmeans(
+    data: &Array2<f64>,
+    n_clusters: usize,
+    max_iter: usize,
+    random_state: u64,
+) -> Result<KMeansResult> {
     let n = data.nrows();
     let dim = data.ncols();
 
     if n_clusters == 0 {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig("n_clusters must be > 0".to_string()));
+        return Err(ClusterClusterAudienceKitError::InvalidConfig(
+            "n_clusters must be > 0".to_string(),
+        ));
     }
     if n == 0 {
-        return Err(ClusterClusterAudienceKitError::DataValidation("data has no rows".to_string()));
+        return Err(ClusterClusterAudienceKitError::DataValidation(
+            "data has no rows".to_string(),
+        ));
     }
     if n_clusters > n {
         return Err(ClusterClusterAudienceKitError::InvalidConfig(format!(
@@ -116,15 +144,18 @@ pub fn kmeans(data: &Array2<f64>, n_clusters: usize, max_iter: usize, random_sta
 
     for iter in 0..max_iter {
         n_iter = iter + 1;
-        let mut changed = false;
 
-        for i in 0..n {
-            let (cluster, _) = nearest_center(data.row(i).as_slice().unwrap(), &centers);
-            if labels[i] != cluster {
-                changed = true;
-            }
-            labels[i] = cluster;
-        }
+        // Nearest-center assignment is embarrassingly parallel: each point's
+        // label depends only on the (read-only, this iteration) centers, not
+        // on any other point's label. This is the dominant cost per
+        // iteration for large N, so it's the hot loop rayon-parallelizes.
+        let new_labels: Vec<usize> = (0..n)
+            .into_par_iter()
+            .map(|i| nearest_center(data.row(i).as_slice().unwrap(), &centers).0)
+            .collect();
+
+        let mut changed = new_labels != labels;
+        labels = new_labels;
 
         let mut new_centers = Array2::zeros((n_clusters, dim));
         let mut counts = vec![0usize; n_clusters];
@@ -143,8 +174,14 @@ pub fn kmeans(data: &Array2<f64>, n_clusters: usize, max_iter: usize, random_sta
                 // from its own assigned center, so it doesn't just vanish.
                 let farthest = (0..n)
                     .max_by(|&a, &b| {
-                        let da = squared_euclidean(data.row(a).as_slice().unwrap(), centers.row(labels[a]).as_slice().unwrap());
-                        let db = squared_euclidean(data.row(b).as_slice().unwrap(), centers.row(labels[b]).as_slice().unwrap());
+                        let da = squared_euclidean(
+                            data.row(a).as_slice().unwrap(),
+                            centers.row(labels[a]).as_slice().unwrap(),
+                        );
+                        let db = squared_euclidean(
+                            data.row(b).as_slice().unwrap(),
+                            centers.row(labels[b]).as_slice().unwrap(),
+                        );
                         da.partial_cmp(&db).unwrap()
                     })
                     .unwrap();
@@ -160,10 +197,20 @@ pub fn kmeans(data: &Array2<f64>, n_clusters: usize, max_iter: usize, random_sta
     }
 
     let inertia_value = (0..n)
-        .map(|i| squared_euclidean(data.row(i).as_slice().unwrap(), centers.row(labels[i]).as_slice().unwrap()))
+        .map(|i| {
+            squared_euclidean(
+                data.row(i).as_slice().unwrap(),
+                centers.row(labels[i]).as_slice().unwrap(),
+            )
+        })
         .sum();
 
-    Ok(KMeansResult { labels, centers, inertia: inertia_value, n_iter })
+    Ok(KMeansResult {
+        labels,
+        centers,
+        inertia: inertia_value,
+        n_iter,
+    })
 }
 
 /// Perform K-Prototypes clustering (mixed numeric/categorical data), per
@@ -179,10 +226,14 @@ pub fn kprototypes(
 ) -> Result<Vec<usize>> {
     let n = numeric_data.nrows();
     if n_clusters == 0 {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig("n_clusters must be > 0".to_string()));
+        return Err(ClusterClusterAudienceKitError::InvalidConfig(
+            "n_clusters must be > 0".to_string(),
+        ));
     }
     if n == 0 {
-        return Err(ClusterClusterAudienceKitError::DataValidation("data has no rows".to_string()));
+        return Err(ClusterClusterAudienceKitError::DataValidation(
+            "data has no rows".to_string(),
+        ));
     }
     if n_clusters > n {
         return Err(ClusterClusterAudienceKitError::InvalidConfig(format!(
@@ -201,7 +252,9 @@ pub fn kprototypes(
     // Huang's paper recommends the average standard deviation of the
     // numeric fields as a reasonable default scale.
     let gamma = {
-        let mean = numeric_data.mean_axis(Axis(0)).unwrap_or_else(|| Array1::zeros(numeric_data.ncols()));
+        let mean = numeric_data
+            .mean_axis(Axis(0))
+            .unwrap_or_else(|| Array1::zeros(numeric_data.ncols()));
         let variance: f64 = numeric_data
             .axis_iter(Axis(1))
             .zip(mean.iter())
@@ -212,9 +265,12 @@ pub fn kprototypes(
     };
 
     let mut rng = StdRng::seed_from_u64(random_state);
-    let (mut numeric_centers, chosen_indices) = kmeans_plus_plus_init(numeric_data, n_clusters, &mut rng);
+    let (mut numeric_centers, chosen_indices) =
+        kmeans_plus_plus_init(numeric_data, n_clusters, &mut rng);
     let n_cat_features = categorical_data.map(|c| c[0].len()).unwrap_or(0);
-    let mut cat_centers: Vec<Vec<usize>> = (0..n_clusters).map(|_| vec![0usize; n_cat_features]).collect();
+    let mut cat_centers: Vec<Vec<usize>> = (0..n_clusters)
+        .map(|_| vec![0usize; n_cat_features])
+        .collect();
     if let Some(cat) = categorical_data {
         // Seed categorical centers from the SAME points k-means++ chose for
         // the numeric centers, so each cluster's initial (numeric,
@@ -228,32 +284,40 @@ pub fn kprototypes(
     let mut labels = vec![0usize; n];
 
     for _ in 0..max_iter {
-        let mut changed = false;
-
-        for i in 0..n {
-            let mut best = 0;
-            let mut best_dist = f64::INFINITY;
-            for c in 0..n_clusters {
-                let numeric_dist = squared_euclidean(
-                    numeric_data.row(i).as_slice().unwrap(),
-                    numeric_centers.row(c).as_slice().unwrap(),
-                );
-                let cat_dist = categorical_data
-                    .map(|cat| {
-                        cat[i].iter().zip(cat_centers[c].iter()).filter(|(a, b)| a != b).count() as f64
-                    })
-                    .unwrap_or(0.0);
-                let total = numeric_dist + gamma * cat_dist;
-                if total < best_dist {
-                    best_dist = total;
-                    best = c;
+        // As in kmeans(), each point's nearest-cluster assignment only reads
+        // the current (fixed for this iteration) centers, so it's safe and
+        // profitable to compute all N assignments in parallel.
+        let new_labels: Vec<usize> = (0..n)
+            .into_par_iter()
+            .map(|i| {
+                let mut best = 0;
+                let mut best_dist = f64::INFINITY;
+                for c in 0..n_clusters {
+                    let numeric_dist = squared_euclidean(
+                        numeric_data.row(i).as_slice().unwrap(),
+                        numeric_centers.row(c).as_slice().unwrap(),
+                    );
+                    let cat_dist = categorical_data
+                        .map(|cat| {
+                            cat[i]
+                                .iter()
+                                .zip(cat_centers[c].iter())
+                                .filter(|(a, b)| a != b)
+                                .count() as f64
+                        })
+                        .unwrap_or(0.0);
+                    let total = numeric_dist + gamma * cat_dist;
+                    if total < best_dist {
+                        best_dist = total;
+                        best = c;
+                    }
                 }
-            }
-            if labels[i] != best {
-                changed = true;
-            }
-            labels[i] = best;
-        }
+                best
+            })
+            .collect();
+
+        let changed = new_labels != labels;
+        labels = new_labels;
 
         // Update numeric centers (mean) and categorical centers (mode).
         let dim = numeric_data.ncols();
@@ -286,7 +350,8 @@ pub fn kprototypes(
                     // final clustering — nondeterministic across runs of
                     // the same `random_state`, which showed up as a flaky
                     // test failure in CI before this fix.
-                    let mut freq: std::collections::BTreeMap<usize, usize> = std::collections::BTreeMap::new();
+                    let mut freq: std::collections::BTreeMap<usize, usize> =
+                        std::collections::BTreeMap::new();
                     for i in 0..n {
                         if labels[i] == c {
                             *freq.entry(cat[i][f]).or_insert(0) += 1;
@@ -322,7 +387,9 @@ pub fn assign_to_clusters(data: &Array2<f64>, centers: &Array2<f64>) -> Result<V
             centers.ncols()
         )));
     }
-    Ok((0..data.nrows()).map(|i| nearest_center(data.row(i).as_slice().unwrap(), centers).0).collect())
+    Ok((0..data.nrows())
+        .map(|i| nearest_center(data.row(i).as_slice().unwrap(), centers).0)
+        .collect())
 }
 
 #[cfg(test)]
@@ -342,9 +409,17 @@ mod tests {
     /// arbitrary, so we check partition structure, not label identity).
     fn three_blobs() -> Array2<f64> {
         array![
-            [1.0, 1.0], [1.2, 0.9], [0.8, 1.1], [1.1, 1.2],
-            [10.0, 10.0], [10.2, 9.9], [9.8, 10.1], [10.1, 10.2],
-            [1.0, 10.0], [1.2, 9.9], [0.8, 10.1],
+            [1.0, 1.0],
+            [1.2, 0.9],
+            [0.8, 1.1],
+            [1.1, 1.2],
+            [10.0, 10.0],
+            [10.2, 9.9],
+            [9.8, 10.1],
+            [10.1, 10.2],
+            [1.0, 10.0],
+            [1.2, 9.9],
+            [0.8, 10.1],
         ]
     }
 
@@ -366,7 +441,11 @@ mod tests {
 
         // Inertia should be small relative to the ~81-unit inter-cluster
         // gaps, since points are tightly clustered around their true centers.
-        assert!(result.inertia < 5.0, "inertia too high for tight blobs: {}", result.inertia);
+        assert!(
+            result.inertia < 5.0,
+            "inertia too high for tight blobs: {}",
+            result.inertia
+        );
     }
 
     #[test]
@@ -375,19 +454,33 @@ mod tests {
         // silhouette/davies-bouldin reference values (computed with
         // sklearn.metrics on this exact data/labels/centers).
         let data = array![
-            [1.0, 1.0], [1.5, 2.0], [1.2, 1.8],
-            [8.0, 8.0], [8.5, 8.2], [8.1, 7.9],
-            [1.0, 8.0], [1.3, 8.4],
+            [1.0, 1.0],
+            [1.5, 2.0],
+            [1.2, 1.8],
+            [8.0, 8.0],
+            [8.5, 8.2],
+            [8.1, 7.9],
+            [1.0, 8.0],
+            [1.3, 8.4],
         ];
-        let labels = vec![0, 0, 0, 1, 1, 1, 2, 2];
+        let labels = [0, 0, 0, 1, 1, 1, 2, 2];
         let centers = array![
             [1.2333333333333334, 1.5999999999999999],
             [8.200000000000001, 8.033333333333333],
             [1.15, 8.2],
         ];
-        let inertia_value: f64 =
-            (0..data.nrows()).map(|i| squared_euclidean(data.row(i).as_slice().unwrap(), centers.row(labels[i]).as_slice().unwrap())).sum();
-        assert!((inertia_value - 0.9983333333333331).abs() < 1e-9, "got {inertia_value}");
+        let inertia_value: f64 = (0..data.nrows())
+            .map(|i| {
+                squared_euclidean(
+                    data.row(i).as_slice().unwrap(),
+                    centers.row(labels[i]).as_slice().unwrap(),
+                )
+            })
+            .sum();
+        assert!(
+            (inertia_value - 0.9983333333333331).abs() < 1e-9,
+            "got {inertia_value}"
+        );
     }
 
     #[test]
@@ -435,7 +528,10 @@ mod tests {
         let first = kprototypes(&numeric, Some(&categorical), 2, 50, 1).unwrap();
         for _ in 0..50 {
             let repeat = kprototypes(&numeric, Some(&categorical), 2, 50, 1).unwrap();
-            assert_eq!(repeat, first, "kprototypes produced different output on a repeat run with the same random_state");
+            assert_eq!(
+                repeat, first,
+                "kprototypes produced different output on a repeat run with the same random_state"
+            );
         }
     }
 
@@ -454,10 +550,7 @@ mod tests {
         // regardless of category, so with a small enough gamma the
         // algorithm correctly converges by numeric identity instead, which
         // isn't a bug. This version removes that ambiguity.)
-        let numeric = array![
-            [1.0, 1.0], [1.0, 1.0],
-            [1.0, 1.0], [1.0, 1.0],
-        ];
+        let numeric = array![[1.0, 1.0], [1.0, 1.0], [1.0, 1.0], [1.0, 1.0],];
         let categorical = vec![vec![0], vec![0], vec![1], vec![1]];
         let labels = kprototypes(&numeric, Some(&categorical), 2, 50, 1).unwrap();
         assert_eq!(labels[0], labels[1]);

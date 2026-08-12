@@ -1,38 +1,58 @@
-//! XGBoost wrapper for advanced predictive modeling
+//! Heuristic feature-weighted score estimator.
+//!
+//! IMPORTANT — HONESTY NOTE: this module was previously named `xgboost_models`
+//! and its types were named `XGBModel`/`XGBParams`/etc, implying a real
+//! gradient-boosted-tree model (as in the XGBoost library). It never was one:
+//! `train()` does not fit any trees or run gradient boosting — it derives
+//! "feature importances" from the absolute magnitude of each feature's raw
+//! values, and `predict()` is a simple dot product of those importances with
+//! the input, not a decision-tree ensemble traversal. There was no real
+//! Rust XGBoost binding available that was reasonable to add in this pass
+//! (the maintained options require linking a system-installed libxgboost via
+//! a C++ build step, which isn't available in this environment/CI), so
+//! rather than ship code claiming to be XGBoost, this module was renamed and
+//! its API stripped of gradient-boosting terminology. It is NOT wired into
+//! the Python API and should not be presented to users as a trained ML
+//! model — `heuristic_fit_score`/`heuristic_holdout_score` are NOT accuracy,
+//! F1, or AUC; they're a fixed diagnostic formula derived from the
+//! configured learning rate, not measured against ground truth `y`. Treat
+//! this as a cheap, deterministic scoring heuristic only (e.g. an
+//! explainable stand-in when no real model is trained), not a predictive
+//! model.
 
 use crate::Result;
 use std::collections::HashMap;
 
 /// XGBoost model type
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub enum XGBModelType {
+pub enum EstimatorTaskType {
     Classification, // Binary/multi-class
     Regression,     // Continuous prediction
 }
 
-impl XGBModelType {
+impl EstimatorTaskType {
     pub fn as_str(&self) -> &str {
         match self {
-            XGBModelType::Classification => "classification",
-            XGBModelType::Regression => "regression",
+            EstimatorTaskType::Classification => "classification",
+            EstimatorTaskType::Regression => "regression",
         }
     }
 }
 
 /// XGBoost hyperparameters
 #[derive(Clone, Debug)]
-pub struct XGBParams {
-    pub n_estimators: usize,        // Number of boosting rounds
-    pub max_depth: usize,           // Max tree depth
-    pub learning_rate: f64,         // Shrinkage (eta)
-    pub subsample: f64,             // Fraction of samples for each tree
-    pub colsample_bytree: f64,      // Fraction of features for each tree
-    pub min_child_weight: f64,      // Min sum of weights for child
-    pub lambda: f64,                // L2 regularization
-    pub alpha: f64,                 // L1 regularization
+pub struct HeuristicEstimatorParams {
+    pub n_estimators: usize,   // Number of boosting rounds
+    pub max_depth: usize,      // Max tree depth
+    pub learning_rate: f64,    // Shrinkage (eta)
+    pub subsample: f64,        // Fraction of samples for each tree
+    pub colsample_bytree: f64, // Fraction of features for each tree
+    pub min_child_weight: f64, // Min sum of weights for child
+    pub lambda: f64,           // L2 regularization
+    pub alpha: f64,            // L1 regularization
 }
 
-impl Default for XGBParams {
+impl Default for HeuristicEstimatorParams {
     fn default() -> Self {
         Self {
             n_estimators: 100,
@@ -47,7 +67,7 @@ impl Default for XGBParams {
     }
 }
 
-impl XGBParams {
+impl HeuristicEstimatorParams {
     pub fn new() -> Self {
         Self::default()
     }
@@ -84,7 +104,7 @@ pub struct FeatureImportance {
 
 /// XGBoost model prediction
 #[derive(Clone, Debug)]
-pub struct XGBPrediction {
+pub struct HeuristicPrediction {
     pub sample_id: String,
     pub prediction: f64,
     pub probability: Option<f64>, // For classification
@@ -93,12 +113,12 @@ pub struct XGBPrediction {
 
 /// Model training result
 #[derive(Clone, Debug)]
-pub struct TrainingResult {
-    pub model_type: XGBModelType,
+pub struct EstimationResult {
+    pub model_type: EstimatorTaskType,
     pub n_features: usize,
     pub n_samples: usize,
-    pub train_score: f64,
-    pub validation_score: f64,
+    pub heuristic_fit_score: f64,
+    pub heuristic_holdout_score: f64,
     pub feature_importances: Vec<FeatureImportance>,
 }
 
@@ -214,10 +234,7 @@ impl FeatureEngineering {
     }
 
     /// Feature selection by variance threshold
-    pub fn select_high_variance_features(
-        data: &[Vec<f64>],
-        threshold: f64,
-    ) -> Result<Vec<usize>> {
+    pub fn select_high_variance_features(data: &[Vec<f64>], threshold: f64) -> Result<Vec<usize>> {
         if data.is_empty() {
             return Ok(vec![]);
         }
@@ -256,16 +273,16 @@ impl FeatureEngineering {
 }
 
 /// XGBoost model wrapper
-pub struct XGBModel {
-    pub model_type: XGBModelType,
-    pub params: XGBParams,
+pub struct HeuristicScoreEstimator {
+    pub model_type: EstimatorTaskType,
+    pub params: HeuristicEstimatorParams,
     pub feature_names: Vec<String>,
     pub trained: bool,
     pub feature_importances: Vec<FeatureImportance>,
 }
 
-impl XGBModel {
-    pub fn new(model_type: XGBModelType, params: XGBParams) -> Self {
+impl HeuristicScoreEstimator {
+    pub fn new(model_type: EstimatorTaskType, params: HeuristicEstimatorParams) -> Self {
         Self {
             model_type,
             params,
@@ -280,14 +297,17 @@ impl XGBModel {
         self
     }
 
-    /// Simulate training (in production, would call actual XGBoost library)
+    /// Compute feature-magnitude-based "importances" and derive the fixed
+    /// diagnostic scores below. This is NOT model training: `y` is accepted
+    /// for API-compatibility with a real fit() signature but is otherwise
+    /// unused, no parameters are learned, and no loss is minimized.
     pub fn train(
         &mut self,
-        X: &[Vec<f64>],
+        x: &[Vec<f64>],
         y: &[f64],
         validation_split: f64,
-    ) -> Result<TrainingResult> {
-        if X.is_empty() || y.is_empty() {
+    ) -> Result<EstimationResult> {
+        if x.is_empty() || y.is_empty() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidInput,
                 "Empty training data",
@@ -295,14 +315,14 @@ impl XGBModel {
             .into());
         }
 
-        let n_samples = X.len();
-        let n_features = X[0].len();
+        let n_samples = x.len();
+        let n_features = x[0].len();
         let n_validation = (n_samples as f64 * validation_split) as usize;
         let n_train = n_samples - n_validation;
 
         // Simulate feature importance (in real XGBoost, computed from tree splits)
         let mut importances = vec![0.0; n_features];
-        for sample in X.iter().take(n_train) {
+        for sample in x.iter().take(n_train) {
             for (i, val) in sample.iter().enumerate() {
                 importances[i] += val.abs();
             }
@@ -337,36 +357,37 @@ impl XGBModel {
             imp.rank = rank + 1;
         }
 
-        // Simulate scores
-        let train_score = 0.85 + (self.params.learning_rate * 10.0).min(0.1);
-        let validation_score = 0.82 + (self.params.learning_rate * 10.0).min(0.08);
+        // Fixed diagnostic formula — NOT computed from `y`, NOT an accuracy/
+        // F1/AUC metric. Do not present these as evaluated model quality.
+        let heuristic_fit_score = 0.85 + (self.params.learning_rate * 10.0).min(0.1);
+        let heuristic_holdout_score = 0.82 + (self.params.learning_rate * 10.0).min(0.08);
 
         self.trained = true;
         self.feature_importances = feature_imps.clone();
 
-        Ok(TrainingResult {
+        Ok(EstimationResult {
             model_type: self.model_type.clone(),
             n_features,
             n_samples,
-            train_score,
-            validation_score,
+            heuristic_fit_score,
+            heuristic_holdout_score,
             feature_importances: feature_imps,
         })
     }
 
-    /// Simulate prediction
-    pub fn predict(&self, X: &[Vec<f64>]) -> Result<Vec<XGBPrediction>> {
+    /// Score samples via a weighted sum of feature values using the
+    /// importances computed in `train()`. This is a plain linear scoring
+    /// heuristic, not a decision-tree ensemble traversal.
+    pub fn predict(&self, x: &[Vec<f64>]) -> Result<Vec<HeuristicPrediction>> {
         if !self.trained {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::InvalidInput,
-                "Model not trained",
-            )
-            .into());
+            return Err(
+                std::io::Error::new(std::io::ErrorKind::InvalidInput, "Model not trained").into(),
+            );
         }
 
         let mut predictions = Vec::new();
 
-        for (idx, sample) in X.iter().enumerate() {
+        for (idx, sample) in x.iter().enumerate() {
             let mut pred_value = 0.5; // Base prediction
 
             // Simulate prediction using features
@@ -376,24 +397,21 @@ impl XGBModel {
                 }
             }
 
-            pred_value = pred_value.max(0.0).min(1.0);
+            pred_value = pred_value.clamp(0.0, 1.0);
 
             let probability = match self.model_type {
-                XGBModelType::Classification => Some(pred_value),
-                XGBModelType::Regression => None,
+                EstimatorTaskType::Classification => Some(pred_value),
+                EstimatorTaskType::Regression => None,
             };
 
             let mut contrib = HashMap::new();
             for (i, val) in sample.iter().enumerate() {
                 if let Some(imp) = self.feature_importances.get(i) {
-                    contrib.insert(
-                        imp.feature_name.clone(),
-                        imp.importance_score * val * 0.1,
-                    );
+                    contrib.insert(imp.feature_name.clone(), imp.importance_score * val * 0.1);
                 }
             }
 
-            predictions.push(XGBPrediction {
+            predictions.push(HeuristicPrediction {
                 sample_id: format!("sample_{}", idx),
                 prediction: pred_value,
                 probability,
@@ -421,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_xgb_params() {
-        let params = XGBParams::default()
+        let params = HeuristicEstimatorParams::default()
             .with_n_estimators(200)
             .with_max_depth(8)
             .with_learning_rate(0.05);
@@ -439,7 +457,7 @@ mod tests {
         assert_eq!(normalized.len(), 3);
         for sample in normalized {
             for val in sample {
-                assert!(val >= 0.0 && val <= 1.0);
+                assert!((0.0..=1.0).contains(&val));
             }
         }
     }
@@ -452,13 +470,7 @@ mod tests {
         assert_eq!(standardized.len(), 3);
         // Mean should be close to 0
         let means: Vec<f64> = (0..standardized[0].len())
-            .map(|i| {
-                standardized
-                    .iter()
-                    .map(|s| s[i])
-                    .sum::<f64>()
-                    / standardized.len() as f64
-            })
+            .map(|i| standardized.iter().map(|s| s[i]).sum::<f64>() / standardized.len() as f64)
             .collect();
 
         for mean in means {
@@ -493,17 +505,20 @@ mod tests {
 
     #[test]
     fn test_xgb_model_creation() {
-        let model = XGBModel::new(XGBModelType::Classification, XGBParams::default());
+        let model = HeuristicScoreEstimator::new(
+            EstimatorTaskType::Classification,
+            HeuristicEstimatorParams::default(),
+        );
 
-        assert_eq!(model.model_type, XGBModelType::Classification);
+        assert_eq!(model.model_type, EstimatorTaskType::Classification);
         assert!(!model.trained);
     }
 
     #[test]
     fn test_xgb_training() {
-        let mut model = XGBModel::new(
-            XGBModelType::Classification,
-            XGBParams::default().with_n_estimators(50),
+        let mut model = HeuristicScoreEstimator::new(
+            EstimatorTaskType::Classification,
+            HeuristicEstimatorParams::default().with_n_estimators(50),
         );
 
         model = model.with_features(vec![
@@ -512,29 +527,32 @@ mod tests {
             "monetary".to_string(),
         ]);
 
-        let X = vec![vec![0.5, 0.5, 0.5]; 10];
+        let x = vec![vec![0.5, 0.5, 0.5]; 10];
         let y = vec![0.0; 10];
 
-        let result = model.train(&X, &y, 0.2).unwrap();
+        let result = model.train(&x, &y, 0.2).unwrap();
 
         assert_eq!(result.n_features, 3);
         assert_eq!(result.n_samples, 10);
-        assert!(result.train_score > 0.0);
+        assert!(result.heuristic_fit_score > 0.0);
         assert!(!result.feature_importances.is_empty());
     }
 
     #[test]
     fn test_xgb_prediction() {
-        let mut model = XGBModel::new(XGBModelType::Classification, XGBParams::default());
+        let mut model = HeuristicScoreEstimator::new(
+            EstimatorTaskType::Classification,
+            HeuristicEstimatorParams::default(),
+        );
 
         model = model.with_features(vec!["f1".to_string(), "f2".to_string()]);
 
-        let X = vec![vec![0.5, 0.5]; 10];
+        let x = vec![vec![0.5, 0.5]; 10];
         let y = vec![1.0; 10];
 
-        model.train(&X, &y, 0.2).unwrap();
+        model.train(&x, &y, 0.2).unwrap();
 
-        let predictions = model.predict(&X).unwrap();
+        let predictions = model.predict(&x).unwrap();
 
         assert_eq!(predictions.len(), 10);
         for pred in predictions {
@@ -545,14 +563,17 @@ mod tests {
 
     #[test]
     fn test_feature_importance() {
-        let mut model = XGBModel::new(XGBModelType::Regression, XGBParams::default());
+        let mut model = HeuristicScoreEstimator::new(
+            EstimatorTaskType::Regression,
+            HeuristicEstimatorParams::default(),
+        );
 
         model = model.with_features(vec!["f1".to_string(), "f2".to_string(), "f3".to_string()]);
 
-        let X = vec![vec![1.0, 2.0, 3.0]; 5];
+        let x = vec![vec![1.0, 2.0, 3.0]; 5];
         let y = vec![1.0; 5];
 
-        model.train(&X, &y, 0.2).unwrap();
+        model.train(&x, &y, 0.2).unwrap();
 
         let importances = model.get_feature_importance();
         assert_eq!(importances.len(), 3);
@@ -564,16 +585,19 @@ mod tests {
 
     #[test]
     fn test_xgb_model_type() {
-        assert_eq!(XGBModelType::Classification.as_str(), "classification");
-        assert_eq!(XGBModelType::Regression.as_str(), "regression");
+        assert_eq!(EstimatorTaskType::Classification.as_str(), "classification");
+        assert_eq!(EstimatorTaskType::Regression.as_str(), "regression");
     }
 
     #[test]
     fn test_untrained_predict() {
-        let model = XGBModel::new(XGBModelType::Classification, XGBParams::default());
+        let model = HeuristicScoreEstimator::new(
+            EstimatorTaskType::Classification,
+            HeuristicEstimatorParams::default(),
+        );
 
-        let X = vec![vec![0.5, 0.5]];
-        let result = model.predict(&X);
+        let x = vec![vec![0.5, 0.5]];
+        let result = model.predict(&x);
 
         assert!(result.is_err());
     }

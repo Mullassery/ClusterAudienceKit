@@ -1,250 +1,153 @@
-"""Unit tests for ClusterAudienceKit clustering algorithms."""
+"""Unit tests for ClusterAudienceKit clustering algorithms.
 
-import pytest
+Rewritten against the real exported API (`AudienceSegmenter` /
+`PyAudienceSegmenter`, `kmeans`, `assess_cluster_quality`, `estimate_k_elbow`,
+etc. from `clusteraudiencekit`). The previous version of this file imported
+`ClusterEngine`/`AudienceSegmenter` in a shape that was never implemented and
+included a "hierarchical" clustering algorithm test — hierarchical
+clustering is explicitly listed as "Not Planned" in
+`docs/ROADMAP_HONEST.md`, so that case has been removed rather than faked.
+"""
+
 import numpy as np
-from clusteraudiencekit import ClusterEngine, AudienceSegmenter
+import pytest
+from clusteraudiencekit import AudienceSegmenter, KMeansResult, kmeans
 
 
-class TestClusterEngine:
-    """Tests for core clustering engine."""
+class TestKMeansFunction:
+    """Tests for the free `kmeans()` function (real Lloyd's-algorithm KMeans)."""
 
-    def test_engine_initialization(self):
-        """Test ClusterEngine can be initialized."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-        assert engine is not None
-        assert engine.num_clusters == 3
+    def test_kmeans_recovers_well_separated_blobs(self):
+        data = [
+            [1.0, 1.0], [1.1, 0.9], [0.9, 1.1],
+            [10.0, 10.0], [10.1, 9.9], [9.9, 10.1],
+        ]
+        result = kmeans(data, n_clusters=2, random_state=42)
+        assert isinstance(result, KMeansResult)
+        labels = result.labels
+        assert len(labels) == 6
+        assert labels[0] == labels[1] == labels[2]
+        assert labels[3] == labels[4] == labels[5]
+        assert labels[0] != labels[3]
 
-    def test_fit_simple_data(self):
-        """Test fitting on simple 2D data."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-        data = np.array([[1, 2], [1, 4], [1, 0], [4, 2], [4, 4], [4, 0]])
+    def test_kmeans_result_has_centers_and_inertia(self):
+        data = [[0.0, 0.0], [1.0, 1.0], [10.0, 10.0], [11.0, 11.0]]
+        result = kmeans(data, n_clusters=2, random_state=0)
+        assert len(result.centers) == 2
+        assert len(result.centers[0]) == 2
+        assert result.inertia >= 0.0
+        assert result.n_iter >= 1
 
-        labels = engine.fit_predict(data)
+    def test_kmeans_is_deterministic_for_a_given_seed(self):
+        data = [[float(i), float(i) * 2] for i in range(20)]
+        a = kmeans(data, n_clusters=3, random_state=7)
+        b = kmeans(data, n_clusters=3, random_state=7)
+        assert a.labels == b.labels
+        assert a.inertia == b.inertia
 
-        assert len(labels) == len(data)
-        assert all(0 <= label < 3 for label in labels)
+    def test_kmeans_rejects_more_clusters_than_points(self):
+        data = [[1.0, 1.0], [2.0, 2.0]]
+        with pytest.raises(Exception):
+            kmeans(data, n_clusters=5, random_state=0)
 
-    def test_fit_high_dimensional_data(self):
-        """Test fitting on high-dimensional data."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=5)
-        data = np.random.randn(100, 50)  # 100 samples, 50 dimensions
+    def test_kmeans_rejects_zero_clusters(self):
+        data = [[1.0, 1.0], [2.0, 2.0]]
+        with pytest.raises(Exception):
+            kmeans(data, n_clusters=0, random_state=0)
 
-        labels = engine.fit_predict(data)
-
-        assert len(labels) == 100
-        assert len(set(labels)) <= 5
-
-    def test_different_algorithms(self):
-        """Test various clustering algorithms."""
-        data = np.random.randn(50, 3)
-        algorithms = ["kmeans", "hierarchical"]
-
-        for algo in algorithms:
-            engine = ClusterEngine(algorithm=algo, num_clusters=3)
-            labels = engine.fit_predict(data)
-            assert len(labels) == len(data)
-
-    def test_empty_data_handling(self):
-        """Test handling of empty data."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-        data = np.array([]).reshape(0, 2)
-
-        with pytest.raises((ValueError, IndexError)):
-            engine.fit_predict(data)
-
-    def test_single_sample(self):
-        """Test handling of single sample."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-        data = np.array([[1, 2, 3]])
-
-        labels = engine.fit_predict(data)
-        assert len(labels) == 1
-
-    def test_num_clusters_validation(self):
-        """Test that num_clusters must be positive."""
-        with pytest.raises(ValueError):
-            ClusterEngine(algorithm="kmeans", num_clusters=0)
-
-        with pytest.raises(ValueError):
-            ClusterEngine(algorithm="kmeans", num_clusters=-1)
-
-    def test_inertia_computation(self):
-        """Test within-cluster sum of squares computation."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=2)
-        data = np.array([[0, 0], [1, 1], [10, 10], [11, 11]])
-
-        engine.fit_predict(data)
-        inertia = engine.inertia()
-
-        assert inertia >= 0
-
-    def test_silhouette_score(self):
-        """Test silhouette score computation."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=2)
-        data = np.array([[0, 0], [1, 1], [10, 10], [11, 11]])
-
-        engine.fit_predict(data)
-        score = engine.silhouette_score()
-
-        assert -1 <= score <= 1
-
-    def test_predict_on_new_data(self):
-        """Test predicting cluster labels for new data."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-        train_data = np.random.randn(50, 5)
-        test_data = np.random.randn(10, 5)
-
-        engine.fit_predict(train_data)
-        predictions = engine.predict(test_data)
-
-        assert len(predictions) == len(test_data)
-        assert all(0 <= p < 3 for p in predictions)
-
-    def test_reproducibility_with_seed(self):
-        """Test that results are reproducible with fixed seed."""
-        data = np.random.RandomState(42).randn(50, 3)
-
-        engine1 = ClusterEngine(algorithm="kmeans", num_clusters=3, random_state=42)
-        labels1 = engine1.fit_predict(data)
-
-        engine2 = ClusterEngine(algorithm="kmeans", num_clusters=3, random_state=42)
-        labels2 = engine2.fit_predict(data)
-
-        assert np.array_equal(labels1, labels2)
+    def test_kmeans_single_sample(self):
+        data = [[1.0, 2.0, 3.0]]
+        result = kmeans(data, n_clusters=1, random_state=0)
+        assert len(result.labels) == 1
 
 
 class TestAudienceSegmenter:
-    """Tests for audience segmentation wrapper."""
+    """Tests for the `AudienceSegmenter` fit/predict wrapper (real PyO3
+    binding over the Rust KMeans core, not a stub)."""
 
     def test_segmenter_initialization(self):
-        """Test AudienceSegmenter can be initialized."""
-        segmenter = AudienceSegmenter()
+        segmenter = AudienceSegmenter(3)
         assert segmenter is not None
+        assert segmenter.get_n_clusters() == 3
 
-    def test_segment_user_data(self):
-        """Test segmenting user audience data."""
-        segmenter = AudienceSegmenter()
-        user_data = {
-            "user_id": [1, 2, 3, 4, 5],
-            "age": [25, 30, 45, 22, 55],
-            "purchase_amount": [100, 200, 150, 50, 300],
-        }
+    def test_fit_predict_simple_data(self):
+        segmenter = AudienceSegmenter(2)
+        data = [[1.0, 2.0], [1.0, 4.0], [1.0, 0.0], [4.0, 2.0], [4.0, 4.0], [4.0, 0.0]]
+        segmenter.fit(data)
+        labels = segmenter.predict(data)
+        assert len(labels) == len(data)
+        assert all(0 <= label < 2 for label in labels)
 
-        segments = segmenter.segment(user_data, num_segments=3)
+    def test_predict_on_new_data_after_fit(self):
+        segmenter = AudienceSegmenter(2)
+        train_data = [[1.0, 1.0], [1.1, 0.9], [10.0, 10.0], [10.1, 9.9]]
+        segmenter.fit(train_data)
+        predictions = segmenter.predict([[1.05, 0.95]])
+        assert len(predictions) == 1
 
-        assert len(segments) == 5  # One segment per user
-        assert all(0 <= seg < 3 for seg in segments)
+    def test_reproducibility_with_same_data(self):
+        # AudienceSegmenter always uses the same fixed random_state (42)
+        # internally, so fitting the same data twice must reproduce the
+        # same cluster assignments.
+        data = [[float(i % 5), float((i * 3) % 7)] for i in range(30)]
 
-    def test_feature_importance(self):
-        """Test feature importance ranking."""
-        segmenter = AudienceSegmenter()
-        user_data = {
-            "age": [20, 30, 40, 50, 60],
-            "income": [50000, 75000, 100000, 125000, 150000],
-        }
+        segmenter1 = AudienceSegmenter(3)
+        segmenter1.fit(data)
+        labels1 = segmenter1.predict(data)
 
-        segmenter.segment(user_data, num_segments=2)
-        importance = segmenter.feature_importance()
+        segmenter2 = AudienceSegmenter(3)
+        segmenter2.fit(data)
+        labels2 = segmenter2.predict(data)
 
-        assert isinstance(importance, dict)
-        assert "age" in importance or "income" in importance
+        assert labels1 == labels2
 
-    def test_segment_stability(self):
-        """Test that similar data produces similar segments."""
-        segmenter = AudienceSegmenter()
+    def test_predict_before_fit_raises_clear_error(self):
+        segmenter = AudienceSegmenter(3)
+        with pytest.raises(Exception, match="fit"):
+            segmenter.predict([[1.0, 1.0]])
 
-        # Original data
-        data1 = {"score": [10, 20, 30, 40, 50]}
-        seg1 = segmenter.segment(data1, num_segments=2)
+    def test_repr(self):
+        segmenter = AudienceSegmenter(4)
+        assert "4" in repr(segmenter)
 
-        # Slightly perturbed data
-        data2 = {"score": [11, 21, 29, 41, 49]}
-        seg2 = segmenter.segment(data2, num_segments=2)
 
-        # Segments should be mostly similar
-        agreement = sum(1 for a, b in zip(seg1, seg2) if a == b) / len(seg1)
-        assert agreement > 0.6  # At least 60% agreement
+class TestClusterQualityIntegration:
+    """Cluster quality metrics operating on real kmeans() output."""
 
-    def test_large_dataset_performance(self):
-        """Test performance on large dataset."""
-        import time
+    def test_silhouette_score_on_well_separated_blobs_is_high(self):
+        from clusteraudiencekit import silhouette_score
 
-        segmenter = AudienceSegmenter()
-        large_data = {
-            "feature1": np.random.randn(10000),
-            "feature2": np.random.randn(10000),
-        }
+        data = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 9.9]]
+        labels = [0, 0, 1, 1]
+        score = silhouette_score(data, labels)
+        assert -1.0 <= score <= 1.0
+        assert score > 0.9
 
-        start = time.time()
-        segments = segmenter.segment(large_data, num_segments=10)
-        elapsed = time.time() - start
+    def test_assess_cluster_quality_end_to_end(self):
+        from clusteraudiencekit import assess_cluster_quality
 
-        assert len(segments) == 10000
-        assert elapsed < 30  # Should complete in under 30 seconds
+        data = [[0.0, 0.0], [0.2, 0.1], [10.0, 10.0], [10.1, 9.9]]
+        result = kmeans(data, n_clusters=2, random_state=0)
+        report = assess_cluster_quality(data, result.labels, result.centers)
+        assert report.n_clusters == 2
+        assert 0.0 <= report.overall_score <= 100.0
 
 
 class TestDataValidation:
-    """Tests for input data validation."""
+    """Input validation behavior of the real Rust-backed kmeans()."""
 
-    def test_nan_handling(self):
-        """Test handling of NaN values."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=2)
-        data = np.array([[1, 2], [np.nan, 4], [5, 6]])
+    def test_dtype_conversion_from_numpy(self):
+        data_int = np.array([[1, 2], [3, 4]], dtype=np.int32).astype(float).tolist()
+        result = kmeans(data_int, n_clusters=2, random_state=0)
+        assert len(result.labels) == 2
 
-        # Should either handle NaN or raise clear error
-        try:
-            engine.fit_predict(data)
-        except ValueError as e:
-            assert "NaN" in str(e) or "nan" in str(e).lower()
+        data_float = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64).tolist()
+        result = kmeans(data_float, n_clusters=2, random_state=0)
+        assert len(result.labels) == 2
 
-    def test_infinite_values(self):
-        """Test handling of infinite values."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=2)
-        data = np.array([[1, 2], [np.inf, 4], [5, 6]])
-
-        try:
-            engine.fit_predict(data)
-        except ValueError as e:
-            assert "inf" in str(e).lower()
-
-    def test_dtype_conversion(self):
-        """Test automatic dtype conversion."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=2)
-
-        # Integer data
-        data_int = np.array([[1, 2], [3, 4]], dtype=np.int32)
-        labels = engine.fit_predict(data_int)
-        assert len(labels) == 2
-
-        # Float data
-        data_float = np.array([[1.0, 2.0], [3.0, 4.0]], dtype=np.float64)
-        labels = engine.fit_predict(data_float)
-        assert len(labels) == 2
-
-
-class TestMemorySecurity:
-    """Tests for TIER 1 GPU memory bounds (if applicable)."""
-
-    def test_memory_usage_bounded(self):
-        """Test that memory usage doesn't exceed bounds."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=5)
-
-        # Test with progressively larger data
-        for size in [100, 1000, 10000]:
-            data = np.random.randn(size, 50)
-            labels = engine.fit_predict(data)
-            assert len(labels) == size
-
-    def test_no_memory_leak_on_repeated_fits(self):
-        """Test that repeated fits don't leak memory."""
-        engine = ClusterEngine(algorithm="kmeans", num_clusters=3)
-
-        for _ in range(10):
-            data = np.random.randn(100, 5)
-            engine.fit_predict(data)
-
-        # If we get here without memory error, test passes
-        assert True
+    def test_empty_data_raises(self):
+        with pytest.raises(Exception):
+            kmeans([], n_clusters=2, random_state=0)
 
 
 if __name__ == "__main__":

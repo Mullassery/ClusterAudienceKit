@@ -95,7 +95,7 @@ impl HistoricalReconstruction {
     }
 
     pub fn build_composition_timeline(
-        segment_id: &str,
+        _segment_id: &str,
         start_date: &str,
         end_date: &str,
         historical_events: &[(String, String, String)],
@@ -271,13 +271,22 @@ impl CompositionForecaster {
         forecast_periods: u32,
     ) -> Result<CompositionForecast> {
         let hv_trend = Self::calculate_trend(
-            &historical_ratios.iter().map(|(hv, _, _)| *hv).collect::<Vec<_>>(),
+            &historical_ratios
+                .iter()
+                .map(|(hv, _, _)| *hv)
+                .collect::<Vec<_>>(),
         );
         let cr_trend = Self::calculate_trend(
-            &historical_ratios.iter().map(|(_, cr, _)| *cr).collect::<Vec<_>>(),
+            &historical_ratios
+                .iter()
+                .map(|(_, cr, _)| *cr)
+                .collect::<Vec<_>>(),
         );
         let nm_trend = Self::calculate_trend(
-            &historical_ratios.iter().map(|(_, _, nm)| *nm).collect::<Vec<_>>(),
+            &historical_ratios
+                .iter()
+                .map(|(_, _, nm)| *nm)
+                .collect::<Vec<_>>(),
         );
 
         let mut hv_forecast = vec![current_high_value_ratio];
@@ -294,7 +303,7 @@ impl CompositionForecaster {
             nm_forecast.push(next_nm);
         }
 
-        let stability = Self::calculate_stability(&historical_ratios);
+        let stability = Self::calculate_stability(historical_ratios);
 
         Ok(CompositionForecast {
             segment_id: "composition".to_string(),
@@ -350,23 +359,22 @@ impl MembershipForecaster {
     pub fn forecast_member_movement(
         member_id: &str,
         current_segment: &str,
-        member_history: &[(String, String)],
+        _member_history: &[(String, String)],
         segment_transition_probs: &HashMap<(String, String), f64>,
     ) -> Result<MembershipForecast> {
         let mut stay_prob = 0.6;
         let mut move_prob = 0.25;
         let mut churn_prob = 0.15;
 
-        if let Some((_, &prob)) =
-            segment_transition_probs.iter().find(|((from, to), _)| from.as_str() == current_segment && to == "*")
+        if let Some((_, &prob)) = segment_transition_probs
+            .iter()
+            .find(|((from, to), _)| from.as_str() == current_segment && to == "*")
         {
             stay_prob = prob;
         }
 
-        let (next_segment, move_prob_val) = Self::find_most_likely_transition(
-            current_segment,
-            segment_transition_probs,
-        );
+        let (next_segment, move_prob_val) =
+            Self::find_most_likely_transition(current_segment, segment_transition_probs);
 
         move_prob = move_prob_val;
         churn_prob = 1.0 - stay_prob - move_prob;
@@ -393,9 +401,10 @@ impl MembershipForecaster {
             .filter(|((from, _), _)| from.as_str() == current_segment)
             .collect();
 
-        if let Some(((_from, to), prob)) = current_transitions.iter().max_by(|a, b| {
-            a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal)
-        }) {
+        if let Some(((_from, to), prob)) = current_transitions
+            .iter()
+            .max_by(|a, b| a.1.partial_cmp(b.1).unwrap_or(std::cmp::Ordering::Equal))
+        {
             (to.clone(), **prob)
         } else {
             ("unknown".to_string(), 0.0)
@@ -441,20 +450,20 @@ impl WhatIfSimulator {
         }
 
         let revenue_impact = Self::calculate_revenue_impact(&projected_sizes, baseline_sizes);
-        let churn_impact = Self::calculate_churn_impact(&parameter_changes);
-        let feasibility = Self::calculate_feasibility(&parameter_changes);
+        let churn_impact = Self::calculate_churn_impact(parameter_changes);
+        let feasibility = Self::calculate_feasibility(parameter_changes);
 
         let mut params_changed = HashMap::new();
         for (key, &val) in parameter_changes {
-            params_changed.insert(
-                key.clone(),
-                ("old".to_string(), format!("{:.2}", val)),
-            );
+            params_changed.insert(key.clone(), ("old".to_string(), format!("{:.2}", val)));
         }
 
         Ok(WhatIfScenario {
             scenario_name: scenario_name.to_string(),
-            description: format!("Scenario with {} parameter changes", parameter_changes.len()),
+            description: format!(
+                "Scenario with {} parameter changes",
+                parameter_changes.len()
+            ),
             parameters_changed: params_changed,
             projected_segment_sizes: projected_sizes,
             projected_revenue_impact: revenue_impact,
@@ -532,7 +541,10 @@ impl ScenarioAnalyzer {
             .unwrap_or_default();
 
         let recommendation = if scenario_data.len() > 1 {
-            format!("Recommend {} for revenue, {} for churn mitigation", best_revenue, best_churn)
+            format!(
+                "Recommend {} for revenue, {} for churn mitigation",
+                best_revenue, best_churn
+            )
         } else {
             format!("Recommend {}", scenario_data[0].0)
         };
@@ -613,7 +625,7 @@ impl SensitivityAnalyzer {
     }
 
     pub fn tornado_analysis(
-        baseline_metrics: &HashMap<String, f64>,
+        _baseline_metrics: &HashMap<String, f64>,
         parameter_ranges: &HashMap<String, (f64, f64)>,
     ) -> Result<Vec<(String, f64)>> {
         let mut impacts = Vec::new();
@@ -729,8 +741,7 @@ impl ChurnForecaster {
 
         let mut projections = vec![current_churn_rate];
         for i in 1..forecast_months {
-            let next_rate =
-                (current_churn_rate + trend_per_month * i as f64).clamp(0.0, 1.0);
+            let next_rate = (current_churn_rate + trend_per_month * i as f64).clamp(0.0, 1.0);
             projections.push(next_rate);
         }
 
@@ -894,8 +905,8 @@ impl MomentumAnalyzer {
         };
 
         let acceleration = if metric_history.len() >= 4 {
-            let prev_momentum = metric_history[metric_history.len() - 2]
-                - metric_history[metric_history.len() - 4];
+            let prev_momentum =
+                metric_history[metric_history.len() - 2] - metric_history[metric_history.len() - 4];
             momentum - prev_momentum
         } else {
             0.0
@@ -955,14 +966,9 @@ mod tests {
 
     #[test]
     fn test_composition_forecasting() {
-        let historical = vec![
-            (0.5, 0.2, 0.3),
-            (0.52, 0.18, 0.3),
-            (0.54, 0.16, 0.3),
-        ];
+        let historical = vec![(0.5, 0.2, 0.3), (0.52, 0.18, 0.3), (0.54, 0.16, 0.3)];
         let forecast =
-            CompositionForecaster::forecast_composition(0.54, 0.16, 0.3, &historical, 3)
-                .unwrap();
+            CompositionForecaster::forecast_composition(0.54, 0.16, 0.3, &historical, 3).unwrap();
         assert_eq!(forecast.forecast_periods, 3);
     }
 
@@ -985,8 +991,8 @@ mod tests {
     #[test]
     fn test_churn_forecasting() {
         let historical_churn = vec![0.05, 0.06, 0.07];
-        let forecast = ChurnForecaster::forecast_churn(0.07, &historical_churn, 5000, 500.0, 6)
-            .unwrap();
+        let forecast =
+            ChurnForecaster::forecast_churn(0.07, &historical_churn, 5000, 500.0, 6).unwrap();
         assert_eq!(forecast.projected_churn_rates.len(), 6);
     }
 
@@ -1034,13 +1040,25 @@ mod tests {
     #[test]
     fn test_historical_reconstruction() {
         let events = vec![
-            ("2026-07-01".to_string(), "added".to_string(), "user1".to_string()),
-            ("2026-07-02".to_string(), "added".to_string(), "user2".to_string()),
-            ("2026-07-03".to_string(), "removed".to_string(), "user1".to_string()),
+            (
+                "2026-07-01".to_string(),
+                "added".to_string(),
+                "user1".to_string(),
+            ),
+            (
+                "2026-07-02".to_string(),
+                "added".to_string(),
+                "user2".to_string(),
+            ),
+            (
+                "2026-07-03".to_string(),
+                "removed".to_string(),
+                "user1".to_string(),
+            ),
         ];
 
-        let state = HistoricalReconstruction::reconstruct_at_date("seg1", "2026-07-03", &events)
-            .unwrap();
+        let state =
+            HistoricalReconstruction::reconstruct_at_date("seg1", "2026-07-03", &events).unwrap();
         assert_eq!(state.members.len(), 1);
     }
 

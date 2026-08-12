@@ -2,6 +2,105 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [7.1.1] - 2026-08-12
+
+Remediation pass following a technical audit. 7.1.0 was never published to
+PyPI, so this release supersedes it rather than shipping alongside it.
+
+### Fixed (honesty / correctness)
+- `xgboost_models.rs` fabricated a "trained model": `train()` computed
+  scores from a fixed formula involving only `learning_rate`, not from `y`,
+  and `predict()` did a linear combination of feature-magnitude weights, not
+  a decision-tree traversal — despite being typed/named as a real XGBoost
+  wrapper. No viable Rust XGBoost binding avoids requiring a system
+  `libxgboost` C++ build, which isn't available here, so rather than ship
+  the fake version, the module was renamed to
+  `heuristic_score_estimator.rs` with all XGBoost/gradient-boosting
+  terminology removed (`HeuristicScoreEstimator`, `heuristic_fit_score`,
+  etc.), a doc comment explaining what it actually is, and
+  "xgboost"/"gradient-boosting" dropped from `pyproject.toml` keywords. It
+  remains Rust-only (not Python-exposed).
+- `churn_prediction.rs`: `evaluate_model_performance` returned a hardcoded
+  `auc_roc: 0.82 // Simulated`. Replaced with a real trapezoidal-rule
+  AUC-ROC computed from the same prediction/label pairs used for the
+  confusion-matrix metrics, with tests for perfect separation (1.0),
+  perfectly inverted ranking (0.0), no discrimination (0.5), and a
+  hand-computed 0.75 case.
+- `src/python.rs`'s module `info.algorithms` listed `"dbscan"`,
+  `"hierarchical"`, `"gmm"` — none of which exist anywhere in this
+  codebase. Now lists only `"kmeans"`/`"kprototypes"`.
+
+### Added (Python API surface)
+Wired 10 previously Rust-only-tested engine modules into the Python
+extension, each with new Python-level tests in `tests/test_wired_modules.py`:
+`engine::privacy` (differential privacy + k-anonymity), `engine::streaming`
+(real-time incremental segmentation), `engine::drift_detection`,
+`engine::lookalike`, `engine::cohorts`, `engine::lifecycle`,
+`engine::quality_metrics`, `engine::k_estimation`, `engine::behavioral`,
+`engine::profiling`. See `docs/ROADMAP_HONEST.md` for the full list of new
+entry points and what's still deferred (`segment_intelligence`,
+`pattern_discovery`, `temporal_analytics`, `price_intelligence`,
+`revenue_intelligence`, `neural_networks`).
+
+### Security
+- SQL injection: `sql_export.rs`'s `table_name` and `ColumnMapping` fields
+  were interpolated into generated SQL via `format!()` with no validation.
+  Added `validate_identifier()` (alphanumeric/underscore, optionally
+  dot-qualified, allow-list) applied before any query string is built.
+
+### Changed
+- Deleted the duplicate, genuinely-empty `src/streaming/mod.rs` stub
+  (`StreamingState` with `// TODO` bodies) that shadowed the real,
+  673-line, fully-implemented `engine::streaming`. Removed `pub mod
+  streaming;` from `lib.rs`.
+- `rayon` was a declared dependency with zero call sites. Now used to
+  parallelize the nearest-center assignment step in `kmeans`/`kprototypes`
+  and the per-customer computation in `calculate_rfm`.
+- `benches/benchmarks.rs` replaced its `dummy_benchmark` (measured `1 + 1`)
+  with real Criterion benchmarks for `kmeans` and `calculate_rfm` at 10k and
+  100k rows.
+- Repo hygiene: deleted `clusteraudiencekit.bak/`, `README.md.bak`,
+  `python/clusteraudiencekit/__init__.py.bak`, and the two stale duplicate
+  Python package directories `python/clusteraudiencekit/` and
+  `src/clusteraudiencekit/` (only `./clusteraudiencekit/` is the real,
+  maturin-packaged source — confirmed against `pyproject.toml`'s
+  `[tool.maturin]` config). Deleted `MCP_QUICKSTART.md`,
+  `DASHBOARD_SHORTCUTS.md`, `FINAL_REPORT.txt`, and `clusteraudiencekit.toml`,
+  which described an MCP connector and auto-starting dashboard daemon that
+  don't exist anywhere in the real, exported API.
+- `.gitignore`: added `*.so`/`*.pyd`/`*.dylib`/`wheels/`/`target/wheels/`;
+  removed the stale (and already-ineffective, since the file was already
+  tracked) `Cargo.lock` ignore entry.
+- `tests/test_clustering.py` imported `ClusterEngine` (never implemented)
+  and tested a "hierarchical" algorithm explicitly marked "Not Planned".
+  Rewritten against the real API (`AudienceSegmenter`, `kmeans`,
+  `silhouette_score`, `assess_cluster_quality`); hierarchical case removed.
+  `tests/test_basic.py` had the same `AudienceSegmenter(method=...)`
+  mismatch and a skipped fit/predict test; both fixed with real,
+  passing, end-to-end tests. `tests/test_performance.py`'s five
+  placeholder `pytest.skip(...)` performance tests are now real.
+- `cargo fmt` applied repo-wide (previously not clean in any file).
+  `cargo clippy --workspace -- -D warnings` reduced from 214 to 43 findings,
+  all now confined to modules not reachable from the Python API.
+- `README.md` rewritten: removed fabricated API examples
+  (`Segmentation`/`CLV`/`Churn`/`Lookalikes` classes that don't exist,
+  4-algorithm claims including DBSCAN/GMM that were already partly
+  corrected, an "MIT License" claim contradicting the actual proprietary
+  `LICENSE`), replaced with a working 30-second example and an accurate
+  capability table. `docs/ROADMAP_HONEST.md` and `docs/SECURITY_AUDIT.md`
+  rewritten to reflect current state (both predated the 2026-08-07 clustering
+  implementation and described a materially different, stale codebase).
+  `docs/api-reference.md`, `docs/getting-started-simple.md`,
+  `docs/comparison.md`, `docs/performance-comparison.md`, and
+  `docs/press-release.md` — large pre-existing docs with fabricated API
+  details (e.g. a fictional `AudienceSegmenter(method=..., ...)`
+  constructor) — got an honesty banner pointing to the verified-accurate
+  README/ROADMAP rather than a full rewrite (out of scope for this pass).
+- `.env.example` trimmed to the two variables anything in this repo could
+  plausibly read, both marked RESERVED (not yet wired to any code) rather
+  than claimed as functional; removed the API-key/database/secrets
+  variables that described a server this package doesn't run.
+
 ## [7.1.0] - 2026-08-07
 
 ### Fixed
