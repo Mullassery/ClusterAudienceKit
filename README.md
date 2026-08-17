@@ -30,7 +30,7 @@ transactions = [
     ("cust_3", "2026-08-01T00:00:00+00:00", 500.0),
 ]
 
-# Real RFM scoring (recency/frequency/monetary, quintile-scored, 8-segment
+# Real RFM scoring (recency/frequency/monetary, quintile-scored, 13-segment
 # classification), not a mock.
 scores = calculate_rfm(transactions, RFMConfig())
 
@@ -108,13 +108,21 @@ deliberately not part of this library — see
 - Python 3.8+
 - NumPy, Pandas, PyArrow (see `pyproject.toml` for exact ranges)
 - Precompiled Rust core (ships as a platform wheel; no local Rust toolchain
-  needed to install)
+  needed to install) — **but see the platform caveat below**
 
 ## Installation
 
 ```bash
 pip install clusteraudiencekit
 ```
+
+The only wheel currently published to PyPI is macOS ARM64 (cp39). There is
+no source distribution and no CI pipeline building Linux/Windows wheels yet,
+so `pip install` will fail on other platforms today — see
+[Known Issues](#known-issues). To use this on Linux/Windows/other Python
+versions in the meantime, clone the repo and build locally with
+[`maturin`](https://github.com/PyO3/maturin) (`pip install maturin && maturin
+develop --release`), which does require a Rust toolchain.
 
 ## Documentation
 
@@ -123,6 +131,45 @@ pip install clusteraudiencekit
 - [Security audit](docs/SECURITY_AUDIT.md)
 - [SQL export reference](docs/SQL_EXPORT.md)
 - [Examples](examples/)
+
+## Known Issues
+
+Verified as of this audit (August 2026):
+
+- **Published wheels are single-platform.** The latest PyPI release
+  (7.1.1) ships only a macOS ARM64 / cp39 wheel, with no source
+  distribution. `v7.1.0` similarly shipped only a macOS ARM64 / cp313
+  wheel. There is currently no CI job that builds Linux or Windows wheels
+  (`.github/workflows/` only runs tests on `ubuntu-latest`, not a release
+  build matrix), despite `pyproject.toml` classifying the package as
+  `OS Independent` and supporting Python 3.8–3.12. In practice, `pip
+  install clusteraudiencekit` only works out of the box on macOS ARM64
+  with a matching Python; everyone else needs to build from source with
+  `maturin` (see Installation above).
+- **`v7.0.0` remains installable from PyPI despite a confirmed
+  import-crashing bug.** It was never yanked. If you have it pinned,
+  upgrade to `>=7.1.1`.
+- **K-Prototypes categorical support is partial.** `AudienceSegmenter.fit()`
+  only accepts a numeric feature matrix today, so selecting K-Prototypes
+  through that class currently runs in numeric-only mode (effectively
+  KMeans). The underlying `engine::clustering::kprototypes` Rust
+  implementation does support mixed numeric/categorical data; it just
+  isn't reachable from that Python entry point yet. Details in
+  [`docs/ROADMAP_HONEST.md`](docs/ROADMAP_HONEST.md).
+- **Two Rust utility functions are unimplemented stubs.**
+  `pandas_to_arrow`/`arrow_to_pandas` in `src/utils/conversions.rs` return
+  `Err("Not implemented")`. They are not called from anywhere else in the
+  crate and are not exposed to Python, so they don't affect any documented
+  functionality — noted here for completeness.
+- **Registry check:** local version (`7.1.1`, in `Cargo.toml` and
+  `pyproject.toml`) matches the latest version actually published on PyPI.
+  No drift.
+- **No open GitHub issues** at the time of this audit.
+- Six real, tested Rust modules are implemented but not yet wired to the
+  Python API (`segment_intelligence`, `pattern_discovery`,
+  `temporal_analytics`, `price_intelligence`, `revenue_intelligence`,
+  `neural_networks`) — see "What's real but not yet exposed to Python"
+  above.
 
 ## License
 
