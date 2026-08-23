@@ -17,10 +17,10 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          # This is a single-crate repo (one root Cargo.toml, no [workspace]
-          # members) - "crates"/"core"/"python" don't exist as directories,
-          # so this cache config was silently a no-op (Swatinem/rust-cache
-          # doesn't fail on a missing path, it just never caches anything).
+          # Single-crate repo (one root Cargo.toml, no [workspace] members),
+          # so the workspace root is ".". A prior config referenced
+          # "crates"/"core"/"python" dirs that don't exist here, which
+          # Swatinem/rust-cache silently no-ops on instead of failing.
           workspaces: .
 
       - name: Build Rust
