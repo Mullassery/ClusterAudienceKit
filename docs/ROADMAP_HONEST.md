@@ -276,6 +276,21 @@ and current dependency-pinning status.
   external binding.
 - Neural network Python bindings, if there's a real use case that justifies
   the API surface.
+- Drift-triggered re-clustering: `DriftDetector` (`src/engine/drift_detection.rs`,
+  KS-test/Hellinger/chi-square) is real but standalone — nothing in
+  `streaming.rs` or `clustering.rs` calls it. Wire it into a periodic
+  windowed re-centering / auto-reclustering trigger so streaming segments
+  don't silently degrade under concept drift.
+- Chunked/streaming ingestion for batch clustering: `kmeans_py` /
+  `AudienceSegmenter.fit`/`predict` (`src/python.rs`) load the full
+  `Vec<Vec<f64>>` into an in-memory `ndarray::Array2` (`clustering.rs`) with
+  no chunked-iterator or streaming memory bound — a real OOM risk on
+  massive one-shot batch loads.
+- License compatibility audit: `LICENSE` is a custom "free to use with
+  attribution" source-available license (not a standard OSS license). Per
+  org policy this repo is treated as Proprietary regardless of that file's
+  wording — audit whether any bundled Rust crates or Python deps carry
+  copyleft terms that could conflict with either reading of the license.
 
 ---
 
