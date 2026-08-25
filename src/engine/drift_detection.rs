@@ -192,7 +192,8 @@ impl DriftAlert {
 pub struct DriftDetector;
 
 impl DriftDetector {
-    /// Kolmogorov-Smirnov test for distribution drift
+    /// Kolmogorov-Smirnov test for distribution drift: the largest gap
+    /// anywhere between the two samples' empirical CDFs.
     pub fn kolmogorov_smirnov(baseline: &[f64], current: &[f64]) -> Result<f64> {
         if baseline.is_empty() || current.is_empty() {
             return Ok(0.0);
@@ -204,21 +205,36 @@ impl DriftDetector {
         baseline_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
         current_sorted.sort_by(|a, b| a.partial_cmp(b).unwrap());
 
+        let empirical_cdf = |sorted: &[f64], x: f64| -> f64 {
+            sorted.iter().filter(|v| **v <= x).count() as f64 / sorted.len() as f64
+        };
+
+        // Both empirical CDFs are step functions that only change value at a
+        // data point, so the sup of |F_baseline - F_current| is attained at
+        // one of the points in either sample -- checking every point from
+        // both (not just baseline's) is the standard two-sample KS
+        // statistic. Evaluating `baseline_cdf` via `(rank + 1) / n` instead
+        // of this same counting rule (the previous implementation) silently
+        // assumed no ties: for a run of `m` identical values sharing one
+        // rank-range, `(rank + 1) / n` climbs step-by-step through that run
+        // even though the true empirical CDF jumps straight to its final
+        // value at the first occurrence, producing phantom drift on tied
+        // data (e.g. an integer-valued feature like event count) that's
+        // otherwise identical between baseline and current.
         let mut max_diff: f64 = 0.0;
-        for i in 0..baseline_sorted.len() {
-            let baseline_cdf = (i + 1) as f64 / baseline_sorted.len() as f64;
-            let current_val = baseline_sorted[i];
-
-            let current_cdf = current_sorted.iter().filter(|v| **v <= current_val).count() as f64
-                / current_sorted.len() as f64;
-
-            max_diff = max_diff.max((baseline_cdf - current_cdf).abs());
+        for &x in baseline_sorted.iter().chain(current_sorted.iter()) {
+            let diff =
+                (empirical_cdf(&baseline_sorted, x) - empirical_cdf(&current_sorted, x)).abs();
+            max_diff = max_diff.max(diff);
         }
 
         Ok(max_diff)
     }
 
-    /// Hellinger distance between two distributions
+    /// Hellinger distance between two distributions, via the Bhattacharyya
+    /// distance between their fitted (mean, variance) Gaussians:
+    /// `D_B = (μ1-μ2)²/(4(σ1²+σ2²)) + 0.5*ln((σ1²+σ2²)/(2σ1σ2))`,
+    /// `H = sqrt(1 - exp(-D_B))`.
     pub fn hellinger_distance(baseline: &[f64], current: &[f64]) -> Result<f64> {
         if baseline.is_empty() || current.is_empty() {
             return Ok(0.0);
@@ -238,17 +254,34 @@ impl DriftDetector {
             .sum::<f64>()
             / current.len() as f64;
 
-        let sqrt_prod = (baseline_var * current_var).sqrt();
-        if sqrt_prod == 0.0 {
-            return Ok(0.0);
-        }
+        // Floor variance at a small epsilon instead of short-circuiting to
+        // 0 drift whenever either sample is (or is numerically
+        // indistinguishable from) a single repeated value: a degenerate
+        // baseline sitting next to a wildly different current distribution
+        // is a textbook case of total drift, not "nothing to compare." With
+        // the floor in place the formula below naturally saturates toward
+        // 1.0 for that case, and still returns 0 when the two samples
+        // genuinely coincide -- no separate branch needed.
+        let baseline_var = baseline_var.max(1e-9);
+        let current_var = current_var.max(1e-9);
 
-        let term1 = (baseline_mean - current_mean).powi(2) / (2.0 * (baseline_var + current_var));
-        let term2 =
-            0.5 * (baseline_var / current_var).ln() + 0.5 * (current_var / baseline_var).ln();
+        let term1 = (baseline_mean - current_mean).powi(2) / (4.0 * (baseline_var + current_var));
+        // NOTE: the previous formula here -- 0.5*ln(a/b) + 0.5*ln(b/a) --
+        // algebraically cancels to exactly 0 for any a, b > 0
+        // (0.5*ln(a/b) == -0.5*ln(b/a)), so it silently contributed nothing:
+        // this function only ever reacted to the mean-difference term.
+        let term2 = 0.5
+            * ((baseline_var + current_var) / (2.0 * baseline_var.sqrt() * current_var.sqrt()))
+                .ln();
 
-        let bhattacharyya = term1 + term2;
-        let distance = (1.0 - (-bhattacharyya).exp()).sqrt();
+        // term1 and term2 are both provably >= 0 (term2 via AM-GM on
+        // baseline_var/current_var), but floating-point rounding can still
+        // land bhattacharyya a hair below 0 (e.g. -1.1e-16 for two
+        // genuinely identical samples) instead of exactly 0, which would
+        // otherwise send `1.0 - exp(-bhattacharyya)` negative and `.sqrt()`
+        // to NaN.
+        let bhattacharyya = (term1 + term2).max(0.0);
+        let distance = (1.0 - (-bhattacharyya).exp()).max(0.0).sqrt();
 
         Ok(distance.min(1.0))
     }
@@ -442,6 +475,32 @@ mod tests {
     }
 
     #[test]
+    fn test_ks_test_no_drift_with_tied_repeated_values() {
+        // Regression test: a run of identical values used to be scored via
+        // `(rank + 1) / n`, which climbs step-by-step through the tie
+        // instead of jumping straight to the true CDF value at that point --
+        // producing large phantom drift between two byte-identical samples
+        // whenever the feature has repeated values (e.g. every customer in
+        // this window made exactly 1 purchase).
+        let baseline = vec![7.0, 7.0, 7.0, 7.0, 7.0, 7.0];
+        let current = vec![7.0, 7.0, 7.0, 7.0, 7.0, 7.0];
+
+        let drift = DriftDetector::kolmogorov_smirnov(&baseline, &current).unwrap();
+        assert_eq!(drift, 0.0);
+    }
+
+    #[test]
+    fn test_ks_test_detects_real_drift_even_with_ties_present() {
+        // Ties shouldn't make the test blind to genuine drift either --
+        // this checks the fix doesn't overcorrect into never firing.
+        let baseline = vec![1.0, 1.0, 1.0, 2.0, 2.0, 2.0];
+        let current = vec![10.0, 10.0, 10.0, 11.0, 11.0, 11.0];
+
+        let drift = DriftDetector::kolmogorov_smirnov(&baseline, &current).unwrap();
+        assert!(drift > 0.9, "expected near-total separation, got {drift}");
+    }
+
+    #[test]
     fn test_ks_test_with_drift() {
         let baseline = vec![1.0, 2.0, 3.0, 4.0, 5.0];
         let current = vec![10.0, 11.0, 12.0, 13.0, 14.0];
@@ -457,6 +516,54 @@ mod tests {
 
         let distance = DriftDetector::hellinger_distance(&baseline, &current).unwrap();
         assert!(distance < 0.1);
+    }
+
+    #[test]
+    fn test_hellinger_distance_degenerate_baseline_vs_shifted_current_is_not_zero() {
+        // Regression test: a zero-variance ("everyone had the exact same
+        // value") baseline used to short-circuit this function to 0
+        // (`sqrt_prod == 0.0`) regardless of how different `current` was --
+        // even a current sample wildly shifted in both mean and spread
+        // would score as "no drift." A single repeated value in one window
+        // is a completely realistic case (e.g. every customer in a small
+        // window made exactly one purchase of the same amount), and it's
+        // exactly the situation where a real shift afterward most needs to
+        // be caught, not masked.
+        let baseline = vec![10.0, 10.0, 10.0, 10.0, 10.0, 10.0];
+        let current = vec![5000.0, 5000.0, 5100.0, 4900.0, 5050.0, 4950.0];
+
+        let distance = DriftDetector::hellinger_distance(&baseline, &current).unwrap();
+        assert!(
+            distance > 0.9,
+            "expected near-maximal distance for a degenerate baseline vs. a wildly shifted current, got {distance}"
+        );
+    }
+
+    #[test]
+    fn test_hellinger_distance_degenerate_baseline_and_current_at_same_point_is_zero() {
+        let baseline = vec![10.0, 10.0, 10.0];
+        let current = vec![10.0, 10.0, 10.0, 10.0];
+
+        let distance = DriftDetector::hellinger_distance(&baseline, &current).unwrap();
+        assert!(distance < 1e-4, "expected ~0 distance, got {distance}");
+    }
+
+    #[test]
+    fn test_hellinger_distance_reacts_to_variance_difference_alone() {
+        // Regression test: the previous variance term (0.5*ln(a/b) +
+        // 0.5*ln(b/a)) algebraically cancels to exactly 0 for any a, b > 0,
+        // so two samples with identical means but very different spreads
+        // used to be scored as zero drift purely because the (dead) code
+        // path happened to compile and run without error, not because it
+        // computed anything meaningful.
+        let baseline = vec![9.0, 9.5, 10.0, 10.5, 11.0]; // mean 10, tight spread
+        let current = vec![0.0, 5.0, 10.0, 15.0, 20.0]; // mean 10, wide spread
+
+        let distance = DriftDetector::hellinger_distance(&baseline, &current).unwrap();
+        assert!(
+            distance > 0.1,
+            "expected nonzero distance from a variance-only difference, got {distance}"
+        );
     }
 
     #[test]

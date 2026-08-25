@@ -1,6 +1,6 @@
 [package]
 name = "clusteraudiencekit"
-version = "7.1.1"
+version = "7.2.0"
 edition = "2021"
 authors = ["Georgi Mammen Mullassery <mullassery@gmail.com>"]
 description = "High-performance audience segmentation engine with Python bindings"

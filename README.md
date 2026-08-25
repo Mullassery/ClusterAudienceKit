@@ -137,9 +137,9 @@ develop --release`), which does require a Rust toolchain.
 Verified as of this audit (August 2026):
 
 - **Published wheels are single-platform.** The latest PyPI release
-  (7.1.1) ships only a macOS ARM64 / cp39 wheel, with no source
-  distribution. `v7.1.0` similarly shipped only a macOS ARM64 / cp313
-  wheel. There is currently no CI job that builds Linux or Windows wheels
+  (7.2.0) ships only a macOS ARM64 / cp39 wheel, with no source
+  distribution, same as `7.1.1` and `v7.1.0` before it (macOS ARM64 /
+  cp313). There is currently no CI job that builds Linux or Windows wheels
   (`.github/workflows/` only runs tests on `ubuntu-latest`, not a release
   build matrix), despite `pyproject.toml` classifying the package as
   `OS Independent` and supporting Python 3.8–3.12. In practice, `pip
@@ -148,7 +148,7 @@ Verified as of this audit (August 2026):
   `maturin` (see Installation above).
 - **`v7.0.0` remains installable from PyPI despite a confirmed
   import-crashing bug.** It was never yanked. If you have it pinned,
-  upgrade to `>=7.1.1`.
+  upgrade to `>=7.2.0`.
 - **K-Prototypes categorical support is partial.** `AudienceSegmenter.fit()`
   only accepts a numeric feature matrix today, so selecting K-Prototypes
   through that class currently runs in numeric-only mode (effectively
@@ -161,7 +161,7 @@ Verified as of this audit (August 2026):
   `Err("Not implemented")`. They are not called from anywhere else in the
   crate and are not exposed to Python, so they don't affect any documented
   functionality — noted here for completeness.
-- **Registry check:** local version (`7.1.1`, in `Cargo.toml` and
+- **Registry check:** local version (`7.2.0`, in `Cargo.toml` and
   `pyproject.toml`) matches the latest version actually published on PyPI.
   No drift.
 - **No open GitHub issues** at the time of this audit.

@@ -2,6 +2,62 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [7.2.0] - 2026-08-25
+
+### Added
+- **Drift-triggered re-clustering** (`DriftDetector` wired into
+  `StreamingSegmentationEngine`, closing a previously-standalone gap noted
+  in `docs/ROADMAP_HONEST.md`): `process_batch` now arms a drift baseline
+  over the tracked population's RFM distribution once enough customers
+  accumulate, and checks every subsequent batch against it. If
+  recency/frequency/monetary drift crosses a configurable severity
+  threshold, a real k-means re-fit (`clustering::kmeans`) runs over every
+  tracked customer and segment assignments are overwritten with the fresh
+  cluster labels. New `check_drift()`, `maybe_recluster()`,
+  `set_recluster_baseline()`, `recluster_history()` methods and
+  `ReclusterConfig`/`ReclusterEvent` types, exposed to Python as
+  `StreamingSegmentationEngine(config, recluster_config)`,
+  `ReclusterConfig`, `ReclusterEvent`.
+- **Chunked/streaming ingestion for batch clustering**
+  (`clustering::MiniBatchKMeans`, Sculley 2010): an online variant of
+  Lloyd's algorithm that ingests one chunk at a time via `partial_fit` and
+  updates centers incrementally, bounding memory to
+  O(chunk_size + n_clusters) regardless of total dataset size — unlike
+  `kmeans()`/`AudienceSegmenter.fit()`, which require the full dataset in
+  one in-memory `Array2` for repeated passes. Exposed to Python as
+  `MiniBatchKMeans(n_clusters, random_state)`.
+- Friendly (non-`Py`-prefixed) Python aliases for the streaming-segmentation
+  and drift-detection classes (`StreamingEvent`, `StreamingConfig`,
+  `StreamingSegmentUpdate`, `StreamingSegmentationEngine`, `FeatureDrift`,
+  `SegmentCompositionChange`) and drift functions
+  (`kolmogorov_smirnov`, `hellinger_distance`, `chi_square_drift`,
+  `detect_feature_drift`) — these existed in the compiled extension but
+  were never added to `clusteraudiencekit/__init__.py`'s alias list or
+  `__all__`, unlike every other public class.
+
+### Fixed
+- `DriftDetector::kolmogorov_smirnov` computed the baseline empirical CDF
+  via `(rank + 1) / n`, which silently assumed no ties: a run of repeated
+  identical values (e.g. an integer feature like event count) produced
+  large phantom drift between two byte-identical samples. Now evaluates
+  both samples' empirical CDFs via the same counting rule, at every point
+  present in either sample (the standard two-sample KS statistic).
+- `DriftDetector::hellinger_distance` short-circuited to 0 drift whenever
+  either sample had exactly zero variance (a degenerate/constant
+  distribution) — even when the other sample was wildly different in mean
+  and/or spread, which is a textbook case of *total* drift, not "nothing to
+  compare." Its variance term (`0.5*ln(a/b) + 0.5*ln(b/a)`) also
+  algebraically canceled to exactly 0 for any `a, b > 0`, so the function
+  only ever reacted to mean differences. Replaced with the standard
+  Bhattacharyya-distance formula for two Gaussians, with variance floored
+  at a small epsilon instead of short-circuited.
+
+Both were discovered while building drift-triggered re-clustering on top of
+`DriftDetector` — the KS-test bug made the new trigger fire on tied
+RFM feature values (e.g. every customer having made exactly one purchase),
+and the Hellinger bug made it silently miss real drift whenever the
+baseline window happened to be uniform.
+
 ## [7.1.1] - 2026-08-12
 
 Remediation pass following a technical audit. 7.1.0 was never published to

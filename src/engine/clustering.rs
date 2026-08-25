@@ -372,6 +372,112 @@ pub fn kprototypes(
     Ok(labels)
 }
 
+/// Mini-batch K-Means (Sculley, 2010: "Web-Scale K-Means Clustering"): an
+/// online/chunked variant of Lloyd's algorithm. `kmeans()` above needs every
+/// row of the dataset in memory for repeated full passes; this instead
+/// consumes the dataset one chunk at a time via `partial_fit`, updating
+/// centers incrementally with a per-center learning rate that decays as
+/// `1/count` (so a center converges instead of chasing whichever chunk
+/// arrived most recently). Memory use is bounded by O(chunk_size +
+/// n_clusters) regardless of total dataset size, so a caller can stream
+/// chunks from a file, a Python generator, or a paginated query without
+/// ever materializing the full dataset as one in-memory array.
+pub struct MiniBatchKMeans {
+    centers: Array2<f64>,
+    center_counts: Vec<u64>,
+    n_clusters: usize,
+    initialized: bool,
+    rng: StdRng,
+}
+
+impl MiniBatchKMeans {
+    pub fn new(n_clusters: usize, random_state: u64) -> Result<Self> {
+        if n_clusters == 0 {
+            return Err(ClusterClusterAudienceKitError::InvalidConfig(
+                "n_clusters must be > 0".to_string(),
+            ));
+        }
+        Ok(Self {
+            centers: Array2::zeros((0, 0)),
+            center_counts: vec![0; n_clusters],
+            n_clusters,
+            initialized: false,
+            rng: StdRng::seed_from_u64(random_state),
+        })
+    }
+
+    /// Whether at least one chunk has been ingested (centers are seeded).
+    pub fn is_initialized(&self) -> bool {
+        self.initialized
+    }
+
+    /// Current cluster centers. Empty (0 rows) until the first `partial_fit`.
+    pub fn centers(&self) -> &Array2<f64> {
+        &self.centers
+    }
+
+    /// Ingest one chunk, updating centers in place. The first chunk ever
+    /// passed to a given instance must have at least `n_clusters` rows (used
+    /// to seed initial centers via k-means++ on that chunk alone); every
+    /// call after that accepts any nonzero chunk size, and previously
+    /// ingested rows are never re-read or re-visited.
+    pub fn partial_fit(&mut self, chunk: &Array2<f64>) -> Result<()> {
+        if chunk.nrows() == 0 {
+            return Ok(());
+        }
+
+        if !self.initialized {
+            if chunk.nrows() < self.n_clusters {
+                return Err(ClusterClusterAudienceKitError::DataValidation(format!(
+                    "first partial_fit chunk must have at least n_clusters ({}) rows to seed initial centers, got {}",
+                    self.n_clusters,
+                    chunk.nrows()
+                )));
+            }
+            let (centers, _) = kmeans_plus_plus_init(chunk, self.n_clusters, &mut self.rng);
+            self.centers = centers;
+            self.initialized = true;
+            return Ok(());
+        }
+
+        if chunk.ncols() != self.centers.ncols() {
+            return Err(ClusterClusterAudienceKitError::DataValidation(format!(
+                "chunk has {} features but centers have {} features",
+                chunk.ncols(),
+                self.centers.ncols()
+            )));
+        }
+
+        // Sculley 2010, section 3.2: assign each point in the chunk to its
+        // nearest current center, then nudge that center toward the point
+        // with learning rate 1/count. A center's own running count (not the
+        // chunk index or a fixed rate) sets the rate, so early chunks move
+        // centers a lot and later chunks only fine-tune them.
+        for i in 0..chunk.nrows() {
+            let point = chunk.row(i);
+            let (c, _) = nearest_center(point.as_slice().unwrap(), &self.centers);
+            self.center_counts[c] += 1;
+            let lr = 1.0 / self.center_counts[c] as f64;
+            let mut center_row = self.centers.row_mut(c);
+            for j in 0..center_row.len() {
+                center_row[j] += lr * (point[j] - center_row[j]);
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Assign each row of `data` to its nearest fitted center.
+    pub fn predict(&self, data: &Array2<f64>) -> Result<Vec<usize>> {
+        if !self.initialized {
+            return Err(ClusterClusterAudienceKitError::ClusteringError(
+                "predict() called before any partial_fit chunk was ingested".to_string(),
+            ));
+        }
+        assign_to_clusters(data, &self.centers)
+    }
+}
+
 /// Assign data points to their nearest cluster center (used for predicting
 /// on new data with an already-fitted model).
 pub fn assign_to_clusters(data: &Array2<f64>, centers: &Array2<f64>) -> Result<Vec<usize>> {
@@ -533,6 +639,77 @@ mod tests {
                 "kprototypes produced different output on a repeat run with the same random_state"
             );
         }
+    }
+
+    #[test]
+    fn minibatch_kmeans_rejects_zero_clusters() {
+        assert!(MiniBatchKMeans::new(0, 0).is_err());
+    }
+
+    #[test]
+    fn minibatch_kmeans_rejects_first_chunk_smaller_than_n_clusters() {
+        let mut mbk = MiniBatchKMeans::new(3, 0).unwrap();
+        let chunk = array![[1.0, 1.0], [2.0, 2.0]];
+        assert!(mbk.partial_fit(&chunk).is_err());
+    }
+
+    #[test]
+    fn minibatch_kmeans_predict_before_any_chunk_errors() {
+        let mbk = MiniBatchKMeans::new(2, 0).unwrap();
+        let data = array![[1.0, 1.0]];
+        assert!(mbk.predict(&data).is_err());
+    }
+
+    #[test]
+    fn minibatch_kmeans_recovers_well_separated_blobs_from_chunks() {
+        // Same three-blobs fixture as full-batch kmeans, but fed in via
+        // several small chunks instead of one call -- this is the actual
+        // scenario the feature exists for: a caller streaming rows from a
+        // generator/file instead of holding the whole dataset in memory.
+        let data = three_blobs();
+        let mut mbk = MiniBatchKMeans::new(3, 42).unwrap();
+
+        // First chunk must have >= n_clusters rows to seed centers.
+        mbk.partial_fit(&data.slice(ndarray::s![0..4, ..]).to_owned())
+            .unwrap();
+        mbk.partial_fit(&data.slice(ndarray::s![4..8, ..]).to_owned())
+            .unwrap();
+        mbk.partial_fit(&data.slice(ndarray::s![8..11, ..]).to_owned())
+            .unwrap();
+
+        // A few more passes over the same data lets centers converge
+        // further, same as mini-batch k-means does in practice with
+        // repeated epochs over a streamed dataset.
+        for _ in 0..20 {
+            mbk.partial_fit(&data).unwrap();
+        }
+
+        let labels = mbk.predict(&data).unwrap();
+        assert_eq!(labels.len(), 11);
+        assert!(labels[0] == labels[1] && labels[1] == labels[2] && labels[2] == labels[3]);
+        assert!(labels[4] == labels[5] && labels[5] == labels[6] && labels[6] == labels[7]);
+        assert!(labels[8] == labels[9] && labels[9] == labels[10]);
+        assert_ne!(labels[0], labels[4]);
+        assert_ne!(labels[0], labels[8]);
+        assert_ne!(labels[4], labels[8]);
+    }
+
+    #[test]
+    fn minibatch_kmeans_empty_chunk_is_a_noop() {
+        let mut mbk = MiniBatchKMeans::new(2, 0).unwrap();
+        let empty: Array2<f64> = Array2::zeros((0, 2));
+        assert!(mbk.partial_fit(&empty).is_ok());
+        assert!(!mbk.is_initialized());
+    }
+
+    #[test]
+    fn minibatch_kmeans_rejects_mismatched_feature_count_after_init() {
+        let mut mbk = MiniBatchKMeans::new(2, 0).unwrap();
+        let first = array![[1.0, 1.0], [2.0, 2.0], [3.0, 3.0]];
+        mbk.partial_fit(&first).unwrap();
+
+        let bad_chunk = array![[1.0, 1.0, 1.0]];
+        assert!(mbk.partial_fit(&bad_chunk).is_err());
     }
 
     #[test]

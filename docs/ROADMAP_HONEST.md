@@ -276,16 +276,40 @@ and current dependency-pinning status.
   external binding.
 - Neural network Python bindings, if there's a real use case that justifies
   the API surface.
-- Drift-triggered re-clustering: `DriftDetector` (`src/engine/drift_detection.rs`,
-  KS-test/Hellinger/chi-square) is real but standalone — nothing in
-  `streaming.rs` or `clustering.rs` calls it. Wire it into a periodic
-  windowed re-centering / auto-reclustering trigger so streaming segments
-  don't silently degrade under concept drift.
-- Chunked/streaming ingestion for batch clustering: `kmeans_py` /
-  `AudienceSegmenter.fit`/`predict` (`src/python.rs`) load the full
-  `Vec<Vec<f64>>` into an in-memory `ndarray::Array2` (`clustering.rs`) with
-  no chunked-iterator or streaming memory bound — a real OOM risk on
-  massive one-shot batch loads.
+- [x] Drift-triggered re-clustering — **Done (7.2.0).** `StreamingSegmentationEngine::process_batch`
+  (`src/engine/streaming.rs`) now arms a drift baseline over the tracked
+  population's (recency, frequency, monetary) distribution once enough
+  customers accumulate, and checks every subsequent batch against it via
+  `DriftDetector`. Drift crossing a configurable severity
+  (`ReclusterConfig`) triggers a real `clustering::kmeans` re-fit over
+  every tracked customer, overwriting segment assignments with the fresh
+  cluster labels and re-arming the baseline. New
+  `check_drift`/`maybe_recluster`/`set_recluster_baseline`/
+  `recluster_history` methods, exposed to Python as
+  `StreamingSegmentationEngine(config, recluster_config)` /
+  `ReclusterConfig` / `ReclusterEvent`.
+
+  Wiring this up surfaced two real, pre-existing bugs in `DriftDetector`
+  itself (fixed in the same release, see `CHANGELOG.md`): `kolmogorov_smirnov`
+  produced phantom drift on tied/repeated values (its baseline empirical CDF
+  was computed via rank instead of counting, silently assuming no ties), and
+  `hellinger_distance` short-circuited to 0 whenever either sample had exactly
+  zero variance regardless of how different the other sample was, with a
+  variance term that algebraically canceled to 0 for any inputs. Both were
+  load-bearing for this exact feature — a streaming RFM window with
+  identical purchase counts (common) or a quiet, uniform baseline window
+  followed by a real shift would otherwise have produced false triggers or
+  silently missed real drift.
+- [x] Chunked/streaming ingestion for batch clustering — **Done (7.2.0).**
+  Added `clustering::MiniBatchKMeans` (Sculley 2010): consumes one chunk at
+  a time via `partial_fit`, updating centers incrementally with memory
+  bounded to O(chunk_size + n_clusters) regardless of total dataset size.
+  This is additive, not a replacement for `kmeans_py`/
+  `AudienceSegmenter.fit`/`predict` — those still run exact Lloyd's-algorithm
+  k-means for callers who already have the full dataset in memory and want
+  the exact (not approximate/online) result; `MiniBatchKMeans` is for the
+  specific "dataset doesn't fit in memory at once" case those can't handle.
+  Exposed to Python as `MiniBatchKMeans(n_clusters, random_state)`.
 - License compatibility audit: `LICENSE` is a custom "free to use with
   attribution" source-available license (not a standard OSS license). Per
   org policy this repo is treated as Proprietary regardless of that file's

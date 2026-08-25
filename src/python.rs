@@ -12,7 +12,7 @@
 #![allow(clippy::useless_conversion)]
 
 use crate::engine::churn_prediction::{ChurnPrediction, ChurnRiskLevel};
-use crate::engine::clustering::{kmeans, ClusteringMethod, KMeansResult};
+use crate::engine::clustering::{kmeans, ClusteringMethod, KMeansResult, MiniBatchKMeans};
 use crate::engine::clv::{CLVCalculator, CustomerLTV};
 use crate::engine::rfm::{
     calculate_rfm, DecayFunction, RFMConfig, RFMScore, ScoringMethod, Transaction,
@@ -30,7 +30,7 @@ use crate::engine::behavioral::{
     RuleValue,
 };
 use crate::engine::cohorts::{Cohort, CohortAnalytics, CohortId, CohortPeriod};
-use crate::engine::drift_detection::{DriftDetector, DriftMethod};
+use crate::engine::drift_detection::{DriftDetector, DriftMethod, DriftSeverity, FeatureDrift};
 use crate::engine::k_estimation::{
     CombinedKEstimation, ElbowMethod, GapStatistic, SilhouetteEstimation,
 };
@@ -42,7 +42,8 @@ use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
 };
 use crate::engine::streaming::{
-    StreamEventType, StreamingConfig, StreamingEvent, StreamingSegmentationEngine, StreamingWindow,
+    ReclusterConfig, ReclusterEvent, StreamEventType, StreamingConfig, StreamingEvent,
+    StreamingSegmentationEngine, StreamingWindow,
 };
 
 // ============================================================================
@@ -315,6 +316,70 @@ fn kmeans_py(
     kmeans(&data_array, n_clusters, max_iter, random_state)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
         .map(|result| PyKMeansResult { inner: result })
+}
+
+fn vec_to_array2(data: Vec<Vec<f64>>) -> PyResult<Array2<f64>> {
+    let n_rows = data.len();
+    let n_cols = if data.is_empty() { 0 } else { data[0].len() };
+    Array2::from_shape_vec((n_rows, n_cols), data.into_iter().flatten().collect())
+        .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+}
+
+/// Mini-batch K-Means: chunked/streaming ingestion for batch clustering.
+/// Unlike `kmeans()`/`AudienceSegmenter.fit()`, which require the entire
+/// dataset as one in-memory `Array2` for repeated full passes,
+/// `partial_fit` consumes one chunk at a time and updates centers
+/// incrementally -- a caller can stream chunks from a file, database
+/// cursor, or Python generator without ever materializing the full
+/// dataset, bounding memory to O(chunk_size + n_clusters) regardless of
+/// total dataset size.
+#[pyclass]
+struct PyMiniBatchKMeans {
+    inner: MiniBatchKMeans,
+}
+
+#[pymethods]
+impl PyMiniBatchKMeans {
+    #[new]
+    #[pyo3(signature = (n_clusters, random_state=42))]
+    fn new(n_clusters: usize, random_state: u64) -> PyResult<Self> {
+        MiniBatchKMeans::new(n_clusters, random_state)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))
+            .map(|inner| PyMiniBatchKMeans { inner })
+    }
+
+    /// Ingest one chunk of rows, updating centers in place. The first
+    /// chunk ever passed must have at least `n_clusters` rows.
+    fn partial_fit(&mut self, chunk: Vec<Vec<f64>>) -> PyResult<()> {
+        let chunk = vec_to_array2(chunk)?;
+        self.inner
+            .partial_fit(&chunk)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    }
+
+    /// Assign each row of `data` to its nearest fitted center.
+    fn predict(&self, data: Vec<Vec<f64>>) -> PyResult<Vec<usize>> {
+        let data = vec_to_array2(data)?;
+        self.inner
+            .predict(&data)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    }
+
+    fn is_initialized(&self) -> bool {
+        self.inner.is_initialized()
+    }
+
+    #[getter]
+    fn centers(&self) -> Vec<Vec<f64>> {
+        self.inner.centers().outer_iter().map(|row| row.to_vec()).collect()
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "MiniBatchKMeans(initialized={})",
+            self.inner.is_initialized()
+        )
+    }
 }
 
 // ============================================================================
@@ -1052,9 +1117,66 @@ struct PyStreamingSegmentUpdate {
     timestamp: i64,
 }
 
+/// Configuration for drift-triggered re-clustering: how severe drift in the
+/// tracked population's RFM distribution must be (`min_severity`), how many
+/// customers must be tracked before drift is even evaluated
+/// (`min_customers`), and how many clusters to re-fit with
+/// (`n_clusters`) when it fires.
+#[pyclass]
+struct PyReclusterConfig {
+    inner: ReclusterConfig,
+}
+
+#[pymethods]
+impl PyReclusterConfig {
+    #[new]
+    #[pyo3(signature = (min_severity="high", min_customers=30, n_clusters=4))]
+    fn new(min_severity: &str, min_customers: usize, n_clusters: usize) -> PyResult<Self> {
+        Ok(PyReclusterConfig {
+            inner: ReclusterConfig {
+                min_severity: parse_drift_severity(min_severity)?,
+                min_customers,
+                n_clusters,
+            },
+        })
+    }
+}
+
+/// Record of a completed drift-triggered re-cluster: which features
+/// drifted (and by how much), how many customers were re-fit, and into how
+/// many clusters.
+#[pyclass]
+struct PyReclusterEvent {
+    #[pyo3(get)]
+    timestamp: i64,
+    #[pyo3(get)]
+    drifts: Vec<PyFeatureDrift>,
+    #[pyo3(get)]
+    customers_reclustered: usize,
+    #[pyo3(get)]
+    n_clusters: usize,
+}
+
+fn recluster_event_to_py(e: ReclusterEvent) -> PyReclusterEvent {
+    PyReclusterEvent {
+        timestamp: e.timestamp,
+        drifts: e.drifts.into_iter().map(feature_drift_to_py).collect(),
+        customers_reclustered: e.customers_reclustered,
+        n_clusters: e.n_clusters,
+    }
+}
+
 /// Stateful real-time segmentation engine: feed it events one at a time (or
 /// in batches) and it maintains an incrementally-updated RFM-like state and
 /// segment assignment per customer, without requiring a full batch refit.
+///
+/// `process_batch` is also the drift-triggered re-clustering checkpoint:
+/// once enough customers are tracked, the first batch arms a drift
+/// baseline, and every batch after that checks the current RFM
+/// distribution against it via `DriftDetector`. If drift crosses
+/// `recluster_config`'s threshold, a real k-means re-fit runs over every
+/// tracked customer's (recency, frequency, monetary) vector and segment
+/// assignments are overwritten with the fresh cluster labels.
 #[pyclass]
 struct PyStreamingSegmentationEngine {
     inner: StreamingSegmentationEngine,
@@ -1063,10 +1185,52 @@ struct PyStreamingSegmentationEngine {
 #[pymethods]
 impl PyStreamingSegmentationEngine {
     #[new]
-    fn new(config: &PyStreamingConfig) -> Self {
-        PyStreamingSegmentationEngine {
-            inner: StreamingSegmentationEngine::new(config.inner.clone()),
+    #[pyo3(signature = (config, recluster_config=None))]
+    fn new(config: &PyStreamingConfig, recluster_config: Option<&PyReclusterConfig>) -> Self {
+        let mut inner = StreamingSegmentationEngine::new(config.inner.clone());
+        if let Some(rc) = recluster_config {
+            inner = inner.with_recluster_config(rc.inner.clone());
         }
+        PyStreamingSegmentationEngine { inner }
+    }
+
+    /// (Re-)arm drift detection against the current RFM distribution,
+    /// without performing a re-cluster.
+    fn set_recluster_baseline(&mut self) {
+        self.inner.set_recluster_baseline();
+    }
+
+    /// Compare the current RFM distribution against the last-captured
+    /// baseline. Returns `None` if no baseline is armed yet or there
+    /// aren't enough tracked customers for the comparison to be
+    /// meaningful.
+    fn check_drift(&self) -> PyResult<Option<Vec<PyFeatureDrift>>> {
+        let drifts = self
+            .inner
+            .check_drift()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(drifts.map(|ds| ds.into_iter().map(feature_drift_to_py).collect()))
+    }
+
+    /// Check for drift and, if it crosses the configured threshold, re-fit
+    /// real k-means clusters over every tracked customer and overwrite
+    /// their segment assignments. Returns `None` if nothing was triggered.
+    fn maybe_recluster(&mut self) -> PyResult<Option<PyReclusterEvent>> {
+        let event = self
+            .inner
+            .maybe_recluster()
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+        Ok(event.map(recluster_event_to_py))
+    }
+
+    /// History of drift-triggered re-clusters this engine has performed.
+    fn recluster_history(&self) -> Vec<PyReclusterEvent> {
+        self.inner
+            .recluster_history()
+            .iter()
+            .cloned()
+            .map(recluster_event_to_py)
+            .collect()
     }
 
     fn process_event(
@@ -1149,6 +1313,29 @@ fn parse_drift_method(s: &str) -> PyResult<DriftMethod> {
     }
 }
 
+fn parse_drift_severity(s: &str) -> PyResult<DriftSeverity> {
+    match s.to_lowercase().as_str() {
+        "none" => Ok(DriftSeverity::None),
+        "low" => Ok(DriftSeverity::Low),
+        "medium" => Ok(DriftSeverity::Medium),
+        "high" => Ok(DriftSeverity::High),
+        "critical" => Ok(DriftSeverity::Critical),
+        other => Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+            "Unknown drift severity '{}'. Expected one of: none, low, medium, high, critical",
+            other
+        ))),
+    }
+}
+
+fn feature_drift_to_py(d: FeatureDrift) -> PyFeatureDrift {
+    PyFeatureDrift {
+        feature_name: d.feature_name,
+        drift_score: d.drift_score,
+        severity: d.severity.as_str().to_string(),
+        timestamp: d.timestamp,
+    }
+}
+
 /// Kolmogorov-Smirnov statistic (max CDF gap) between two samples.
 #[pyfunction]
 fn kolmogorov_smirnov(baseline: Vec<f64>, current: Vec<f64>) -> PyResult<f64> {
@@ -1174,6 +1361,7 @@ fn chi_square_drift(
 }
 
 #[pyclass]
+#[derive(Clone)]
 struct PyFeatureDrift {
     #[pyo3(get)]
     feature_name: String,
@@ -2160,6 +2348,7 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     // Add clustering functions
     m.add_function(wrap_pyfunction!(kmeans_py, m)?)?;
+    m.add_class::<PyMiniBatchKMeans>()?;
 
     // Add churn & CLV functions
     m.add_function(wrap_pyfunction!(calculate_simple_ltv, m)?)?;
@@ -2185,6 +2374,8 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PyStreamingConfig>()?;
     m.add_class::<PyStreamingSegmentUpdate>()?;
     m.add_class::<PyStreamingSegmentationEngine>()?;
+    m.add_class::<PyReclusterConfig>()?;
+    m.add_class::<PyReclusterEvent>()?;
 
     // Drift detection
     m.add_class::<PyFeatureDrift>()?;
