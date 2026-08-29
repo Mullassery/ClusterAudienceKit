@@ -11,7 +11,7 @@ categories = ["algorithms", "data-structures"]
 
 [dependencies]
 ndarray = "0.16"
-ndarray-stats = "0.5"
+ndarray-stats = "0.7"
 pyo3 = { version = "0.22", features = ["extension-module"] }
 numpy = "0.22"
 arrow = "55.0"
