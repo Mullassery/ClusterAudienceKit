@@ -569,8 +569,10 @@ impl StreamingSegmentationEngine {
             return Ok(None);
         };
 
-        let triggered =
-            DriftDetector::get_drifted_features(&drifts, self.recluster_config.min_severity.clone());
+        let triggered = DriftDetector::get_drifted_features(
+            &drifts,
+            self.recluster_config.min_severity.clone(),
+        );
         if triggered.is_empty() {
             return Ok(None);
         }
@@ -594,7 +596,7 @@ impl StreamingSegmentationEngine {
             ))
         })?;
 
-        let result = clustering::kmeans(&data, n_clusters, 300, 42)?;
+        let result = clustering::kmeans(&data, n_clusters, 300, 42, -1)?;
 
         for (customer_id, label) in customer_ids.iter().zip(result.labels.iter()) {
             self.segment_assignments

@@ -101,6 +101,38 @@ class TestAudienceSegmenter:
 
         assert labels1 == labels2
 
+    def test_n_jobs_is_a_real_accepted_constructor_parameter(self):
+        # n_jobs used to be silently ignored (hardcoded to -1 internally,
+        # not even accepted by the constructor). It's now a real parameter:
+        # this asserts it's actually settable and reflected back, not just
+        # accepted-and-discarded.
+        segmenter = AudienceSegmenter(3, n_jobs=2)
+        assert segmenter.n_jobs == 2
+
+        default_segmenter = AudienceSegmenter(3)
+        assert default_segmenter.n_jobs == -1
+
+    def test_fit_predict_with_n_jobs_1_and_2_match_default(self):
+        # n_jobs only controls how many threads the underlying scoped rayon
+        # pool may use -- it must never change fit()/predict() results.
+        # Confirm construction/fit/predict all work without error for
+        # n_jobs=1 (single-threaded) and n_jobs=2 (capped), and that they
+        # agree with the n_jobs=-1 (all cores) baseline.
+        data = [[1.0, 2.0], [1.0, 4.0], [1.0, 0.0], [4.0, 2.0], [4.0, 4.0], [4.0, 0.0]]
+
+        baseline = AudienceSegmenter(2, n_jobs=-1)
+        baseline.fit(data)
+        baseline_labels = baseline.predict(data)
+
+        for n_jobs in (1, 2):
+            segmenter = AudienceSegmenter(2, n_jobs=n_jobs)
+            assert segmenter.n_jobs == n_jobs
+            segmenter.fit(data)
+            labels = segmenter.predict(data)
+            assert len(labels) == len(data)
+            assert all(0 <= label < 2 for label in labels)
+            assert labels == baseline_labels
+
     def test_predict_before_fit_raises_clear_error(self):
         segmenter = AudienceSegmenter(3)
         with pytest.raises(Exception, match="fit"):

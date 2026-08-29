@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "7.2.0"
+version = "7.3.0"
 description = "Rust-powered customer segmentation: RFM analysis, KMeans/K-Prototypes clustering, churn prediction, customer lifetime value, real-time streaming segmentation, drift detection, lookalike audiences, cohort analytics, lifecycle tracking, and differential privacy / k-anonymity."
 readme = "README.md"
 
@@ -93,3 +93,4 @@ Discussions = "https://github.com/Mullassery/ClusterAudienceKit/discussions"
 [tool.maturin]
 features = ["pyo3/extension-module"]
 python-packages = ["clusteraudiencekit"]
+include = ["LICENSE"]

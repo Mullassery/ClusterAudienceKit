@@ -92,6 +92,7 @@ impl AudienceSegmenterCore {
                     self.config.n_clusters,
                     Self::DEFAULT_MAX_ITER,
                     self.config.random_state,
+                    self.config.n_jobs,
                 )?;
                 self.cluster_centers = Some(result.centers);
                 self.cluster_labels = Some(result.labels);
@@ -109,6 +110,7 @@ impl AudienceSegmenterCore {
                     self.config.n_clusters,
                     Self::DEFAULT_MAX_ITER,
                     self.config.random_state,
+                    self.config.n_jobs,
                 )?;
                 let centers = {
                     let dim = data.ncols();
@@ -224,5 +226,52 @@ mod tests {
         segmenter.fit(&data).unwrap();
         assert!(segmenter.cluster_centers.is_some());
         assert_eq!(segmenter.cluster_labels.as_ref().unwrap().len(), 4);
+    }
+
+    /// `n_jobs` is a real, load-bearing config field: it controls the size of
+    /// the scoped rayon thread pool `clustering::kmeans`/`kprototypes` build
+    /// and run under (see `clustering::build_thread_pool`). It must never
+    /// change what `fit`/`predict` compute -- only how many threads do the
+    /// computing. Exercise n_jobs=1 (single-threaded) and n_jobs=2 (capped)
+    /// end-to-end through the real segmenter and confirm both construct,
+    /// fit, and predict without error, and agree with the n_jobs=-1
+    /// ("use all cores") baseline on actual results.
+    #[test]
+    fn segmenter_with_explicit_n_jobs_constructs_fits_and_predicts_correctly() {
+        let data = ndarray::array![
+            [1.0, 1.0],
+            [1.1, 0.9],
+            [0.9, 1.1],
+            [50.0, 50.0],
+            [50.1, 49.9],
+            [49.9, 50.1],
+        ];
+
+        let mut baseline_config = make_config(2, clustering::ClusteringMethod::KMeans);
+        baseline_config.n_jobs = -1;
+        let mut baseline = AudienceSegmenterCore::new(baseline_config);
+        baseline.fit(&data).unwrap();
+        let baseline_labels = baseline.cluster_labels.clone().unwrap();
+
+        for n_jobs in [1, 2] {
+            let mut config = make_config(2, clustering::ClusteringMethod::KMeans);
+            config.n_jobs = n_jobs;
+            let mut segmenter = AudienceSegmenterCore::new(config);
+
+            segmenter.fit(&data).unwrap();
+            assert!(segmenter.cluster_centers.is_some());
+            let labels = segmenter.cluster_labels.as_ref().unwrap();
+            assert_eq!(labels.len(), 6);
+            assert!(labels[0] == labels[1] && labels[1] == labels[2]);
+            assert!(labels[3] == labels[4] && labels[4] == labels[5]);
+            assert_ne!(labels[0], labels[3]);
+            assert_eq!(
+                labels, &baseline_labels,
+                "n_jobs={n_jobs} produced different cluster assignments than n_jobs=-1"
+            );
+
+            let predicted = segmenter.predict(&data).unwrap();
+            assert_eq!(&predicted, labels);
+        }
     }
 }

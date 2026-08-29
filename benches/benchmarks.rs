@@ -52,13 +52,13 @@ fn bench_kmeans(c: &mut Criterion) {
 
     let data_10k = synthetic_blobs(10_000, 3, 5, 42);
     group.bench_function("10k_rows_3d_5clusters", |b| {
-        b.iter(|| kmeans(black_box(&data_10k), 5, 50, 42).unwrap())
+        b.iter(|| kmeans(black_box(&data_10k), 5, 50, 42, -1).unwrap())
     });
 
     let data_100k = synthetic_blobs(100_000, 3, 5, 42);
     group.sample_size(10);
     group.bench_function("100k_rows_3d_5clusters", |b| {
-        b.iter(|| kmeans(black_box(&data_100k), 5, 50, 42).unwrap())
+        b.iter(|| kmeans(black_box(&data_100k), 5, 50, 42, -1).unwrap())
     });
 
     group.finish();
@@ -71,14 +71,14 @@ fn bench_rfm(c: &mut Criterion) {
     let tx_10k = synthetic_transactions(10_000, 5, 7);
     let config = RFMConfig::default();
     group.bench_function("10k_customers", |b| {
-        b.iter(|| calculate_rfm(black_box(tx_10k.clone()), black_box(&config)).unwrap())
+        b.iter(|| calculate_rfm(black_box(tx_10k.clone()), black_box(&config), -1).unwrap())
     });
 
     // 100k customers x 5 transactions each = 500k transaction rows.
     let tx_100k = synthetic_transactions(100_000, 5, 7);
     group.sample_size(10);
     group.bench_function("100k_customers", |b| {
-        b.iter(|| calculate_rfm(black_box(tx_100k.clone()), black_box(&config)).unwrap())
+        b.iter(|| calculate_rfm(black_box(tx_100k.clone()), black_box(&config), -1).unwrap())
     });
 
     group.finish();

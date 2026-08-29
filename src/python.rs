@@ -237,9 +237,11 @@ impl PyRFMScore {
 }
 
 #[pyfunction]
+#[pyo3(signature = (transactions, config, n_jobs=None))]
 fn calculate_rfm_py(
     transactions: Vec<(String, String, f64)>,
     config: &PyRFMConfig,
+    n_jobs: Option<i32>,
 ) -> PyResult<Vec<PyRFMScore>> {
     let tx_vec: Vec<Transaction> = transactions
         .into_iter()
@@ -250,7 +252,9 @@ fn calculate_rfm_py(
         })
         .collect();
 
-    calculate_rfm(tx_vec, &config.inner)
+    // -1 (use all cores) preserves the pre-n_jobs behavior when the caller
+    // doesn't pass n_jobs explicitly.
+    calculate_rfm(tx_vec, &config.inner, n_jobs.unwrap_or(-1))
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
         .map(|scores| {
             scores
@@ -297,15 +301,19 @@ impl PyKMeansResult {
 }
 
 #[pyfunction]
-#[pyo3(signature = (data, n_clusters, max_iter=None, random_state=None))]
+#[pyo3(signature = (data, n_clusters, max_iter=None, random_state=None, n_jobs=None))]
 fn kmeans_py(
     data: Vec<Vec<f64>>,
     n_clusters: usize,
     max_iter: Option<usize>,
     random_state: Option<u64>,
+    n_jobs: Option<i32>,
 ) -> PyResult<PyKMeansResult> {
     let max_iter = max_iter.unwrap_or(300);
     let random_state = random_state.unwrap_or(42);
+    // -1 (use all cores) preserves the pre-n_jobs behavior when the caller
+    // doesn't pass n_jobs explicitly.
+    let n_jobs = n_jobs.unwrap_or(-1);
 
     let data_array = Array2::from_shape_vec(
         (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
@@ -313,7 +321,7 @@ fn kmeans_py(
     )
     .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
-    kmeans(&data_array, n_clusters, max_iter, random_state)
+    kmeans(&data_array, n_clusters, max_iter, random_state, n_jobs)
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
         .map(|result| PyKMeansResult { inner: result })
 }
@@ -371,7 +379,11 @@ impl PyMiniBatchKMeans {
 
     #[getter]
     fn centers(&self) -> Vec<Vec<f64>> {
-        self.inner.centers().outer_iter().map(|row| row.to_vec()).collect()
+        self.inner
+            .centers()
+            .outer_iter()
+            .map(|row| row.to_vec())
+            .collect()
     }
 
     fn __repr__(&self) -> String {
@@ -393,19 +405,33 @@ struct PyAudienceSegmenter {
 
 #[pymethods]
 impl PyAudienceSegmenter {
+    /// `n_jobs` follows the scikit-learn convention: `-1` (the default)
+    /// uses all available CPU cores, `1` forces single-threaded execution
+    /// (useful for debugging/reproducing issues without thread scheduling
+    /// noise), and any other positive `N` caps parallel work at `N`
+    /// threads. It's implemented as a scoped rayon thread pool built fresh
+    /// for each `fit()` call (see `clustering::build_thread_pool`), not a
+    /// mutation of the process-global rayon pool, so constructing multiple
+    /// segmenters with different `n_jobs` values is safe.
     #[new]
-    fn new(n_clusters: usize) -> Self {
+    #[pyo3(signature = (n_clusters, n_jobs=None))]
+    fn new(n_clusters: usize, n_jobs: Option<i32>) -> Self {
         let config = SegmenterConfig {
             method: "kmeans".to_string(),
             n_clusters,
             rfm_config: RFMConfig::default(),
             clustering_method: ClusteringMethod::KMeans,
             random_state: 42,
-            n_jobs: -1,
+            n_jobs: n_jobs.unwrap_or(-1),
         };
         PyAudienceSegmenter {
             inner: AudienceSegmenterCore::new(config),
         }
+    }
+
+    #[getter]
+    fn get_n_jobs(&self) -> i32 {
+        self.inner.config.n_jobs
     }
 
     fn fit(&mut self, data: Vec<Vec<f64>>) -> PyResult<()> {

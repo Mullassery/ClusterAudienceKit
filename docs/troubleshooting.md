@@ -230,7 +230,7 @@ print(f"Fit time: {(time.time()-start)*1000:.1f}ms")
 
 1. **Use multi-core processing:**
    ```python
-   segmenter = AudienceSegmenter(n_jobs=-1)  # Use all cores
+   segmenter = AudienceSegmenter(n_clusters=4, n_jobs=-1)  # Use all cores
    ```
 
 2. **Reduce window size:**

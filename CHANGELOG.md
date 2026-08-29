@@ -2,6 +2,18 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [7.3.0] - 2026-08-30
+
+### Fixed
+- **`n_jobs` was completely fake.** It was hardcoded to `-1` in
+  `SegmenterConfig` and never actually read anywhere, and the real PyO3
+  constructor (`PyAudienceSegmenter::new()`) didn't even accept it as a
+  parameter — despite `docs/api-reference.md` documenting it as a working,
+  user-settable thread-throttle control. `n_jobs` is now a real accepted
+  constructor parameter, wired through to a scoped
+  `rayon::ThreadPoolBuilder` around the clustering/RFM computation, so it
+  actually controls parallelism instead of silently doing nothing.
+
 ## [7.2.0] - 2026-08-25
 
 ### Added

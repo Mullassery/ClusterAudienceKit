@@ -79,8 +79,19 @@ impl RFMScore {
     }
 }
 
-/// Calculate RFM scores from transaction data
-pub fn calculate_rfm(transactions: Vec<Transaction>, config: &RFMConfig) -> Result<Vec<RFMScore>> {
+/// Calculate RFM scores from transaction data.
+///
+/// `n_jobs` controls the size of the scoped rayon thread pool the parallel
+/// per-customer computation below runs under (same convention as
+/// `clustering::kmeans`/`kprototypes`, see
+/// `crate::engine::clustering::build_thread_pool`): `<= 0` uses rayon's
+/// default (all cores), `> 0` caps the pool at that many threads. Pass `-1`
+/// to preserve the historical "all cores" behavior.
+pub fn calculate_rfm(
+    transactions: Vec<Transaction>,
+    config: &RFMConfig,
+    n_jobs: i32,
+) -> Result<Vec<RFMScore>> {
     if transactions.is_empty() {
         return Ok(vec![]);
     }
@@ -98,13 +109,18 @@ pub fn calculate_rfm(transactions: Vec<Transaction>, config: &RFMConfig) -> Resu
 
     // Per-customer RFM computation is independent across customers, so for
     // datasets with many distinct customers this is a straightforward
-    // rayon parallel map/filter over the grouped transaction lists.
-    let mut scores: Vec<RFMScore> = customer_data
-        .into_par_iter()
-        .filter_map(|(customer_id, txs)| {
-            calculate_customer_rfm(&customer_id, &txs, &reference_date, config).ok()
-        })
-        .collect();
+    // rayon parallel map/filter over the grouped transaction lists. Run it
+    // inside a scoped pool sized per `n_jobs` rather than rayon's
+    // process-global pool.
+    let pool = crate::engine::clustering::build_thread_pool(n_jobs)?;
+    let mut scores: Vec<RFMScore> = pool.install(|| {
+        customer_data
+            .into_par_iter()
+            .filter_map(|(customer_id, txs)| {
+                calculate_customer_rfm(&customer_id, &txs, &reference_date, config).ok()
+            })
+            .collect()
+    });
 
     // Apply scoring
     apply_scoring(&mut scores, config.scoring_method)?;
@@ -373,12 +389,48 @@ mod tests {
         ];
 
         let config = RFMConfig::default();
-        let scores = calculate_rfm(transactions, &config).unwrap();
+        let scores = calculate_rfm(transactions, &config, -1).unwrap();
 
         assert_eq!(scores.len(), 1);
         assert_eq!(scores[0].customer_id, "cust1");
         assert_eq!(scores[0].frequency, 2.0);
         assert_eq!(scores[0].monetary, 150.0);
+    }
+
+    #[test]
+    fn test_calculate_rfm_n_jobs_does_not_affect_correctness() {
+        // n_jobs only sizes the scoped rayon pool the per-customer
+        // computation runs under -- results (aside from scoring/ranking,
+        // which is deterministic given the same input) must be the same
+        // regardless of thread count.
+        let transactions = vec![
+            Transaction {
+                customer_id: "cust1".to_string(),
+                date: Utc::now().to_rfc3339(),
+                amount: 100.0,
+            },
+            Transaction {
+                customer_id: "cust2".to_string(),
+                date: (Utc::now() - Duration::days(5)).to_rfc3339(),
+                amount: 200.0,
+            },
+        ];
+
+        let config = RFMConfig::default();
+        let mut single_threaded = calculate_rfm(transactions.clone(), &config, 1).unwrap();
+        let mut two_threads = calculate_rfm(transactions, &config, 2).unwrap();
+
+        single_threaded.sort_by(|a, b| a.customer_id.cmp(&b.customer_id));
+        two_threads.sort_by(|a, b| a.customer_id.cmp(&b.customer_id));
+
+        assert_eq!(single_threaded.len(), 2);
+        assert_eq!(single_threaded.len(), two_threads.len());
+        for (a, b) in single_threaded.iter().zip(two_threads.iter()) {
+            assert_eq!(a.customer_id, b.customer_id);
+            assert_eq!(a.frequency, b.frequency);
+            assert_eq!(a.monetary, b.monetary);
+            assert_eq!(a.rfm_rank(), b.rfm_rank());
+        }
     }
 
     #[test]
