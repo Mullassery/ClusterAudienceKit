@@ -1,5 +1,14 @@
 # ClusterAudienceKit
 
+## Problem
+
+RFM segmentation, clustering, churn scoring, and CLV estimation for a
+customer base usually means stitching together several separate tools
+(scikit-learn for clustering, a hand-rolled RFM script, a separate churn
+model), each with its own performance ceiling on a large transaction table.
+
+## Solution
+
 **A Rust-powered customer segmentation engine with Python bindings.**
 
 RFM analysis, KMeans/K-Prototypes clustering, churn prediction, customer
@@ -8,6 +17,22 @@ k-anonymity, real-time streaming segmentation, drift detection, lookalike
 audiences, cohort analytics, lifecycle tracking, rule-based behavioral
 segmentation, and segment profiling — all real, tested, and callable from
 Python today.
+
+## Use cases
+
+- **Building a marketing segmentation pipeline** on a large transaction
+  table where scikit-learn's Python-level clustering is the bottleneck —
+  the Rust core is rayon-parallelized and deterministic for a given seed.
+- **Exporting customer segments directly into a warehouse** — `export_segment_sql`
+  generates injection-safe SQL for 8 dialects rather than hand-writing per-
+  warehouse export scripts.
+- **Privacy-constrained segmentation** — differential privacy (Laplace/
+  Gaussian noise) and k-anonymity suppression/generalization are real,
+  tested primitives, not a compliance checkbox.
+- **Not yet a good fit for:** anything needing K-Prototypes' categorical
+  support through the main `AudienceSegmenter` class (numeric-only today —
+  see [Known Issues](#known-issues)); Linux/Windows deployment via `pip
+  install` (macOS ARM64 wheel only — see [Installation](#installation)).
 
 [![Tests](https://img.shields.io/github/actions/workflow/status/Mullassery/ClusterAudienceKit/tests.yml?label=tests)](https://github.com/Mullassery/ClusterAudienceKit/actions)
 [![PyPI](https://img.shields.io/pypi/v/clusteraudiencekit)](https://pypi.org/project/clusteraudiencekit/)
@@ -136,16 +161,17 @@ develop --release`), which does require a Rust toolchain.
 
 Verified as of this audit (August 2026):
 
-- **Published wheels are single-platform.** The latest PyPI release
-  (7.2.0) ships only a macOS ARM64 / cp39 wheel, with no source
-  distribution, same as `7.1.1` and `v7.1.0` before it (macOS ARM64 /
-  cp313). There is currently no CI job that builds Linux or Windows wheels
-  (`.github/workflows/` only runs tests on `ubuntu-latest`, not a release
-  build matrix), despite `pyproject.toml` classifying the package as
-  `OS Independent` and supporting Python 3.8–3.12. In practice, `pip
-  install clusteraudiencekit` only works out of the box on macOS ARM64
-  with a matching Python; everyone else needs to build from source with
-  `maturin` (see Installation above).
+- **Published wheels are still single-platform, though the latest release
+  improved on this.** The latest PyPI release (7.3.0, matching this repo's
+  version exactly — no drift) ships a macOS ARM64 / cp311 wheel **and,
+  unlike 7.1.1/7.2.0 before it, a source distribution** — so `pip install`
+  can now at least attempt a source build via `maturin` on Linux/Windows
+  instead of failing outright with no fallback. There is still no CI job
+  that builds Linux or Windows wheels (`.github/workflows/` only runs
+  tests on `ubuntu-latest`, not a release build matrix), despite
+  `pyproject.toml` classifying the package as `OS Independent` and
+  supporting Python 3.8–3.12, so every release's wheel is still built and
+  uploaded by hand rather than by CI.
 - **`v7.0.0` remains installable from PyPI despite a confirmed
   import-crashing bug.** It was never yanked. If you have it pinned,
   upgrade to `>=7.2.0`.
@@ -161,7 +187,7 @@ Verified as of this audit (August 2026):
   `Err("Not implemented")`. They are not called from anywhere else in the
   crate and are not exposed to Python, so they don't affect any documented
   functionality — noted here for completeness.
-- **Registry check:** local version (`7.2.0`, in `Cargo.toml` and
+- **Registry check:** local version (`7.3.0`, in `Cargo.toml` and
   `pyproject.toml`) matches the latest version actually published on PyPI.
   No drift.
 - **No open GitHub issues** at the time of this audit.

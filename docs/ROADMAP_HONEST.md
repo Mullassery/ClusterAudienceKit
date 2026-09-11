@@ -1,7 +1,7 @@
 # ClusterAudienceKit Roadmap (Honest)
 
-**Current Version:** 7.1.x
-**Last Updated:** August 2026 (post remediation pass)
+**Current Version:** 7.3.0
+**Last Updated:** 2026-09-11
 **Status:** Real, tested Rust core for RFM + KMeans/K-Prototypes clustering,
 churn prediction, CLV, SQL export, and now 10 additional analytics modules —
 all exposed through the Python API and covered by both Rust unit tests and
