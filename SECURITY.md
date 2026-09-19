@@ -12,7 +12,9 @@ Include:
 - Potential impact
 - Suggested fix (if any)
 
-We will acknowledge receipt within 24 hours and provide updates on remediation progress.
+This is maintained by one person (see `docs/CONTRIBUTORS.md`) with no formal
+SLA — best-effort acknowledgment and remediation, not a guaranteed response
+time.
 
 ## Supported Versions
 

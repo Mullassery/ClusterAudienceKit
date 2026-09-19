@@ -1,49 +1,54 @@
-"""Streaming/incremental update example."""
+"""Real-time streaming segmentation example.
 
-import pandas as pd
-from datetime import datetime, timedelta
+This replaces a previous version of this file that was entirely a
+commented-out sketch of a fictional API (`AudienceSegmenter(method=...)`,
+`.update()`, `.segment_stability()`) that never existed. The streaming
+engine shown below (`StreamingSegmentationEngine`) is real, wired to Python,
+and covered by `tests/test_wired_modules.py::TestStreaming` — this example
+mirrors that test, not aspirational code.
+"""
 
-# TODO: Implement streaming example once core functionality is ready
-#
-# def streaming_example():
-#     """Demonstrate incremental updates from streaming data."""
-#     from clusteraudiencekit import AudienceSegmenter
-#
-#     # Initial training on historical data
-#     print("1. Training on historical data...")
-#     historical_data = load_historical_data()
-#
-#     segmenter = AudienceSegmenter(method='rfm_kmeans', n_clusters=4)
-#     segmenter.fit(historical_data)
-#     previous_segments = segmenter.predict(historical_data)
-#
-#     # Daily streaming updates
-#     print("\n2. Processing daily event stream...")
-#     for day in date_range('2026-01-01', '2026-01-31'):
-#         daily_events = fetch_events(day)
-#
-#         # Fast incremental update
-#         segmenter.update(daily_events)
-#
-#         # Check segment stability
-#         stability = segmenter.segment_stability(previous_segments)
-#         print(f"   {day}: Segment stability = {stability:.2%}")
-#
-#         # Refit if significant drift detected
-#         if stability < 0.85:
-#             print(f"   -> Retraining (drift detected)")
-#             segmenter.fit(load_all_data(), refit=True)
-#
-#         previous_segments = segmenter.predict(load_customer_data())
+from clusteraudiencekit import (
+    StreamingConfig,
+    StreamingEvent,
+    StreamingSegmentationEngine,
+)
 
 
 def main():
-    """Run streaming example."""
     print("ClusterAudienceKit - Streaming Updates Example")
     print("=" * 50)
-    print("\nThis example demonstrates incremental segmentation updates.")
-    print("Implementation in progress...")
+
+    # batch_size/window control how the engine buffers and aggregates
+    # incoming events before recomputing RFM state per customer.
+    config = StreamingConfig(batch_size=10, window="hour")
+    engine = StreamingSegmentationEngine(config)
+
+    print("\n1. Processing individual events...")
+    event = StreamingEvent("cust_1", "purchase", 500.0, 1704067200)
+    update = engine.process_event(event)
+    print(f"   Processed event for {update.customer_id}")
+    print(f"   Current segment: {engine.get_segment('cust_1')}")
+
+    print("\n2. Processing a batch of events...")
+    events = [
+        StreamingEvent("cust_1", "purchase", 100.0, 1704067200),
+        StreamingEvent("cust_2", "engagement", 0.0, 1704067200),
+        StreamingEvent("cust_3", "purchase", 25.0, 1704067200),
+    ]
+    updates = engine.process_batch(events)
+    print(f"   Processed {len(updates)} events in the batch")
+
+    print("\n3. Current state...")
+    print(f"   Tracked customers: {engine.customer_count()}")
+    print(f"   Segment distribution: {engine.segment_distribution()}")
+
     print("\n" + "=" * 50)
+    print(
+        "Note: drift-triggered re-clustering (ReclusterConfig) is also real\n"
+        "and covered by src/engine/streaming.rs tests, but is not shown here\n"
+        "to keep this example short. See docs/ROADMAP_HONEST.md for details."
+    )
 
 
 if __name__ == "__main__":

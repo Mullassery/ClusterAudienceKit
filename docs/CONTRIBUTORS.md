@@ -11,4 +11,4 @@ Creator and maintainer of ClusterAudienceKit.
 
 Contributions of all kinds are welcome — bug fixes, documentation improvements, new features, and performance work.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to get started.
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for how to get started.

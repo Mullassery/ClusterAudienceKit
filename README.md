@@ -153,6 +153,10 @@ develop --release`), which does require a Rust toolchain.
 
 - [Honest roadmap](docs/ROADMAP_HONEST.md) — what's real, what's deferred,
   and why.
+- [Architecture](docs/architecture/README.md) — real module layout and data
+  flow, checked against `src/` (replaces two previous architecture docs that
+  described integrations and directory layouts that never existed — see
+  [`docs/archive/README.md`](docs/archive/README.md)).
 - [Security audit](docs/SECURITY_AUDIT.md)
 - [SQL export reference](docs/SQL_EXPORT.md)
 - [Examples](examples/)

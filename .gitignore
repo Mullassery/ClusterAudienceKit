@@ -26,6 +26,18 @@ __pycache__/
 dist/
 build/
 .pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+.hypothesis/
+
+# pytest-benchmark output (declared dev dependency in pyproject.toml).
+# .deepeval/ is unrelated local tooling output seen in this checkout, not a
+# declared project dependency, but shouldn't be committed either way.
+.benchmarks/
+.deepeval/
 
 # Compiled extension module (built in-place by `maturin develop` into
 # clusteraudiencekit/) and maturin/wheel build output

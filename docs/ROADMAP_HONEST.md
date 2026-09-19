@@ -1,7 +1,9 @@
 # ClusterAudienceKit Roadmap (Honest)
 
 **Current Version:** 7.3.0
-**Last Updated:** 2026-09-11
+**Last Updated:** 2026-09-20 (OSS-standardization/documentation-honesty pass
+— see "Documentation and structural issues found (2026-09-20)" below; no
+version bump, no functional code changes)
 **Status:** Real, tested Rust core for RFM + KMeans/K-Prototypes clustering,
 churn prediction, CLV, SQL export, and now 10 additional analytics modules —
 all exposed through the Python API and covered by both Rust unit tests and
@@ -243,20 +245,29 @@ and current dependency-pinning status.
 
 ## Known lint/format debt (honest accounting)
 
-- `cargo fmt --check` is now clean across the whole repository (it wasn't —
-  effectively every file had unapplied formatting deltas before this pass;
-  `cargo fmt` was run repo-wide).
-- `cargo clippy --workspace -- -D warnings` is **not** fully clean
-  repo-wide. Before this pass: 214 errors. After fixing the modules touched/
-  wired this release (python.rs, clustering.rs, rfm.rs, sql_export.rs,
-  churn_prediction.rs, heuristic_score_estimator.rs, mod.rs, cohorts.rs,
-  streaming.rs, quality_metrics.rs, k_estimation.rs, clv.rs, segments.rs):
-  **43 remain**, concentrated entirely in modules that are either explicitly
-  deferred (`b2b_governance`, `dashboard`, `activation`,
-  `activation_orchestrator`) or Rust-only/not-yet-wired this pass
-  (`neural_networks`, `pattern_discovery`, `temporal_analytics`,
-  `segment_intelligence`, `price_intelligence`, `algorithms`, `metrics`,
-  `b2b_segmentation`). None are in code paths reachable from the Python API.
+- `cargo fmt --all -- --check` — **verified clean** again on 2026-09-20
+  (macOS, Apple Silicon, `RUSTFLAGS="-C link-args=-undefined -C
+  link-args=dynamic_lookup"`).
+- `cargo clippy --workspace --all-targets -- -D warnings` still fails to
+  build (not clean). Without `-D warnings`: **37 warnings** as of 2026-09-20
+  (previously documented as "43" after the 7.2.0 wiring pass — the drop is
+  most likely from dependency/toolchain drift since then, not a fix
+  applied in this pass; re-verify the exact number before quoting it in the
+  future). Confirmed by file, all still concentrated in modules that are
+  either explicitly deferred or Rust-only/not-yet-wired — **zero** are in a
+  module reachable from the Python API:
+  - `neural_networks.rs` — 17 (mostly `X` non-snake-case, a leftover from
+    following ML-paper notation)
+  - `temporal_analytics.rs` — 5
+  - `b2b_governance.rs` — 4
+  - `segment_intelligence.rs` — 3
+  - `metrics.rs` — 3 (this is the unused/dead-code module — see
+    "Documentation and structural issues found" below)
+  - `pattern_discovery.rs` — 2
+  - `dashboard.rs` — 2
+  - `activation.rs` — 2
+  - `price_intelligence.rs`, `b2b_segmentation.rs`, `algorithms.rs`,
+    `activation_orchestrator.rs` — 1 each
 
 ---
 
@@ -310,11 +321,249 @@ and current dependency-pinning status.
   the exact (not approximate/online) result; `MiniBatchKMeans` is for the
   specific "dataset doesn't fit in memory at once" case those can't handle.
   Exposed to Python as `MiniBatchKMeans(n_clusters, random_state)`.
-- License compatibility audit: `LICENSE` is a custom "free to use with
-  attribution" source-available license (not a standard OSS license). Per
-  org policy this repo is treated as Proprietary regardless of that file's
-  wording — audit whether any bundled Rust crates or Python deps carry
-  copyleft terms that could conflict with either reading of the license.
+- ~~License compatibility audit~~ — **Done.** This paragraph previously
+  described `LICENSE` as a custom "free to use with attribution"
+  source-available license treated as Proprietary per org policy. That's
+  stale: the repo was relicensed to Apache License 2.0 on 2026-09-06 (see
+  `LICENSE`, `Cargo.toml`'s `license = "Apache-2.0"`, and `pyproject.toml`'s
+  `license = "Apache-2.0"` — all three agree, no drift). No copyleft
+  (GPL/AGPL/LGPL) dependencies were found in `Cargo.toml`'s dependency list
+  during this pass; a full transitive-dependency license scan (e.g. via
+  `cargo-license` or `cargo-deny`) has not been run.
+
+---
+
+## Documentation and structural issues found (2026-09-20)
+
+An OSS-standardization/documentation-honesty pass (README/CONTRIBUTING/
+CI/docs review, no functional code changes) found the following. Everything
+fixed is a documentation, CI-config, or `.gitignore` change; every bug/gap
+that wasn't fixed is listed here per this file's own stated purpose.
+
+### Fabricated or stale docs — archived to `docs/archive/`
+
+A prior pass (see "Fixed for honesty this release" above, and
+`CHANGELOG.md`'s `[7.2.0]` entry) added an honesty banner to five docs
+describing a fictional `AudienceSegmenter(method="rfm_kmeans", ...)`
+constructor and fabricated benchmark numbers, but left them in `docs/` as
+readable reference material "out of scope for this pass." This pass found
+**four more** docs with the same problem that the prior pass missed
+entirely (no banner, still presented as current), and concluded a banner
+isn't sufficient disclosure for any of them — a doc titled "API Reference"
+sitting in `docs/` reads as current regardless of a note at the top. All
+nine, plus two independently-stale architecture docs and three other stale
+duplicates, were moved to `docs/archive/` (`git mv`, history preserved) with
+a detailed index at `docs/archive/README.md` explaining each one. Full list
+and reasoning: see that index. Short version:
+
+- Already banner-flagged, now archived: `api-reference.md`,
+  `getting-started-simple.md`, `comparison.md`, `performance-comparison.md`,
+  `press-release.md`.
+- **Newly found**, never flagged before this pass:
+  - `docs/WORKFLOW_INTEGRATION.md` — documented a CLI
+    (`clusteraudiencekit create-audience`/`refresh-audience`/`get-members`)
+    and a REST server (`python -m clusteraudiencekit.server`, port 8002).
+    **Neither exists anywhere in this codebase** — `pyproject.toml` has no
+    `[project.scripts]` entry, there's no server module. This was the
+    single most misleading doc found: unlike the other five, it had no
+    honesty banner at all.
+  - `docs/troubleshooting.md` and `docs/error-catalog.json` — both built
+    around the same fictional DataFrame-column-based `fit()` API as the
+    already-flagged docs; `error-catalog.json` is also dead weight — nothing
+    in `src/` or the Python package loads it.
+  - Root `ARCHITECTURE.md` — described integration with four other products
+    (`StatGuardian`, `PyCustomerJourney`, `PyReverseETL`, `PyStreamMCP`) via
+    Rust/Python code samples (`use pystreammcp::Discovery;`, `use
+    statguardian::ValidationGate;`) referencing crates/packages this project
+    has **zero dependency on** anywhere in `Cargo.toml`/`pyproject.toml`,
+    and a `core/src/` module layout (`audience.rs`, `segment.rs`,
+    `clustering/`, `scoring/`, `storage/`) that has never existed here. This
+    wasn't "aspirational" — it was presented as `✅ CORRECT` current usage.
+  - `docs/architecture.md` — a second, independently different, also-stale
+    module layout (`segmentation/`, `metrics/`, `profiling/`, `drift/`,
+    `io/`).
+  - `docs/ROADMAP.md` — an old roadmap (last said "v2.0.0") describing the
+    fictional CLI/REST integration above as an already-shipped "v2.0
+    Workflow Integration" milestone. Superseded by this file.
+  - `docs/CONTRIBUTING.md` — despite the filename, its actual content was a
+    `CLAUDE.md`-style AI-assistant briefing describing yet another fictional
+    module layout, not contributor instructions. The real one is the root
+    `CONTRIBUTING.md`.
+  - `docs/SECURITY.md` — a stale duplicate of the root `SECURITY.md`,
+    referencing a `PRODUCTION_AUDIT_REPORT.md` that doesn't exist anywhere
+    in this repo, and labeled version `0.1.0`/"NO PRODUCTION USE - beta"
+    against a `7.3.0`/`Production-Stable`-classified current release.
+  - `docs/PYPI_UPLOAD.md` — release instructions for `v1.5.0` via `python3
+    -m build --wheel`; current process (verified from `pyproject.toml`'s
+    `[build-system]`) uses `maturin`. **Nobody has written a replacement —
+    there is currently no accurate release doc in this repo.** Flagged here
+    as genuinely missing, not fixed.
+  - `.github/CI_ERRORS.md` — an unfilled template from some org-wide
+    automated CI scanner, with unsubstituted `$REPO_NAME`/`$repo` variables
+    and dead links to `../../CI_ERRORS_REPORT.md` and
+    `.github/TROUBLESHOOTING.md`, neither of which exists anywhere.
+- A new, accurate `docs/architecture/README.md` was written in their place,
+  checked directly against `src/` (module list, PyO3 boundary, a real
+  request-flow Mermaid diagram), replacing both archived architecture docs.
+
+### `examples/streaming_updates.py` was a stub describing a feature that now exists
+
+The file was `# TODO: Implement streaming example once core functionality
+is ready` with the entire example commented out and `main()` printing
+"Implementation in progress..." — but `StreamingSegmentationEngine` has been
+real and Python-wired since the 7.2.0 pass (see "What's real and shipping"
+above); the example was just never updated. Rewritten against the real API
+(mirrors `tests/test_wired_modules.py::TestStreaming`) and verified to run:
+`PYTHONPATH=. python3.11 examples/streaming_updates.py` produces real output
+(segment assignments, `customer_count()`, `segment_distribution()`).
+
+### `cargo test` cannot run at all on macOS (new finding, not previously documented)
+
+Reproduced on Apple Silicon macOS with the documented `RUSTFLAGS`
+workaround: `cargo build --release` and `maturin develop --release` both
+succeed, but `cargo test --release` (with or without `--all-features`, with
+or without `--lib`) crashes immediately:
+
+```
+dyld[...]: symbol not found in flat namespace '_PyBaseObject_Type'
+error: test failed, ... (signal: 6, SIGABRT: process abort signal)
+```
+
+Root cause: `Cargo.toml` unconditionally enables `pyo3`'s
+`extension-module` feature (not feature-gated), which deliberately omits
+linking against `libpython` on the assumption a Python interpreter process
+will provide those symbols at import time via `dlopen`. A standalone
+`cargo test` binary run directly is not loaded inside a Python process, so
+those symbols are never available — this isn't a environment
+misconfiguration, it's a structural incompatibility between "always-on
+extension-module" and "run tests as a plain binary." The standard fix
+(feature-gate `extension-module` so `cargo test` builds without it, matching
+what many PyO3 projects do) is a real Cargo.toml/feature restructuring, not
+a one-line change, and wasn't attempted in this doc-focused pass.
+
+**This directly means:** every previous claim in this file and
+`CHANGELOG.md` that Rust unit tests were "run via `cargo test --lib`" was,
+at best, only ever verified on Linux (e.g. in `ci.yml`'s `rust-build` job,
+which runs on `ubuntu-latest` and may not hit this — ELF doesn't require
+the same load-time symbol resolution as macOS's two-level namespace, though
+this pass had no way to confirm that job currently passes; see "CI
+verification limits" below) — not on this maintainer's own macOS machine,
+despite `rust-toolchain.toml`/`CONTRIBUTING.md` targeting local development
+on it. **Verified working alternative on macOS:** `maturin develop
+--release && pytest tests/` — this pass ran that and got `227 passed, 2
+skipped, 0 failed` (2026-09-20), which does exercise the same underlying
+Rust logic end-to-end through the real compiled extension.
+
+### CI verification limits in this pass
+
+This pass ran from a sandbox with restricted network access: `pip install`
+to PyPI worked, but `git` fetches over HTTPS to `github.com` (used by both
+`gh api`/`gh run list` and `cargo audit`'s advisory-database fetch) timed
+out. As a result:
+- Live GitHub Actions run status for `ci.yml`/`tests.yml` could **not** be
+  checked from this session — the README's existing `tests.yml` status
+  badge was left as-is (pre-existing, not added by this pass) but its
+  current live state is unverified here.
+- The newly-added `security-audit` job in `ci.yml` (`cargo install
+  cargo-audit && cargo audit`) could not be run locally for the same
+  reason. GitHub-hosted runners have full internet access and should not
+  hit this, but that's inference, not a verified test run — check the
+  Actions tab after this lands.
+- `cargo clippy`/`cargo fmt --check`/`cargo test` results quoted throughout
+  this file are real, local, macOS (Apple Silicon) runs from 2026-09-20 —
+  not CI runs.
+
+### CI structural gaps (documented, not changed — see reasoning)
+
+- **No `clippy`/`fmt` gate in CI at all.** Neither `ci.yml` nor `tests.yml`
+  runs `cargo clippy` or `cargo fmt --check`. Adding `cargo fmt --check` as
+  a real gate would be safe (verified clean, see above). Adding `cargo
+  clippy -- -D warnings` as a real gate would **not** be safe right now — it
+  would immediately fail CI on the 37 pre-existing warnings documented
+  above, none of which this pass fixed. Not added, to avoid either breaking
+  CI or adding a fake always-passing step (the exact anti-pattern already
+  called out twice in this file's own history for the pytest and ruff
+  steps). A real follow-up would be: fix or `#[allow]` the 37 findings first
+  (all in already-identified deferred/unwired modules), then add both gates
+  for real.
+- **`ci.yml` and `tests.yml` overlap.** Both install the package with `pip
+  install -e ".[dev]"` and run `pytest` across Python 3.10–3.12 on
+  `ubuntu-latest` — effectively the same job defined twice under different
+  names, doubling CI minutes for no extra coverage. Not merged in this pass
+  (would need to decide which workflow file is canonical and update the
+  README badge accordingly — a judgment call left for a dedicated session).
+- **`.pre-commit-config.yaml` hooks are unverified.** It references
+  `rust-lang/rust-clippy`/`rust-lang/rustfmt` as pre-commit hook
+  repositories; whether those repos actually expose the `.pre-commit-hooks.yaml`
+  entries this config assumes (`id: clippy`, `id: rustfmt`) was not checked
+  in this pass (would require running `pre-commit run --all-files`, which
+  needs network access this session didn't reliably have). If you rely on
+  `make install`/`pre-commit install`, verify it actually runs before
+  trusting it as a gate.
+
+### Technical debt inventory (not fixed — flagged per this file's purpose)
+
+- **`src/utils/conversions.rs`**: `pandas_to_arrow`/`arrow_to_pandas` remain
+  unimplemented stubs (`Err("Not implemented")`) — unchanged from previous
+  audits, still not called from anywhere, still not exposed to Python.
+- **`src/engine/metrics.rs` is dead code.** It predates and duplicates part
+  of `src/engine/quality_metrics.rs` (the module actually wired to Python
+  as `silhouette_score`/`davies_bouldin_score`/etc). Nothing in `python.rs`
+  or any other `engine::` module calls into `metrics.rs`. It's the source
+  of 3 of the 37 clippy warnings above. Candidate for deletion in a future
+  pass rather than being carried forward indefinitely.
+- **High `.unwrap()`/`.expect()` counts in Python-reachable modules**,
+  meaning a bad input can trigger a Rust panic (which PyO3 converts to a
+  Python `PanicException`, so it won't crash the whole interpreter, but it's
+  a worse error experience than a proper `Result`/`PyErr` and wasn't audited
+  for which call sites are actually reachable with attacker/user-controlled
+  input vs. genuinely-impossible states). Counts from `grep -c
+  '\.unwrap()'` per file, wired modules only: `clustering.rs` 41,
+  `streaming.rs` 25, `cohorts.rs` 29, `mod.rs` 11, `metrics.rs` (dead, see
+  above) 14, `drift_detection.rs` 15, `k_estimation.rs` 14, `clv.rs` 14,
+  `churn_prediction.rs` 12, `quality_metrics.rs` 11, `segments.rs` 8,
+  `rfm.rs` 7, `sql_export.rs` 7, `lookalike.rs` 6, `lifecycle.rs` 9,
+  `heuristic_score_estimator.rs` 9, `behavioral.rs` 1. Not all of these are
+  reachable with external input (many are on `Vec` indices already bounds-
+  checked a few lines earlier, or on values the caller can't influence) —
+  this is a raw count to prioritize a real audit, not a claim that all 233
+  are live bugs.
+
+### Small fixes applied in this pass
+
+- Root `CONTRIBUTING.md`: added the missing Rust/PyO3 build section
+  (`RUSTFLAGS` macOS workaround, the `cargo test` macOS bug above, the
+  verified `maturin develop && pytest` alternative); fixed a stale
+  contributor-license line still saying "proprietary license" (repo is
+  Apache-2.0); replaced a fabricated `AudienceSegmenter(...).fit_predict()`
+  test example (that method doesn't exist) with a real, verified-to-run one
+  using `fit()`/`predict()`; replaced an unmeasurable/unmeaningful ">90%
+  coverage on the Python API" instruction (Python `coverage.py` can't
+  instrument the compiled Rust extension — it only ever measured the
+  24-line `__init__.py` shim, trivially at 100%) with guidance to judge test
+  adequacy directly; removed an unverifiable "review within 7 days" SLA
+  promise.
+- Root `SECURITY.md`: removed an unverifiable "acknowledge within 24 hours"
+  SLA promise (this is maintained by one person with no formal SLA).
+- `.github/workflows/tests.yml`: the `Lint` step was `ruff check . 2>/dev/null
+  || true` — discarded output and always exited 0 regardless of findings,
+  the same "always green" anti-pattern already fixed once in this same
+  file's `Test` step (see `[7.2.0]`-era `CHANGELOG.md` entry) but
+  reintroduced here. `ruff check .` currently reports 33 real findings in
+  `tests/`, so making this a hard gate immediately would just turn CI red on
+  pre-existing lint debt unrelated to this pass. Changed to
+  `continue-on-error: true` instead — output is no longer discarded and the
+  step shows as failed/non-blocking in the Actions UI (visible), rather than
+  silently swallowed (invisible). Also bumped `actions/setup-python@v4` to
+  `@v5` (flagged by `actionlint` as too old to run).
+- `.github/workflows/ci.yml`: added a new `security-audit` job running
+  `cargo audit` (see "CI verification limits" above for why it's unverified
+  from this session).
+- `.gitignore`: added `.coverage`/`htmlcov/`/`.mypy_cache/`/`.ruff_cache/`/
+  `.hypothesis/` (all correspond to already-declared dev dependencies:
+  pytest-cov-style coverage output, mypy, ruff) and `.benchmarks/`/
+  `.deepeval/` (untracked local tool-output directories present in this
+  checkout that weren't previously ignored).
 
 ---
 

@@ -8,7 +8,7 @@ jobs:
         python-version: ["3.10", "3.11", "3.12"]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
@@ -24,4 +24,17 @@ jobs:
         # have been silently swallowed rather than turning CI red.
         run: pytest
       - name: Lint
-        run: ruff check . 2>/dev/null || true
+        # Previously `ruff check . 2>/dev/null || true`, which discarded
+        # ruff's stderr AND always exited 0 - silently hiding findings
+        # entirely, the same "always green" anti-pattern already fixed once
+        # in the Test step above. Verified locally (2026-09-20): `ruff
+        # check .` currently reports 33 real findings in tests/, so making
+        # this a hard gate right now would just turn CI red on unrelated
+        # pre-existing lint debt, not on this change. `continue-on-error`
+        # is the honest middle ground: output is no longer discarded and
+        # the step is visibly marked failed/non-blocking in the Actions UI
+        # (unlike `|| true`, which hid failures completely), without
+        # blocking merges until that lint debt is actually cleaned up.
+        # See docs/ROADMAP_HONEST.md.
+        run: ruff check .
+        continue-on-error: true

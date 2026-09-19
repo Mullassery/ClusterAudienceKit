@@ -52,3 +52,27 @@ jobs:
 
       - name: Run pytest
         run: if [ -d "tests" ]; then pytest tests/ -v --tb=short; else echo "No Python tests found"; fi
+
+  security-audit:
+    # New job (2026-09-20 OSS-standardization pass). Not previously present
+    # anywhere in this repo's CI. Could not be verified from the sandbox
+    # this was added in (`cargo audit`'s advisory-db fetch over git needs
+    # outbound network access this sandbox didn't have), but GitHub-hosted
+    # runners have full internet access, so this should run for real here.
+    # See docs/ROADMAP_HONEST.md.
+    name: Cargo Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: .
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: Run cargo audit
+        run: cargo audit

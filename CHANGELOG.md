@@ -2,6 +2,67 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [Unreleased]
+
+Documentation/CI-hygiene pass. No functional code changes, no version bump.
+Full detail in `docs/ROADMAP_HONEST.md`'s "Documentation and structural
+issues found (2026-09-20)" section; summary here.
+
+### Changed
+- Archived 15 stale/fabricated docs to `docs/archive/` (with an index
+  explaining each): five previously banner-flagged docs describing a
+  fictional `AudienceSegmenter(method=...)` API and fabricated benchmarks
+  (`api-reference.md`, `getting-started-simple.md`, `comparison.md`,
+  `performance-comparison.md`, `press-release.md`); four more with the same
+  problem that were never flagged before (`WORKFLOW_INTEGRATION.md` —
+  documented a CLI and REST server that don't exist anywhere in this
+  codebase; `troubleshooting.md`; `error-catalog.json`, unused by any code);
+  two independently-stale architecture docs, including root `ARCHITECTURE.md`,
+  which described integration with four other products via code samples
+  referencing crates this project has no dependency on; a superseded
+  `docs/ROADMAP.md`; a `docs/CONTRIBUTING.md` that was actually mislabeled
+  `CLAUDE.md`-style content; a stale duplicate `docs/SECURITY.md`; a `v1.5.0`
+  `docs/PYPI_UPLOAD.md`; and an unfilled `.github/CI_ERRORS.md` template with
+  dead links.
+- Replaced the two archived architecture docs with a new
+  `docs/architecture/README.md`, checked directly against `src/` (real
+  module list, PyO3 boundary, Mermaid data-flow diagram).
+- Rewrote `examples/streaming_updates.py`, previously an unimplemented stub
+  ("TODO: Implement... once core functionality is ready") despite
+  `StreamingSegmentationEngine` being real and Python-wired since 7.2.0.
+  Verified to run.
+- `CONTRIBUTING.md`: added a Rust/PyO3 build section (macOS `RUSTFLAGS`
+  workaround, and a newly-found `cargo test` macOS bug — see Fixed below);
+  fixed a stale "proprietary license" contributor-agreement line (repo is
+  Apache-2.0); replaced a fabricated `.fit_predict()` test example with a
+  real, verified one; replaced an unmeasurable ">90% coverage" instruction;
+  removed an unverifiable "review within 7 days" promise.
+- `SECURITY.md`: removed an unverifiable "acknowledge within 24 hours" SLA
+  promise.
+- `.github/workflows/tests.yml`: `Lint` step (`ruff check . 2>/dev/null ||
+  true`) always exited 0 regardless of findings — the same "always green"
+  anti-pattern already fixed once in this same file's `Test` step (see
+  `[7.2.0]` below), reintroduced here. Changed to `continue-on-error: true`
+  (visible-but-non-blocking) rather than a hard gate, since `ruff check .`
+  currently reports 33 real, pre-existing findings in `tests/` that this
+  pass didn't fix. Bumped `actions/setup-python@v4` to `@v5`.
+- `.gitignore`: added `.coverage`, `htmlcov/`, `.mypy_cache/`, `.ruff_cache/`,
+  `.hypothesis/`, `.benchmarks/`, `.deepeval/`.
+
+### Added
+- `.github/workflows/ci.yml`: new `security-audit` job running `cargo
+  audit` (unverified from the sandbox this was added in — see
+  `docs/ROADMAP_HONEST.md`).
+
+### Fixed (found this pass, documented, not code-fixed)
+- `cargo test` cannot run at all on macOS (`dyld: symbol not found
+  '_PyBaseObject_Type'`, SIGABRT) because `pyo3`'s `extension-module`
+  feature is unconditionally enabled in `Cargo.toml` rather than
+  feature-gated for test builds. `maturin develop --release && pytest
+  tests/` is the verified-working alternative (227 passed, 2 skipped,
+  2026-09-20). See `docs/ROADMAP_HONEST.md` for why this wasn't fixed in
+  this pass (real Cargo.toml/feature restructuring, not a doc change).
+
 ## [7.3.0] - 2026-08-30
 
 ### Fixed
