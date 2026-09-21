@@ -17,7 +17,6 @@ pub mod heuristic_score_estimator;
 pub mod k_estimation;
 pub mod lifecycle;
 pub mod lookalike;
-pub mod metrics;
 pub mod neural_networks;
 pub mod pattern_discovery;
 pub mod platform_adapters;

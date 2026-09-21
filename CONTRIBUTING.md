@@ -39,19 +39,37 @@ export RUSTFLAGS="-C link-args=-undefined -C link-args=dynamic_lookup"
 cargo build --release
 ```
 
-**Known gap:** even with that flag, `cargo test` currently cannot run at all
-on macOS — it builds, but the test binary SIGABRTs immediately
-(`dyld: symbol not found in flat namespace '_PyBaseObject_Type'`) because a
-standalone test binary isn't loaded inside a Python process, so those Python
-C-API symbols are genuinely unavailable at runtime. This is a real,
-unresolved gap (see `docs/ROADMAP_HONEST.md`), not something you're doing
-wrong. Until it's fixed, validate Rust logic on macOS via the Python test
-suite instead (below), which builds the extension through `maturin` and
-exercises it from a real Python process — verified working:
+**`cargo test` on macOS:** pyo3's `extension-module` feature (on by default,
+so plain `cargo build`/`cargo bench`/`cargo clippy`/`maturin develop` all
+behave as before) deliberately omits linking against `libpython`, since a
+real Python interpreter provides those symbols via `dlopen` at import time.
+A standalone `cargo test` binary is never loaded by a Python process, so it
+SIGABRTs immediately (`dyld: symbol not found in flat namespace
+'_PyBaseObject_Type'`) if built with that feature on. Build tests **without**
+it instead:
+
+```bash
+cargo test --release --no-default-features --lib
+```
+
+This links the test binary normally against `libpython`, which requires a
+Python installation with an actual linkable `libpython*.dylib` (a Homebrew,
+pyenv `--enable-shared`, or python.org install; the Xcode Command Line
+Tools' bundled Python does **not** ship one). If `python3` on your `PATH`
+doesn't have one, point pyo3 at one that does:
+
+```bash
+export PYO3_PYTHON=/opt/homebrew/bin/python3.11   # or your equivalent
+cargo test --release --no-default-features --lib   # verified: 435 passed
+```
+
+If you don't have a suitable Python installed, validate Rust logic on macOS
+via the Python test suite instead, which builds the extension through
+`maturin` and exercises it from a real Python process — verified working:
 
 ```bash
 maturin develop --release
-pytest tests/ -v          # 227 passed, 2 skipped, last verified 2026-09-19
+pytest tests/ -v          # 229 passed, last verified 2026-09-21
 ```
 
 Rust-only checks that do work directly on macOS:

@@ -1,9 +1,13 @@
 # ClusterAudienceKit Roadmap (Honest)
 
 **Current Version:** 7.3.0
-**Last Updated:** 2026-09-20 (OSS-standardization/documentation-honesty pass
-— see "Documentation and structural issues found (2026-09-20)" below; no
-version bump, no functional code changes)
+**Last Updated:** 2026-09-21 (quick-fix pass — see "Quick-fix pass
+(2026-09-21)" below: 33 ruff findings, a clippy-blocking compile error, dead
+code, a non-snake-case rename, and the macOS `cargo test` crash all fixed;
+no version bump. Previously 2026-09-20's OSS-standardization/
+documentation-honesty pass — see "Documentation and structural issues found
+(2026-09-20)" below; no version bump, no functional code changes then
+either)
 **Status:** Real, tested Rust core for RFM + KMeans/K-Prototypes clustering,
 churn prediction, CLV, SQL export, and now 10 additional analytics modules —
 all exposed through the Python API and covered by both Rust unit tests and
@@ -245,24 +249,35 @@ and current dependency-pinning status.
 
 ## Known lint/format debt (honest accounting)
 
-- `cargo fmt --all -- --check` — **verified clean** again on 2026-09-20
+- `cargo fmt --all -- --check` — **verified clean** again on 2026-09-21
   (macOS, Apple Silicon, `RUSTFLAGS="-C link-args=-undefined -C
   link-args=dynamic_lookup"`).
-- `cargo clippy --workspace --all-targets -- -D warnings` still fails to
-  build (not clean). Without `-D warnings`: **37 warnings** as of 2026-09-20
-  (previously documented as "43" after the 7.2.0 wiring pass — the drop is
-  most likely from dependency/toolchain drift since then, not a fix
-  applied in this pass; re-verify the exact number before quoting it in the
-  future). Confirmed by file, all still concentrated in modules that are
-  either explicitly deferred or Rust-only/not-yet-wired — **zero** are in a
-  module reachable from the Python API:
-  - `neural_networks.rs` — 17 (mostly `X` non-snake-case, a leftover from
-    following ML-paper notation)
+- **Fixed (2026-09-21 quick-fix pass):** plain `cargo clippy --workspace
+  --all-targets` (no `-D warnings`) had actually stopped completing at all
+  since the 2026-09-20 pass — new toolchain/clippy drift turned
+  `clippy::approx_constant` (deny-by-default) into a hard compile error on
+  `segment_intelligence.rs`'s hand-written `0.693_147` half-life constant,
+  which approximates `LN_2` closely enough to trip it. One-line fix:
+  replaced the literal with `std::f64::consts::LN_2` (same value to ~1e-7,
+  no behavior change, verified via the full `pytest`/`cargo test` runs
+  below). Also deleted the dead/duplicate `src/engine/metrics.rs` (see
+  "Documentation and structural issues found" below — confirmed unreachable
+  from anywhere else in the crate before deleting) and renamed the
+  non-snake-case `X` parameter (ML-paper notation) to `inputs` in
+  `neural_networks.rs`'s four `train`/`anomaly_scores`/`extract_patterns`
+  methods and their tests. Warning count: **30** (down from 37), still
+  clean of the compile-blocking error. `cargo clippy --workspace
+  --all-targets -- -D warnings` still fails to build (not clean) on the
+  remaining 30 — this pass did not attempt those (see roadmap below).
+  Confirmed by file, all still concentrated in modules that are either
+  explicitly deferred or Rust-only/not-yet-wired — **zero** are in a module
+  reachable from the Python API:
+  - `neural_networks.rs` — 10 (all `needless_range_loop`; the non-snake-case
+    `X` warnings are gone)
   - `temporal_analytics.rs` — 5
   - `b2b_governance.rs` — 4
-  - `segment_intelligence.rs` — 3
-  - `metrics.rs` — 3 (this is the unused/dead-code module — see
-    "Documentation and structural issues found" below)
+  - `segment_intelligence.rs` — 2 (down from 3 — the `approx_constant` error
+    above is fixed; two pre-existing `manual_clamp` warnings remain)
   - `pattern_discovery.rs` — 2
   - `dashboard.rs` — 2
   - `activation.rs` — 2
@@ -417,42 +432,55 @@ above); the example was just never updated. Rewritten against the real API
 `PYTHONPATH=. python3.11 examples/streaming_updates.py` produces real output
 (segment assignments, `customer_count()`, `segment_distribution()`).
 
-### `cargo test` cannot run at all on macOS (new finding, not previously documented)
+### `cargo test` on macOS — **fixed (2026-09-21 quick-fix pass)**
 
-Reproduced on Apple Silicon macOS with the documented `RUSTFLAGS`
-workaround: `cargo build --release` and `maturin develop --release` both
-succeed, but `cargo test --release` (with or without `--all-features`, with
-or without `--lib`) crashes immediately:
+Previously, `Cargo.toml` unconditionally enabled `pyo3`'s `extension-module`
+feature (not feature-gated), which deliberately omits linking against
+`libpython` on the assumption a Python interpreter process will provide
+those symbols at import time via `dlopen`. A standalone `cargo test` binary
+run directly is not loaded inside a Python process, so those symbols were
+never available, and every `cargo test --release` invocation SIGABRTed
+immediately (`dyld: symbol not found in flat namespace
+'_PyBaseObject_Type'`), regardless of `--all-features`/`--lib`.
 
+Fixed by feature-gating it in `Cargo.toml`:
+```toml
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
 ```
-dyld[...]: symbol not found in flat namespace '_PyBaseObject_Type'
-error: test failed, ... (signal: 6, SIGABRT: process abort signal)
+`default = [...]` keeps `cargo build`/`cargo bench`/`cargo clippy`/`maturin
+develop` behaving exactly as before (all verified unaffected — same
+warning counts, same wheel, same `pytest` pass count). `ci.yml`'s
+`rust-build` job is also unaffected either way, since it already passes
+`--all-features` to both `cargo build` and `cargo test`, which forces this
+feature on regardless of the default. The new, working path is:
+
+```bash
+cargo test --release --no-default-features --lib
 ```
 
-Root cause: `Cargo.toml` unconditionally enables `pyo3`'s
-`extension-module` feature (not feature-gated), which deliberately omits
-linking against `libpython` on the assumption a Python interpreter process
-will provide those symbols at import time via `dlopen`. A standalone
-`cargo test` binary run directly is not loaded inside a Python process, so
-those symbols are never available — this isn't a environment
-misconfiguration, it's a structural incompatibility between "always-on
-extension-module" and "run tests as a plain binary." The standard fix
-(feature-gate `extension-module` so `cargo test` builds without it, matching
-what many PyO3 projects do) is a real Cargo.toml/feature restructuring, not
-a one-line change, and wasn't attempted in this doc-focused pass.
+This links the test binary normally against `libpython`, which requires a
+Python installation with an actual linkable `libpython*.dylib` — the Xcode
+Command Line Tools' bundled Python (the `python3` on `PATH` on a fresh
+macOS machine) does **not** ship one, so `PYO3_PYTHON` needs to point at
+one that does (Homebrew, pyenv `--enable-shared`, or a python.org install).
+Verified on Apple Silicon macOS with `PYO3_PYTHON=/opt/homebrew/bin/
+python3.11`: `cargo test --release --no-default-features --lib` → **435
+passed, 0 failed**. On a machine with only the Xcode CLT Python, this now
+fails with a clear, actionable linker error (`library 'python3.9' not
+found`) instead of the previous unexplained SIGABRT — a real improvement
+even where a suitable Python isn't already installed. See
+`CONTRIBUTING.md` for the exact commands.
 
-**This directly means:** every previous claim in this file and
-`CHANGELOG.md` that Rust unit tests were "run via `cargo test --lib`" was,
-at best, only ever verified on Linux (e.g. in `ci.yml`'s `rust-build` job,
-which runs on `ubuntu-latest` and may not hit this — ELF doesn't require
-the same load-time symbol resolution as macOS's two-level namespace, though
-this pass had no way to confirm that job currently passes; see "CI
-verification limits" below) — not on this maintainer's own macOS machine,
-despite `rust-toolchain.toml`/`CONTRIBUTING.md` targeting local development
-on it. **Verified working alternative on macOS:** `maturin develop
---release && pytest tests/` — this pass ran that and got `227 passed, 2
-skipped, 0 failed` (2026-09-20), which does exercise the same underlying
-Rust logic end-to-end through the real compiled extension.
+**Verified working alternative on macOS** (works regardless of which
+Python is on `PATH`, since maturin does its own interpreter detection):
+`maturin develop --release && pytest tests/` — this pass ran that and got
+`229 passed, 0 failed` (2026-09-21, up from `227 passed, 2 skipped` on
+2026-09-20 — the 2 `skipped` were `test_performance.py`'s
+`skipif(not HAS_SKLEARN, ...)` cases; this pass's environment has
+scikit-learn installed where the prior pass's sandbox didn't, so they ran
+instead of skipping — not a change made by this pass).
 
 ### CI verification limits in this pass
 
@@ -479,13 +507,15 @@ out. As a result:
   runs `cargo clippy` or `cargo fmt --check`. Adding `cargo fmt --check` as
   a real gate would be safe (verified clean, see above). Adding `cargo
   clippy -- -D warnings` as a real gate would **not** be safe right now — it
-  would immediately fail CI on the 37 pre-existing warnings documented
-  above, none of which this pass fixed. Not added, to avoid either breaking
-  CI or adding a fake always-passing step (the exact anti-pattern already
+  would immediately fail CI on the 30 pre-existing warnings documented
+  above (down from 37 as of 2026-09-21 — see "Known lint/format debt";
+  this pass fixed the mechanical subset (dead code, non-snake-case
+  naming) but not the rest). Not added, to avoid either breaking CI or
+  adding a fake always-passing step (the exact anti-pattern already
   called out twice in this file's own history for the pytest and ruff
-  steps). A real follow-up would be: fix or `#[allow]` the 37 findings first
-  (all in already-identified deferred/unwired modules), then add both gates
-  for real.
+  steps). A real follow-up would be: fix or `#[allow]` the remaining 30
+  findings first (all in already-identified deferred/unwired modules), then
+  add both gates for real.
 - **`ci.yml` and `tests.yml` overlap.** Both install the package with `pip
   install -e ".[dev]"` and run `pytest` across Python 3.10–3.12 on
   `ubuntu-latest` — effectively the same job defined twice under different
@@ -506,12 +536,14 @@ out. As a result:
 - **`src/utils/conversions.rs`**: `pandas_to_arrow`/`arrow_to_pandas` remain
   unimplemented stubs (`Err("Not implemented")`) — unchanged from previous
   audits, still not called from anywhere, still not exposed to Python.
-- **`src/engine/metrics.rs` is dead code.** It predates and duplicates part
-  of `src/engine/quality_metrics.rs` (the module actually wired to Python
-  as `silhouette_score`/`davies_bouldin_score`/etc). Nothing in `python.rs`
-  or any other `engine::` module calls into `metrics.rs`. It's the source
-  of 3 of the 37 clippy warnings above. Candidate for deletion in a future
-  pass rather than being carried forward indefinitely.
+- ~~`src/engine/metrics.rs` is dead code.~~ — **Deleted (2026-09-21).** It
+  predated and duplicated part of `src/engine/quality_metrics.rs` (the
+  module actually wired to Python as `silhouette_score`/
+  `davies_bouldin_score`/etc). Confirmed nothing in `python.rs` or any
+  other `engine::` module called into it (`grep` for `metrics::` and
+  `engine::metrics` outside the file itself found nothing) before deleting
+  it and its `pub mod metrics;` declaration in `src/engine/mod.rs`. Removed
+  3 clippy warnings.
 - **High `.unwrap()`/`.expect()` counts in Python-reachable modules**,
   meaning a bad input can trigger a Rust panic (which PyO3 converts to a
   Python `PanicException`, so it won't crash the whole interpreter, but it's
@@ -519,15 +551,16 @@ out. As a result:
   for which call sites are actually reachable with attacker/user-controlled
   input vs. genuinely-impossible states). Counts from `grep -c
   '\.unwrap()'` per file, wired modules only: `clustering.rs` 41,
-  `streaming.rs` 25, `cohorts.rs` 29, `mod.rs` 11, `metrics.rs` (dead, see
-  above) 14, `drift_detection.rs` 15, `k_estimation.rs` 14, `clv.rs` 14,
+  `streaming.rs` 25, `cohorts.rs` 29, `mod.rs` 11, `drift_detection.rs` 15,
+  `k_estimation.rs` 14, `clv.rs` 14,
   `churn_prediction.rs` 12, `quality_metrics.rs` 11, `segments.rs` 8,
   `rfm.rs` 7, `sql_export.rs` 7, `lookalike.rs` 6, `lifecycle.rs` 9,
   `heuristic_score_estimator.rs` 9, `behavioral.rs` 1. Not all of these are
   reachable with external input (many are on `Vec` indices already bounds-
   checked a few lines earlier, or on values the caller can't influence) —
-  this is a raw count to prioritize a real audit, not a claim that all 233
-  are live bugs.
+  this is a raw count to prioritize a real audit, not a claim that all 219
+  (233 minus the 14 that were in the now-deleted `metrics.rs`) are live
+  bugs.
 
 ### Small fixes applied in this pass
 
@@ -564,6 +597,69 @@ out. As a result:
   pytest-cov-style coverage output, mypy, ruff) and `.benchmarks/`/
   `.deepeval/` (untracked local tool-output directories present in this
   checkout that weren't previously ignored).
+
+### Quick-fix pass (2026-09-21)
+
+A follow-up pass explicitly scoped to small, verifiable fixes flagged above
+— no refactors, no dependency bumps, no delete-vs-implement calls on stub
+code. Every item below was verified by an actual local run (`ruff check .`,
+`cargo clippy`, `cargo fmt --check`, `cargo build`, `python -m pytest`,
+`cargo test`), not just read and assumed correct.
+
+- **`ruff check .` — all 33 findings fixed** (`.github/workflows/tests.yml`'s
+  `Lint` step is a real blocking gate again, see above). 10 were
+  autofixable (`ruff check . --fix`: import sorting, `__all__` sort order,
+  a redundant f-string prefix) with a verified no-semantic-change diff. The
+  other 23 were fixed by hand, all mechanical given the actual Rust source
+  each test exercises:
+  - `tests/test_clustering.py` (3) and `tests/test_wired_modules.py` (2):
+    `pytest.raises(Exception)` narrowed to the real exception type each
+    PyO3 binding actually raises (`RuntimeError` for `kmeans`'s
+    `ClusterAudienceKitError`-mapped errors in `src/python.rs`'s
+    `kmeans_py`; `ValueError` for `parse_stream_event_type`/
+    `parse_lifecycle_stage`'s `PyValueError`s) — confirmed by reading the
+    `PyErr::new::<...>` call sites, not guessed.
+  - `examples/basic_segmentation.py`, `tests/test_basic.py`,
+    `tests/test_performance.py`: `datetime.datetime(...)` calls given an
+    explicit `tzinfo=timezone.utc` (`DTZ001`) — safe because in all three
+    files the value is only ever consumed via `.strftime(...)`, confirmed
+    by grepping every use before changing it.
+  - `tests/test_sql_export.py`, `tests/test_wired_modules.py`: two
+    `RUF012` mutable-class-attribute warnings fixed with `ClassVar`
+    annotations; one blind `except Exception: pass` in a SQL-injection
+    test narrowed to `except ValueError` (same reasoning as above, verified
+    against `export_segment_sql`'s error mapping) which also resolved the
+    paired `S110`/`BLE001` findings; three `RUF059` unused-unpacked-variable
+    findings fixed by prefixing with `_`.
+  - `examples/sql_export_example.py`: two `F841` unused-variable findings
+    fixed by not binding the return value; one bare `except:` narrowed to
+    `except ValueError as e:` (same `export_segment_sql`/
+    `get_segment_rfm_patterns` reasoning); `EXE001` fixed with `chmod +x`
+    (the file already has a shebang). The top-level example-runner's
+    `except Exception as e:` (deliberately generic — it must survive
+    whatever any of the 10 heterogeneous example functions raises) was
+    left broad but suppressed with an explicit `# noqa: BLE001` and a
+    comment explaining why, rather than guessing at a narrower type that
+    would defeat its purpose.
+  - Full local suite after all of the above: `python -m pytest tests/ -q`
+    → **229 passed, 0 failed** (`maturin develop --release` build, Python
+    3.9 via the system interpreter).
+- **`cargo clippy --workspace --all-targets` — was silently broken, now
+  fixed, plus mechanical cleanup.** See "Known lint/format debt" above for
+  the `approx_constant` compile-error fix, the `src/engine/metrics.rs`
+  deletion, and the `neural_networks.rs` `X` → `inputs` rename. Warning
+  count: 37 → 30.
+- **`cargo test` on macOS — fixed.** See the dedicated section above.
+  `Cargo.toml`'s `pyo3` dependency no longer hardcodes the
+  `extension-module` feature; it's now behind a `default`-on crate feature
+  of the same name, which every existing build path (`cargo build`,
+  `cargo bench`, `cargo clippy`, `maturin develop`, and CI's
+  `--all-features` invocations) still gets automatically, verified
+  byte-for-byte unaffected (same clippy warning count, same `cargo fmt
+  --check` clean result, same `pytest` pass count against the `maturin
+  develop`-built wheel). `Cargo.lock` is unchanged (no dependency-graph
+  impact). New working path: `cargo test --release --no-default-features
+  --lib` (needs a Python with a linkable `libpython`; see `CONTRIBUTING.md`).
 
 ---
 

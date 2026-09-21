@@ -9,50 +9,53 @@ now has at least one Python-level test exercising the real PyO3 binding
 (not a mock).
 """
 
+from typing import ClassVar
+
 import pytest
+
 from clusteraudiencekit import (
-    PyPrivacyBudget,
-    add_laplace_noise,
-    add_gaussian_noise,
-    check_k_anonymity,
-    suppress_to_k_anonymous,
-    generalize_numeric,
-    calculate_information_loss,
-    PyStreamingEvent,
-    PyStreamingConfig,
-    PyStreamingSegmentationEngine,
-    kolmogorov_smirnov,
-    hellinger_distance,
-    chi_square_drift,
-    detect_feature_drift,
-    detect_segment_composition_change,
-    PySeedCustomer,
-    generate_lookalike,
-    find_similar_customers,
-    cosine_similarity,
-    cohort_id_for,
-    create_cohort,
-    compare_cohorts,
-    aggregate_cohorts_by_period,
-    cohort_retention_table,
-    cohort_performance_ranking,
-    classify_lifecycle_stage,
-    lifecycle_retention_actions,
-    lifecycle_stage_distribution,
-    silhouette_score,
-    davies_bouldin_score,
-    calinski_harabasz_score,
-    assess_cluster_quality,
-    estimate_k_elbow,
-    estimate_k_gap_statistic,
-    estimate_k_silhouette,
-    estimate_k_combined,
-    PyCondition,
     PyBehavioralRule,
     PyBehavioralSegment,
     PyBehavioralSegmenter,
-    profile_segment,
+    PyCondition,
+    PyPrivacyBudget,
+    PySeedCustomer,
+    PyStreamingConfig,
+    PyStreamingEvent,
+    PyStreamingSegmentationEngine,
+    add_gaussian_noise,
+    add_laplace_noise,
+    aggregate_cohorts_by_period,
+    assess_cluster_quality,
+    calculate_information_loss,
+    calinski_harabasz_score,
+    check_k_anonymity,
+    chi_square_drift,
+    classify_lifecycle_stage,
+    cohort_id_for,
+    cohort_performance_ranking,
+    cohort_retention_table,
+    compare_cohorts,
+    cosine_similarity,
+    create_cohort,
+    davies_bouldin_score,
+    detect_feature_drift,
+    detect_segment_composition_change,
+    estimate_k_combined,
+    estimate_k_elbow,
+    estimate_k_gap_statistic,
+    estimate_k_silhouette,
+    find_similar_customers,
+    generalize_numeric,
+    generate_lookalike,
+    hellinger_distance,
     kmeans,
+    kolmogorov_smirnov,
+    lifecycle_retention_actions,
+    lifecycle_stage_distribution,
+    profile_segment,
+    silhouette_score,
+    suppress_to_k_anonymous,
 )
 
 
@@ -119,7 +122,7 @@ class TestStreaming:
         assert sum(dist.values()) == 2
 
     def test_unknown_event_type_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             PyStreamingEvent("cust_1", "not_a_real_type", 1.0, 0)
 
 
@@ -201,7 +204,7 @@ class TestCohorts:
     def test_compare_cohorts(self):
         a = create_cohort("a", "monthly", 0, [("c1", 100.0, False)])
         b = create_cohort("b", "monthly", 0, [("c1", 100.0, True)])
-        better, size_diff, revenue_diff, ltv_diff, retention_diff = compare_cohorts(a, b)
+        better, _size_diff, _revenue_diff, _ltv_diff, retention_diff = compare_cohorts(a, b)
         assert better == "b"  # b has higher retention
         assert retention_diff > 0.0
 
@@ -234,7 +237,7 @@ class TestLifecycle:
         assert len(prospect_actions) > 0
 
     def test_unknown_stage_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError):
             lifecycle_retention_actions("not_a_stage")
 
     def test_stage_distribution_sums_to_100(self):
@@ -269,7 +272,7 @@ class TestClusterQualityMetrics:
 
 
 class TestKEstimation:
-    DATA = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 9.9], [20.0, 0.0], [20.1, 0.1]]
+    DATA: ClassVar = [[0.0, 0.0], [0.1, 0.1], [10.0, 10.0], [10.1, 9.9], [20.0, 0.0], [20.1, 0.1]]
 
     def test_elbow_method_returns_valid_k(self):
         result = estimate_k_elbow(self.DATA, (2, 4))

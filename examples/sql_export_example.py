@@ -7,10 +7,10 @@ for 8 different warehouse dialects.
 """
 
 from clusteraudiencekit import (
-    export_segment_sql,
     export_all_segments_sql,
-    get_supported_sql_dialects,
+    export_segment_sql,
     get_segment_rfm_patterns,
+    get_supported_sql_dialects,
 )
 
 
@@ -234,19 +234,19 @@ def example_10_error_handling():
     # Test with invalid segment
     print("\nHandling invalid segment:")
     try:
-        sql = export_segment_sql("InvalidSegment", "snowflake", "customers")
-    except Exception as e:
+        export_segment_sql("InvalidSegment", "snowflake", "customers")
+    except ValueError as e:
         print(f"  Error: {e}")
-        print(f"  This is expected behavior")
+        print("  This is expected behavior")
 
     # Show valid segments
     print("\nValid segments available:")
     # Get one valid pattern to show available segments
     try:
-        patterns = get_segment_rfm_patterns("Champions")
+        get_segment_rfm_patterns("Champions")
         print("  Champions ✓")
-    except:
-        pass
+    except ValueError as e:
+        print(f"  Error: {e}")
 
     print()
 
@@ -273,7 +273,7 @@ def main():
     for example in examples:
         try:
             example()
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001 - demo driver must survive any example's failure mode
             print(f"Error in {example.__name__}: {e}\n")
 
     print("=" * 70)

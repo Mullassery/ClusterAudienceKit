@@ -1,15 +1,16 @@
 """Performance tests comparing ClusterAudienceKit with sklearn alternatives."""
 
-import pytest
-import pandas as pd
-import numpy as np
-from datetime import datetime, timedelta
 import time
+from datetime import datetime, timedelta, timezone
+
+import numpy as np
+import pandas as pd
+import pytest
 
 try:
-    from sklearn.preprocessing import StandardScaler
     from sklearn.cluster import KMeans as SklearnKMeans
     from sklearn.metrics import silhouette_score as sklearn_silhouette
+    from sklearn.preprocessing import StandardScaler
     HAS_SKLEARN = True
 except ImportError:
     HAS_SKLEARN = False
@@ -17,7 +18,7 @@ except ImportError:
 
 def generate_transaction_data(n_customers=1000, transactions_per_customer=5):
     """Generate realistic transaction data for testing."""
-    base_date = datetime(2026, 1, 1)
+    base_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
     data = []
 
     for cust_id in range(n_customers):

@@ -426,7 +426,7 @@ impl SegmentDecay {
 
         // Half-life: time until 50% remains
         let half_life = if decay_rate > 0.0 && decay_rate < 1.0 {
-            0.693_147 / decay_rate.ln().abs()
+            std::f64::consts::LN_2 / decay_rate.ln().abs()
         } else {
             f64::INFINITY
         };

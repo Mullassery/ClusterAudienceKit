@@ -11,6 +11,7 @@ clustering is explicitly listed as "Not Planned" in
 
 import numpy as np
 import pytest
+
 from clusteraudiencekit import AudienceSegmenter, KMeansResult, kmeans
 
 
@@ -47,12 +48,12 @@ class TestKMeansFunction:
 
     def test_kmeans_rejects_more_clusters_than_points(self):
         data = [[1.0, 1.0], [2.0, 2.0]]
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError):
             kmeans(data, n_clusters=5, random_state=0)
 
     def test_kmeans_rejects_zero_clusters(self):
         data = [[1.0, 1.0], [2.0, 2.0]]
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError):
             kmeans(data, n_clusters=0, random_state=0)
 
     def test_kmeans_single_sample(self):
@@ -178,7 +179,7 @@ class TestDataValidation:
         assert len(result.labels) == 2
 
     def test_empty_data_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(RuntimeError):
             kmeans([], n_clusters=2, random_state=0)
 
 

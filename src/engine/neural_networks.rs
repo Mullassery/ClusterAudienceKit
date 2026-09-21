@@ -262,16 +262,16 @@ impl NeuralNetwork {
     }
 
     /// Train the network on data
-    pub fn train(&mut self, X: &[Vec<f64>], y: &[Vec<f64>]) -> Result<TrainingStats> {
-        if X.is_empty() || y.is_empty() {
+    pub fn train(&mut self, inputs: &[Vec<f64>], y: &[Vec<f64>]) -> Result<TrainingStats> {
+        if inputs.is_empty() || y.is_empty() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Empty training data".to_string(),
             ));
         }
 
-        if X.len() != y.len() {
+        if inputs.len() != y.len() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
-                "X and y length mismatch".to_string(),
+                "inputs and y length mismatch".to_string(),
             ));
         }
 
@@ -283,11 +283,11 @@ impl NeuralNetwork {
             samples_processed = 0;
 
             // Mini-batch training
-            for batch_start in (0..X.len()).step_by(self.config.batch_size) {
-                let batch_end = (batch_start + self.config.batch_size).min(X.len());
+            for batch_start in (0..inputs.len()).step_by(self.config.batch_size) {
+                let batch_end = (batch_start + self.config.batch_size).min(inputs.len());
 
                 for i in batch_start..batch_end {
-                    let pred = self.predict(&X[i])?;
+                    let pred = self.predict(&inputs[i])?;
                     let target = &y[i];
 
                     // Compute loss (MSE)
@@ -299,7 +299,7 @@ impl NeuralNetwork {
                     samples_processed += 1;
 
                     // Backpropagation
-                    self.backpropagate(&X[i], target)?;
+                    self.backpropagate(&inputs[i], target)?;
                 }
             }
         }
@@ -461,8 +461,8 @@ impl Autoencoder {
     }
 
     /// Train autoencoder to minimize reconstruction error
-    pub fn train(&mut self, X: &[Vec<f64>]) -> Result<TrainingStats> {
-        if X.is_empty() {
+    pub fn train(&mut self, inputs: &[Vec<f64>]) -> Result<TrainingStats> {
+        if inputs.is_empty() {
             return Err(crate::ClusterClusterAudienceKitError::DataValidation(
                 "Empty training data".to_string(),
             ));
@@ -474,15 +474,15 @@ impl Autoencoder {
         for _epoch in 0..self.config.epochs {
             total_loss = 0.0;
 
-            for batch_start in (0..X.len()).step_by(self.config.batch_size) {
-                let batch_end = (batch_start + self.config.batch_size).min(X.len());
+            for batch_start in (0..inputs.len()).step_by(self.config.batch_size) {
+                let batch_end = (batch_start + self.config.batch_size).min(inputs.len());
 
                 for i in batch_start..batch_end {
-                    let reconstruction = self.reconstruct(&X[i])?;
+                    let reconstruction = self.reconstruct(&inputs[i])?;
 
                     // Reconstruction error (MSE)
                     let mut loss = 0.0;
-                    for (r, x) in reconstruction.iter().zip(X[i].iter()) {
+                    for (r, x) in reconstruction.iter().zip(inputs[i].iter()) {
                         loss += (r - x).powi(2);
                     }
                     total_loss += loss / reconstruction.len() as f64;
@@ -505,10 +505,10 @@ impl Autoencoder {
     }
 
     /// Detect anomalies via reconstruction error
-    pub fn anomaly_scores(&self, X: &[Vec<f64>]) -> Result<Vec<f64>> {
+    pub fn anomaly_scores(&self, inputs: &[Vec<f64>]) -> Result<Vec<f64>> {
         let mut scores = Vec::new();
 
-        for sample in X {
+        for sample in inputs {
             let reconstruction = self.reconstruct(sample)?;
             let mut error = 0.0;
 
@@ -523,10 +523,10 @@ impl Autoencoder {
     }
 
     /// Extract patterns by getting latent representations
-    pub fn extract_patterns(&self, X: &[Vec<f64>]) -> Result<Vec<Vec<f64>>> {
+    pub fn extract_patterns(&self, inputs: &[Vec<f64>]) -> Result<Vec<Vec<f64>>> {
         let mut patterns = Vec::new();
 
-        for sample in X {
+        for sample in inputs {
             patterns.push(self.encode(sample)?);
         }
 
@@ -688,14 +688,14 @@ mod tests {
             },
         );
 
-        let X = vec![
+        let inputs = vec![
             vec![0.0, 0.0, 0.0, 0.0],
             vec![1.0, 1.0, 1.0, 1.0],
             vec![0.5, 0.5, 0.5, 0.5],
         ];
         let y = vec![vec![0.0], vec![1.0], vec![0.5]];
 
-        let stats = nn.train(&X, &y).unwrap();
+        let stats = nn.train(&inputs, &y).unwrap();
         assert!(stats.final_loss >= 0.0);
         assert!(stats.samples_trained > 0);
     }
@@ -731,9 +731,9 @@ mod tests {
     #[test]
     fn test_autoencoder_anomaly_scores() {
         let ae = Autoencoder::new(3, 2, NNConfig::default());
-        let X = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
+        let inputs = vec![vec![0.1, 0.2, 0.3], vec![0.4, 0.5, 0.6]];
 
-        let scores = ae.anomaly_scores(&X).unwrap();
+        let scores = ae.anomaly_scores(&inputs).unwrap();
         assert_eq!(scores.len(), 2);
         for score in scores {
             assert!(score >= 0.0);
@@ -743,9 +743,9 @@ mod tests {
     #[test]
     fn test_autoencoder_extract_patterns() {
         let ae = Autoencoder::new(4, 2, NNConfig::default());
-        let X = vec![vec![0.1, 0.2, 0.3, 0.4], vec![0.5, 0.6, 0.7, 0.8]];
+        let inputs = vec![vec![0.1, 0.2, 0.3, 0.4], vec![0.5, 0.6, 0.7, 0.8]];
 
-        let patterns = ae.extract_patterns(&X).unwrap();
+        let patterns = ae.extract_patterns(&inputs).unwrap();
         assert_eq!(patterns.len(), 2);
         assert_eq!(patterns[0].len(), 2);
     }

@@ -1,23 +1,26 @@
 """Comprehensive SQL export tests for all 8 SQL dialects."""
 
+from typing import ClassVar
+
 import pytest
+
 from clusteraudiencekit import (
-    export_segment_sql,
     export_all_segments_sql,
-    get_supported_sql_dialects,
+    export_segment_sql,
     get_segment_rfm_patterns,
+    get_supported_sql_dialects,
 )
 
 
 class TestSQLDialects:
     """Test SQL export across all supported dialects."""
 
-    EXPECTED_DIALECTS = [
+    EXPECTED_DIALECTS: ClassVar = [
         "ansi", "snowflake", "bigquery", "redshift",
         "postgresql", "oracle", "sqlserver", "mysql"
     ]
 
-    SEGMENTS = [
+    SEGMENTS: ClassVar = [
         "Champions", "VIP", "LoyalCustomers", "PotentialLoyalists",
         "CannotLose", "AtRisk", "AboutToSleep", "NewCustomers",
         "Promising", "NeedAttention", "Lost", "AtRiskSleeping", "Hibernating"
@@ -221,7 +224,7 @@ class TestSQLDialects:
             )
             # If it doesn't error, the injected text should not appear in SQL
             assert "DROP" not in sql
-        except Exception:
+        except ValueError:
             # Expected - invalid segment name
             pass
 

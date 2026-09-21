@@ -27,14 +27,10 @@ jobs:
         # Previously `ruff check . 2>/dev/null || true`, which discarded
         # ruff's stderr AND always exited 0 - silently hiding findings
         # entirely, the same "always green" anti-pattern already fixed once
-        # in the Test step above. Verified locally (2026-09-20): `ruff
-        # check .` currently reports 33 real findings in tests/, so making
-        # this a hard gate right now would just turn CI red on unrelated
-        # pre-existing lint debt, not on this change. `continue-on-error`
-        # is the honest middle ground: output is no longer discarded and
-        # the step is visibly marked failed/non-blocking in the Actions UI
-        # (unlike `|| true`, which hid failures completely), without
-        # blocking merges until that lint debt is actually cleaned up.
-        # See docs/ROADMAP_HONEST.md.
+        # in the Test step above. Then briefly `continue-on-error: true`
+        # (2026-09-20) because `ruff check .` had 33 real, pre-existing
+        # findings and a hard gate would've turned CI red on unrelated debt.
+        # Those 33 findings were fixed for real in the 2026-09-21 quick-fix
+        # pass (see docs/ROADMAP_HONEST.md) - `ruff check .` is clean now,
+        # so this is a real, blocking gate again.
         run: ruff check .
-        continue-on-error: true

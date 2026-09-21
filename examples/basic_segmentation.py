@@ -1,12 +1,14 @@
 """Basic segmentation example."""
 
+from datetime import datetime, timedelta, timezone
+
 import pandas as pd
-from datetime import datetime, timedelta
+
 
 # Example 1: Create sample data
 def generate_sample_data():
     """Generate sample transaction data for demonstration."""
-    base_date = datetime(2026, 1, 1)
+    base_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
     data = []
 
     for cust_id in range(1000):

@@ -13,7 +13,7 @@ categories = ["algorithms", "data-structures"]
 [dependencies]
 ndarray = "0.16"
 ndarray-stats = "0.5"
-pyo3 = { version = "0.22", features = ["extension-module"] }
+pyo3 = { version = "0.22" }
 numpy = "0.22"
 arrow = "55.0"
 parquet = "55.0"
@@ -28,6 +28,20 @@ log = "0.4"
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest = "1.4"
+
+# `extension-module` is on by default so `cargo build`/`cargo bench`/`cargo
+# clippy`/`maturin develop` all behave exactly as before this feature-gating
+# was introduced. It deliberately omits linking against libpython (a real
+# Python interpreter provides those symbols via dlopen at import time), which
+# is fine for the real extension module but means a standalone `cargo test`
+# binary (never loaded by a Python process) SIGABRTs on macOS with "symbol
+# not found in flat namespace '_PyBaseObject_Type'" -- run
+# `cargo test --no-default-features` to build tests without it, which links
+# normally against libpython instead. See docs/ROADMAP_HONEST.md and
+# CONTRIBUTING.md.
+[features]
+default = ["extension-module"]
+extension-module = ["pyo3/extension-module"]
 
 [[bench]]
 name = "benchmarks"

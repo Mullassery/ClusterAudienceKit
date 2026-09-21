@@ -13,15 +13,16 @@ RFM features, then `AudienceSegmenter.fit`/`.predict` on the resulting
 numeric matrix.
 """
 
+from datetime import datetime, timedelta, timezone
+
 import pandas as pd
 import pytest
-from datetime import datetime, timedelta
 
 
 @pytest.fixture
 def sample_transactions():
     """Generate sample transaction data."""
-    base_date = datetime(2026, 1, 1)
+    base_date = datetime(2026, 1, 1, tzinfo=timezone.utc)
     data = []
 
     for cust_id in range(100):

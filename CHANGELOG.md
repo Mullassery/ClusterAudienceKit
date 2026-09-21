@@ -4,11 +4,63 @@ All notable changes to ClusterAudienceKit are documented here.
 
 ## [Unreleased]
 
-Documentation/CI-hygiene pass. No functional code changes, no version bump.
-Full detail in `docs/ROADMAP_HONEST.md`'s "Documentation and structural
-issues found (2026-09-20)" section; summary here.
+Two passes, no version bump. 2026-09-20 was documentation/CI-hygiene only
+(full detail in `docs/ROADMAP_HONEST.md`'s "Documentation and structural
+issues found (2026-09-20)"). 2026-09-21 is a quick-fix pass with real,
+verified code changes (full detail in that file's "Quick-fix pass
+(2026-09-21)" section): all 33 `ruff` findings, a clippy-blocking compile
+error, dead code, a non-snake-case rename, and the macOS `cargo test` crash.
 
-### Changed
+### Fixed (2026-09-21 quick-fix pass)
+- `.github/workflows/tests.yml`'s `Lint` step (`ruff check .`) is a real,
+  blocking gate again — the 33 pre-existing `ruff` findings it was
+  `continue-on-error`'d around (see `### Changed` below) are all fixed.
+  Narrowed 5 `pytest.raises(Exception)`/bare-`except` blocks in
+  `tests/test_clustering.py`, `tests/test_wired_modules.py`,
+  `tests/test_sql_export.py`, and `examples/sql_export_example.py` to the
+  actual exception type each PyO3 binding raises (`RuntimeError` for
+  `kmeans`, `ValueError` for the streaming/lifecycle/SQL-export parsers —
+  confirmed by reading the `PyErr::new::<...>` call sites in
+  `src/python.rs`, not guessed); added explicit `tzinfo=timezone.utc` to
+  3 naive `datetime.datetime(...)` calls (`DTZ001`) in
+  `examples/basic_segmentation.py`/`tests/test_basic.py`/
+  `tests/test_performance.py` (safe — the values are only ever consumed via
+  `.strftime(...)`); `ClassVar` annotations on 2 mutable class-attribute
+  defaults; 3 unused unpacked variables prefixed with `_`; 2 unused
+  variables and 1 bare `except:` cleaned up in
+  `examples/sql_export_example.py`; that file's shebang made executable;
+  10 further findings (import sorting, `__all__` order, a redundant
+  f-string prefix) auto-fixed via `ruff check . --fix` with a verified
+  no-semantic-change diff. `python -m pytest tests/ -q`: 229 passed, 0
+  failed (unchanged pass count from before, modulo the 2 environment-only
+  sklearn skips noted in `docs/ROADMAP_HONEST.md`).
+- `cargo clippy --workspace --all-targets` had silently stopped completing
+  at all (new toolchain drift turned `clippy::approx_constant`, deny by
+  default, into a hard compile error on a hand-written `0.693_147` literal
+  in `segment_intelligence.rs` that approximates `LN_2`). Fixed with
+  `std::f64::consts::LN_2` (same value to ~1e-7, no behavior change).
+- Deleted the dead/duplicate `src/engine/metrics.rs` (predated and
+  duplicated `src/engine/quality_metrics.rs`, the module actually wired to
+  Python; confirmed unreferenced anywhere else before deleting) and its
+  `pub mod metrics;` declaration, removing 3 clippy warnings.
+- Renamed the non-snake-case `X` parameter (leftover ML-paper notation) to
+  `inputs` across `neural_networks.rs`'s four `train`/`anomaly_scores`/
+  `extract_patterns` methods and their tests, removing 17 clippy warnings.
+  `cargo clippy --workspace --all-targets`: 37 → 30 warnings, all still in
+  already-documented deferred/unwired modules (see `docs/ROADMAP_HONEST.md`).
+- **`cargo test` on macOS.** `Cargo.toml`'s `pyo3` dependency no longer
+  hardcodes the `extension-module` feature; it's now behind a `default`-on
+  crate feature of the same name. Every existing build path (`cargo build`,
+  `cargo bench`, `cargo clippy`, `maturin develop`, and CI's
+  `--all-features` invocations) still gets it automatically — verified
+  unaffected (same clippy warning count, `cargo fmt --check` still clean,
+  same `pytest` pass count against the `maturin develop`-built wheel;
+  `Cargo.lock` unchanged). New working path:
+  `cargo test --release --no-default-features --lib` (needs a Python with
+  a linkable `libpython`, e.g. via `PYO3_PYTHON` — see `CONTRIBUTING.md`).
+  Verified: 435 passed, 0 failed.
+
+### Changed (2026-09-20 doc/CI-hygiene pass)
 - Archived 15 stale/fabricated docs to `docs/archive/` (with an index
   explaining each): five previously banner-flagged docs describing a
   fictional `AudienceSegmenter(method=...)` API and fabricated benchmarks
@@ -49,19 +101,19 @@ issues found (2026-09-20)" section; summary here.
 - `.gitignore`: added `.coverage`, `htmlcov/`, `.mypy_cache/`, `.ruff_cache/`,
   `.hypothesis/`, `.benchmarks/`, `.deepeval/`.
 
-### Added
+### Added (2026-09-20 doc/CI-hygiene pass)
 - `.github/workflows/ci.yml`: new `security-audit` job running `cargo
   audit` (unverified from the sandbox this was added in — see
   `docs/ROADMAP_HONEST.md`).
 
-### Fixed (found this pass, documented, not code-fixed)
+### Found this pass, documented, code-fixed the next day (2026-09-20 → 2026-09-21)
 - `cargo test` cannot run at all on macOS (`dyld: symbol not found
   '_PyBaseObject_Type'`, SIGABRT) because `pyo3`'s `extension-module`
   feature is unconditionally enabled in `Cargo.toml` rather than
   feature-gated for test builds. `maturin develop --release && pytest
-  tests/` is the verified-working alternative (227 passed, 2 skipped,
-  2026-09-20). See `docs/ROADMAP_HONEST.md` for why this wasn't fixed in
-  this pass (real Cargo.toml/feature restructuring, not a doc change).
+  tests/` was the verified-working alternative (227 passed, 2 skipped,
+  2026-09-20) at the time this was found. **Fixed the next day** — see the
+  `### Fixed (2026-09-21 quick-fix pass)` section above.
 
 ## [7.3.0] - 2026-08-30
 
