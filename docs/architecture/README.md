@@ -5,7 +5,7 @@ This replaces two previous architecture docs (root `ARCHITECTURE.md` and
 layouts and cross-project integrations (`StatGuardian`, `PyCustomerJourney`,
 `PyReverseETL`, `PyStreamMCP`, a `core/src/` directory tree) that never
 existed in this codebase. Everything below was checked directly against
-`src/` as of this writing (v7.3.0).
+`src/` as of this writing (v7.3.1).
 
 ## What this actually is
 

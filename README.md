@@ -166,7 +166,7 @@ develop --release`), which does require a Rust toolchain.
 Verified as of this audit (August 2026):
 
 - **Published wheels are still single-platform, though the latest release
-  improved on this.** The latest PyPI release (7.3.0, matching this repo's
+  improved on this.** The latest PyPI release (7.3.1, matching this repo's
   version exactly — no drift) ships a macOS ARM64 / cp311 wheel **and,
   unlike 7.1.1/7.2.0 before it, a source distribution** — so `pip install`
   can now at least attempt a source build via `maturin` on Linux/Windows
@@ -191,7 +191,7 @@ Verified as of this audit (August 2026):
   `Err("Not implemented")`. They are not called from anywhere else in the
   crate and are not exposed to Python, so they don't affect any documented
   functionality — noted here for completeness.
-- **Registry check:** local version (`7.3.0`, in `Cargo.toml` and
+- **Registry check:** local version (`7.3.1`, in `Cargo.toml` and
   `pyproject.toml`) matches the latest version actually published on PyPI.
   No drift.
 - **No open GitHub issues** at the time of this audit.

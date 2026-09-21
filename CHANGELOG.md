@@ -4,7 +4,9 @@ All notable changes to ClusterAudienceKit are documented here.
 
 ## [Unreleased]
 
-Two passes, no version bump. 2026-09-20 was documentation/CI-hygiene only
+## [7.3.1] - 2026-09-22
+
+Two passes, no version bump until this release. 2026-09-20 was documentation/CI-hygiene only
 (full detail in `docs/ROADMAP_HONEST.md`'s "Documentation and structural
 issues found (2026-09-20)"). 2026-09-21 is a quick-fix pass with real,
 verified code changes (full detail in that file's "Quick-fix pass

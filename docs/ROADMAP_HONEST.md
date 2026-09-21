@@ -1,13 +1,13 @@
 # ClusterAudienceKit Roadmap (Honest)
 
-**Current Version:** 7.3.0
-**Last Updated:** 2026-09-21 (quick-fix pass — see "Quick-fix pass
+**Current Version:** 7.3.1
+**Last Updated:** 2026-09-22 (patch release 7.3.1 published to PyPI,
+packaging the 2026-09-21 quick-fix pass — see "Quick-fix pass
 (2026-09-21)" below: 33 ruff findings, a clippy-blocking compile error, dead
-code, a non-snake-case rename, and the macOS `cargo test` crash all fixed;
-no version bump. Previously 2026-09-20's OSS-standardization/
-documentation-honesty pass — see "Documentation and structural issues found
-(2026-09-20)" below; no version bump, no functional code changes then
-either)
+code, a non-snake-case rename, and the macOS `cargo test` crash all fixed.
+Previously 2026-09-20's OSS-standardization/documentation-honesty pass — see
+"Documentation and structural issues found (2026-09-20)" below; no version
+bump, no functional code changes then either)
 **Status:** Real, tested Rust core for RFM + KMeans/K-Prototypes clustering,
 churn prediction, CLV, SQL export, and now 10 additional analytics modules —
 all exposed through the Python API and covered by both Rust unit tests and
