@@ -195,9 +195,16 @@ impl LookalikeGenerator {
         // Sort by similarity descending
         candidates.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap());
 
-        // Apply percentile threshold
+        // Apply percentile threshold. `sorted` must actually be sorted
+        // (descending, to match `candidates`'s sort direction above) for
+        // `idx` to land on the value at the requested percentile rank —
+        // otherwise the "threshold" is just whatever similarity happens to
+        // sit at that position in candidate-input order, and the result
+        // silently depends on the caller's ordering instead of the actual
+        // distribution of similarity scores.
         let threshold_score = if !similarities.is_empty() {
-            let sorted: Vec<f64> = similarities.to_vec();
+            let mut sorted: Vec<f64> = similarities.to_vec();
+            sorted.sort_by(|a, b| b.partial_cmp(a).unwrap());
             let idx = ((1.0 - percentile_threshold) * sorted.len() as f64) as usize;
             sorted.get(idx).copied().unwrap_or(0.0)
         } else {
@@ -520,5 +527,81 @@ mod tests {
         .unwrap();
 
         assert!(audience.lookalike_count <= 20); // ~10% of 100
+    }
+
+    /// Regression test for a real bug: the percentile-threshold cutoff in
+    /// `generate_lookalike` was computed from an unsorted copy of the
+    /// similarity scores (`let sorted: Vec<f64> = similarities.to_vec();`
+    /// with no `.sort()` call despite the name), so the "threshold" was
+    /// really just whatever score happened to sit at position
+    /// `(1 - percentile) * n` in candidate-input order. Feeding the exact
+    /// same candidates in a different order silently produced a different
+    /// lookalike_count/avg_similarity for the same "top 10%" request. This
+    /// test builds the same candidate set in two different orders (input
+    /// order and reversed) and asserts the results are identical.
+    #[test]
+    fn test_percentile_filtering_is_order_independent() {
+        let seed = create_seed_customer();
+
+        let candidates: Vec<_> = (0..100)
+            .map(|i| SeedCustomer {
+                customer_id: format!("cand_{}", i),
+                features: vec![0.5 + (i as f64 / 200.0), 0.5, 0.5],
+                categorical_features: HashMap::new(),
+                ltv: 3000.0,
+                cohort: "test".to_string(),
+            })
+            .collect();
+
+        let mut shuffled = candidates.clone();
+        shuffled.reverse();
+        // Also interleave to avoid any accidental symmetry with a plain reverse.
+        let mut interleaved = Vec::with_capacity(candidates.len());
+        let (mut lo, mut hi) = (0, candidates.len() - 1);
+        while lo <= hi {
+            interleaved.push(candidates[lo].clone());
+            if lo != hi {
+                interleaved.push(candidates[hi].clone());
+            }
+            lo += 1;
+            if hi == 0 {
+                break;
+            }
+            hi -= 1;
+        }
+
+        let in_order = LookalikeGenerator::generate_lookalike(
+            &[seed.clone()],
+            &candidates,
+            SimilarityMetric::Cosine,
+            0.9, // Top 10%
+            None,
+        )
+        .unwrap();
+
+        let reversed = LookalikeGenerator::generate_lookalike(
+            &[seed.clone()],
+            &shuffled,
+            SimilarityMetric::Cosine,
+            0.9,
+            None,
+        )
+        .unwrap();
+
+        let mixed = LookalikeGenerator::generate_lookalike(
+            &[seed],
+            &interleaved,
+            SimilarityMetric::Cosine,
+            0.9,
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(in_order.lookalike_count, reversed.lookalike_count);
+        assert_eq!(in_order.lookalike_count, mixed.lookalike_count);
+        assert!((in_order.avg_similarity - reversed.avg_similarity).abs() < 1e-9);
+        assert!((in_order.avg_similarity - mixed.avg_similarity).abs() < 1e-9);
+        assert!((in_order.min_similarity - reversed.min_similarity).abs() < 1e-9);
+        assert!((in_order.max_similarity - reversed.max_similarity).abs() < 1e-9);
     }
 }
