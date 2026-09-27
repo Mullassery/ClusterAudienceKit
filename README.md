@@ -209,21 +209,25 @@ approaches broadly agree on who a business's most valuable real customers
 are, despite one being a simple rate projection and the other a real
 statistical model fit to purchase-timing data.
 
-**Real bug found, not fixed (documented instead — see rationale below):**
-`calculate_simple_ltv` — the *only* CLV function exposed to Python — always
-returns `churn_probability: 0.15` for every customer, verified against real
-data (every one of 4,338 real customers in this benchmark got exactly
-0.15, regardless of their actual recency/frequency/monetary values).
-Root cause, `src/engine/clv.rs`: this hardcoded value lives in the "Simple"
-CLV model's constructor (line ~96). A separate, real
-`calculate_probabilistic_ltv` function exists in the same file and *does*
-compute a real churn probability from actual customer data — but it is
-**not exposed to Python at all** (confirmed: `hasattr(clusteraudiencekit,
-"calculate_probabilistic_ltv")` is `False`). `docs/ROADMAP_HONEST.md`
-currently says CLV is "real, shipped" with no caveat about this. Not fixed
-here — exposing a second Rust function via new PyO3 bindings is a real
-scoped feature addition, not a targeted bug fix, so it's documented rather
-than rushed into this pass.
+**Real bug found and fixed:** `calculate_simple_ltv` — the *only* CLV
+function exposed to Python — used to always return `churn_probability:
+0.15` for every customer, verified against real data (every one of 4,338
+real customers in this benchmark got exactly 0.15, regardless of their
+actual recency/frequency/monetary values). Root cause, `src/engine/clv.rs`
+line ~96: this hardcoded value lived in the "Simple" CLV model's
+constructor. Fixed to derive a real, per-customer churn signal from the
+purchase-frequency/average-order-value data this model already computes
+internally, reusing the same risk weighting `calculate_probabilistic_ltv`'s
+churn scoring uses in the same file — a low-frequency, low-spend customer
+now scores measurably higher churn risk than a frequent, high-spend one
+(regression test added, `test_simple_ltv_churn_probability_varies_with_real_customer_data`).
+A separate, more complete `calculate_probabilistic_ltv` function (which
+also uses recency/tenure inputs this simpler model isn't given) still
+exists in the same file and is **not exposed to Python at all** (confirmed:
+`hasattr(clusteraudiencekit, "calculate_probabilistic_ltv")` is `False`) —
+exposing it via new PyO3 bindings is a real, separate feature addition, not
+in scope for this fix. `docs/ROADMAP_HONEST.md` previously said CLV was
+"real, shipped" with no caveat about the hardcoded-value bug; corrected.
 
 ## Known Issues
 
