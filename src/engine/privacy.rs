@@ -1,6 +1,7 @@
 //! Privacy-preserving techniques: Differential privacy and K-anonymity
 
 use crate::Result;
+use rand::Rng;
 use std::collections::HashMap;
 
 /// Differential privacy mechanism
@@ -91,11 +92,22 @@ pub struct KAnonymityResult {
 pub struct DifferentialPrivacy;
 
 impl DifferentialPrivacy {
-    /// Generate Laplace noise for counts
+    /// Generate Laplace noise for counts.
+    ///
+    /// Samples a real uniform(0,1) draw and maps it through the standard
+    /// inverse-CDF transform for Laplace(0, scale): for u < 0.5,
+    /// `scale * ln(2u)`; otherwise `-scale * ln(2(1-u))`. This function
+    /// previously hardcoded `u = 0.5`, which — because that's exactly the
+    /// boundary between the two branches — made the noise term evaluate to
+    /// `scale * ln(1.0) == 0.0` on *every* call, so the "Laplace mechanism"
+    /// silently returned the caller's data completely unmodified: zero
+    /// actual differential-privacy protection despite the API contract.
+    /// See `test_laplace_noise_is_actually_random` below.
     pub fn laplace_noise(epsilon: f64, sensitivity: f64) -> f64 {
         let scale = sensitivity / epsilon;
-        // Simplified: use uniform random in place of exponential for deterministic testing
-        let u: f64 = 0.5; // In practice, sample uniform(0,1)
+        let mut rng = rand::thread_rng();
+        // Avoid exact 0.0 so `ln()` below can't produce -inf.
+        let u: f64 = rng.gen_range(f64::EPSILON..1.0);
 
         if u < 0.5 {
             scale * (2.0 * u).ln()
@@ -104,11 +116,23 @@ impl DifferentialPrivacy {
         }
     }
 
-    /// Generate Gaussian noise for range queries
+    /// Generate Gaussian noise for range queries via a Box-Muller transform
+    /// over two real uniform(0,1) draws.
+    ///
+    /// This function previously hardcoded `sigma * 0.5` — a fixed,
+    /// deterministic shift with no randomness at all (and trivially
+    /// reversible by anyone who knows `sigma`), despite being the "Gaussian
+    /// mechanism" backing the DP-noise API. See
+    /// `test_gaussian_noise_is_actually_random` below.
     pub fn gaussian_noise(epsilon: f64, delta: f64, sensitivity: f64) -> f64 {
         let sigma = sensitivity * (2.0 * (1.25 / delta).ln()).sqrt() / epsilon;
-        // Simplified: use fixed noise for testing
-        sigma * 0.5
+        let mut rng = rand::thread_rng();
+        let u1: f64 = rng.gen_range(f64::EPSILON..1.0);
+        let u2: f64 = rng.gen_range(0.0..1.0);
+        // Box-Muller transform: two independent uniform(0,1) draws -> one
+        // standard-normal sample.
+        let z0 = (-2.0 * u1.ln()).sqrt() * (2.0 * std::f64::consts::PI * u2).cos();
+        sigma * z0
     }
 
     /// Add Laplace mechanism noise to counts
@@ -461,5 +485,61 @@ mod tests {
             let noise = DifferentialPrivacy::gaussian_noise(0.5, 0.01, 1.0);
             assert!(noise.is_finite());
         }
+    }
+
+    /// Regression test for a real, security-relevant bug: `laplace_noise`
+    /// hardcoded `u = 0.5` instead of sampling uniform(0,1), which made the
+    /// noise term evaluate to exactly 0.0 on every call -- the "Laplace
+    /// mechanism" silently returned data completely unmodified, providing
+    /// zero actual differential-privacy protection. Assert real variation
+    /// (nonzero spread) across repeated calls with the same parameters.
+    #[test]
+    fn test_laplace_noise_is_actually_random() {
+        let samples: Vec<f64> = (0..200)
+            .map(|_| DifferentialPrivacy::laplace_noise(1.0, 1.0))
+            .collect();
+
+        let first = samples[0];
+        assert!(
+            samples.iter().any(|&s| (s - first).abs() > 1e-9),
+            "laplace_noise() produced identical output across {} calls -- noise is not random",
+            samples.len()
+        );
+
+        let mean = samples.iter().sum::<f64>() / samples.len() as f64;
+        let variance =
+            samples.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        assert!(
+            variance > 1e-6,
+            "laplace_noise() output has near-zero variance ({variance}) across samples -- \
+             noise is effectively constant"
+        );
+    }
+
+    /// Regression test for a real, security-relevant bug: `gaussian_noise`
+    /// hardcoded `sigma * 0.5` -- a fixed, deterministic (and trivially
+    /// reversible) shift with no randomness at all. Assert real variation
+    /// across repeated calls with the same parameters.
+    #[test]
+    fn test_gaussian_noise_is_actually_random() {
+        let samples: Vec<f64> = (0..200)
+            .map(|_| DifferentialPrivacy::gaussian_noise(1.0, 0.01, 1.0))
+            .collect();
+
+        let first = samples[0];
+        assert!(
+            samples.iter().any(|&s| (s - first).abs() > 1e-9),
+            "gaussian_noise() produced identical output across {} calls -- noise is not random",
+            samples.len()
+        );
+
+        let mean = samples.iter().sum::<f64>() / samples.len() as f64;
+        let variance =
+            samples.iter().map(|s| (s - mean).powi(2)).sum::<f64>() / samples.len() as f64;
+        assert!(
+            variance > 1e-6,
+            "gaussian_noise() output has near-zero variance ({variance}) across samples -- \
+             noise is effectively constant"
+        );
     }
 }
