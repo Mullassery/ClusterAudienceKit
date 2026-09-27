@@ -4,6 +4,38 @@ All notable changes to ClusterAudienceKit are documented here.
 
 ## [Unreleased]
 
+### Security
+- **`engine::privacy::DifferentialPrivacy::laplace_noise`/`gaussian_noise`
+  did not sample any actual randomness**, so `add_laplace_noise`/
+  `add_gaussian_noise` (the Python-exposed differential-privacy API)
+  provided **zero real privacy protection** despite being documented as a
+  real, shipped feature. `laplace_noise` hardcoded `u = 0.5` in place of a
+  uniform(0,1) draw, which — because 0.5 sits exactly on the function's
+  branch boundary — made the noise term evaluate to exactly `0.0` on every
+  call (data returned completely unmodified). `gaussian_noise` hardcoded
+  `sigma * 0.5`, a fixed deterministic shift with no randomness. Both now
+  draw real randomness via `rand::thread_rng()` (inverse-CDF sampling for
+  Laplace; Box-Muller transform for Gaussian). Verified via the real PyO3
+  binding: repeated calls with identical arguments now produce different
+  output instead of byte-identical/constant output. New regression tests
+  `test_laplace_noise_is_actually_random`/
+  `test_gaussian_noise_is_actually_random` assert nonzero variance across
+  repeated calls; both fail against the pre-fix code. See
+  `docs/ROADMAP_HONEST.md`'s "Deep code-review pass (2026-09-27)" for full
+  detail.
+
+### Fixed
+- `engine::lookalike::LookalikeGenerator::generate_lookalike`'s percentile
+  threshold was computed from an unsorted copy of the similarity scores
+  (`let sorted: Vec<f64> = similarities.to_vec();` — no `.sort()` call
+  despite the name), so the "top N%" cutoff silently depended on the
+  candidate list's input order rather than the actual similarity
+  distribution. The same 100 candidates fed in a different order produced
+  10 vs. 91 lookalikes for an identical "top 10%" request. Fixed by
+  actually sorting descending before indexing. New regression test
+  `test_percentile_filtering_is_order_independent` (fails against the
+  pre-fix code with `left: 10, right: 91`).
+
 ## [7.3.1] - 2026-09-22
 
 Two passes, no version bump until this release. 2026-09-20 was documentation/CI-hygiene only

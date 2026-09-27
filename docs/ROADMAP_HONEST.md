@@ -1,11 +1,19 @@
 # ClusterAudienceKit Roadmap (Honest)
 
 **Current Version:** 7.3.1
-**Last Updated:** 2026-09-22 (patch release 7.3.1 published to PyPI,
+**Last Updated:** 2026-09-27 (deep code-review pass — see "Deep code-review
+pass (2026-09-27)" below: found and fixed a real, previously-undisclosed
+**security bug** in the differential-privacy module — the "noise" added by
+both `add_laplace_noise`/`add_gaussian_noise` was not random at all, so
+neither actually provided differential-privacy protection — plus an
+order-dependent percentile bug in `generate_lookalike`. No version bump this
+pass; both fixes are behavioral corrections to existing 7.3.1 code, not new
+features.
+Previously 2026-09-22: patch release 7.3.1 published to PyPI,
 packaging the 2026-09-21 quick-fix pass — see "Quick-fix pass
 (2026-09-21)" below: 33 ruff findings, a clippy-blocking compile error, dead
 code, a non-snake-case rename, and the macOS `cargo test` crash all fixed.
-Previously 2026-09-20's OSS-standardization/documentation-honesty pass — see
+Before that, 2026-09-20's OSS-standardization/documentation-honesty pass — see
 "Documentation and structural issues found (2026-09-20)" below; no version
 bump, no functional code changes then either)
 **Status:** Real, tested Rust core for RFM + KMeans/K-Prototypes clustering,
@@ -345,6 +353,102 @@ and current dependency-pinning status.
   (GPL/AGPL/LGPL) dependencies were found in `Cargo.toml`'s dependency list
   during this pass; a full transitive-dependency license scan (e.g. via
   `cargo-license` or `cargo-deny`) has not been run.
+
+---
+
+## Deep code-review pass (2026-09-27)
+
+A dedicated pass whose explicit goal was finding real runtime/logic bugs by
+reading business logic carefully (not linting, not grepping for TODOs) —
+distinct from the doc-honesty and quick-fix passes above. Two real,
+verified bugs were found and fixed, both with regression tests that fail
+against the pre-fix code and pass against the fix. Full test suites (`cargo
+test --release --no-default-features --lib`, `pytest tests/`) were run
+before and after; no regressions.
+
+### Security: differential-privacy noise was not random — zero actual privacy protection
+
+**`src/engine/privacy.rs`'s `DifferentialPrivacy::laplace_noise` and
+`gaussian_noise`** — the two functions backing the Python-exposed
+`add_laplace_noise`/`add_gaussian_noise` API (`PyPrivacyBudget`'s
+companion free functions, wired since the 7.1.1 privacy-module rollout) —
+did not sample any actual randomness, despite being presented as a
+differential-privacy mechanism whose entire security property depends on
+genuinely random noise.
+
+- `laplace_noise` (previously line 98): `let u: f64 = 0.5; // In practice,
+  sample uniform(0,1)` — a comment openly acknowledging the shortcut, left
+  in past the point this became Python-reachable production code. Because
+  `u = 0.5` sits exactly on the boundary between the function's two branches,
+  the noise term evaluates to `scale * ln(2 * 0.5) = scale * ln(1.0) = 0.0`
+  on **every single call**, for any `epsilon`/`sensitivity`. `add_laplace_noise`
+  therefore returned the caller's input data completely unmodified —
+  not "weak" privacy, **no privacy at all**. Anyone relying on
+  `PyPrivacyBudget`/`add_laplace_noise` to publish aggregate counts/sums
+  under differential privacy was publishing raw, unmodified values.
+- `gaussian_noise` (previously line 111): `sigma * 0.5` — a fixed,
+  deterministic shift with no random component, trivially reversible by
+  anyone who can compute `sigma` from the (typically public) `epsilon`/
+  `delta`/`sensitivity` parameters.
+
+**Verified**: called the real PyO3-bound `clusteraudiencekit.add_laplace_noise`/
+`add_gaussian_noise` twice each with identical inputs — before the fix,
+`add_laplace_noise([100.0]*5, 1.0, 1.0)` returned `[100.0, 100.0, 100.0,
+100.0, 100.0]` (byte-identical to the input) on every call; after the fix,
+two calls with identical arguments return different, genuinely-varying
+output (e.g. `[93.43, 97.73, 100.33, 98.78, 99.43]` vs. `[100.59, 100.86,
+103.39, 98.65, 98.69]`). New Rust unit tests
+`test_laplace_noise_is_actually_random`/`test_gaussian_noise_is_actually_random`
+assert nonzero variance across 200 repeated calls — both fail against the
+pre-fix code (constant output → zero variance) and pass against the fix.
+
+**Fixed**: `laplace_noise` now draws a real `u ~ Uniform(f64::EPSILON, 1.0)`
+via `rand::thread_rng()` (the crate was already a dependency, already used
+in `clustering.rs`) and applies the same inverse-CDF formula the code
+already had (that part was mathematically correct — only the input `u` was
+fake). `gaussian_noise` now draws two real uniform samples and applies a
+Box-Muller transform to get a real standard-normal sample, scaled by
+`sigma`. No API/signature change — same inputs, same output *type* and
+range, now with real randomness.
+
+This is exactly the class of bug this pass was scoped to find: a
+"verified"/shipped feature (`docs/ROADMAP_HONEST.md`'s own "What's real and
+shipping" section above lists differential privacy as "newly wired" and
+real) that silently didn't do what it claimed, discoverable only by
+tracing the actual noise-generation math rather than checking that the
+function exists and returns a finite `f64`. The pre-existing unit tests
+(`test_laplace_noise`, `test_gaussian_noise`, `test_add_laplace_noise`,
+`test_gaussian_noise_range`) all only asserted `.is_finite()`/`>= 0.0` —
+which a constant, non-random value trivially satisfies — so they never
+would have caught this.
+
+### `generate_lookalike`'s percentile threshold depended on candidate input order, not the actual similarity distribution
+
+**`src/engine/lookalike.rs:199-205`** (now ~205-211): the percentile-cutoff
+calculation copied the raw per-candidate similarity scores into a variable
+named `sorted` — `let sorted: Vec<f64> = similarities.to_vec();` — but never
+actually called `.sort()` on it, despite the name and despite `candidates`
+(a different, correctly-sorted vector two lines above) being sorted
+descending for an unrelated purpose. Indexing an *unsorted* vector at
+`(1 - percentile_threshold) * len` returns whatever similarity score happens
+to occupy that position in the caller's candidate ordering — not the actual
+value at that percentile rank.
+
+**Verified**: `tests/` already had `test_percentile_filtering` (100
+candidates, "top 10%" request) which happened to pass only because that
+test's candidates were constructed in ascending-similarity order, making the
+unsorted array accidentally behave like a sorted one. Feeding the *same* 100
+candidates through `generate_lookalike` in reverse order, and in an
+interleaved order, produced 10 lookalikes (correct-looking) vs. 91
+lookalikes (wrong) for the identical "top 10%" request — verified via a
+temporary before/after test run: the new regression test
+`test_percentile_filtering_is_order_independent` fails with `left: 10,
+right: 91` against the pre-fix code and passes against the fix.
+
+**Fixed**: `sorted` is now actually sorted descending (matching
+`candidates`'s existing sort direction) before indexing, so the percentile
+cutoff reflects the real distribution of similarity scores regardless of
+candidate input order.
 
 ---
 
