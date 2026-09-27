@@ -86,6 +86,29 @@ impl CLVCalculator {
         let predicted_ltv_3yr = annual_value * 3.0 * 0.85;
         let predicted_ltv_5yr = annual_value * 5.0 * 0.70;
 
+        // Real, per-customer churn signal derived from this model's own
+        // already-computed frequency/monetary values, reusing the same risk
+        // weighting `calculate_probabilistic_ltv`'s churn scoring uses below
+        // -- this model isn't given recency/signup-tenure inputs, so only
+        // the frequency/monetary factors apply. Previously a hardcoded 0.15
+        // regardless of customer data (found via real-world benchmarking
+        // against UCI's "Online Retail" dataset: every one of 4,338 real
+        // customers got exactly 0.15).
+        let mut churn_score: f64 = 0.0;
+        if purchase_frequency < 1.0 {
+            churn_score += 0.25;
+        } else if purchase_frequency < 3.0 {
+            churn_score += 0.15;
+        } else if purchase_frequency < 6.0 {
+            churn_score += 0.05;
+        }
+        if avg_order_value < 100.0 {
+            churn_score += 0.15;
+        } else if avg_order_value < 500.0 {
+            churn_score += 0.08;
+        }
+        let churn_probability: f64 = churn_score.clamp(0.0, 1.0);
+
         Ok(CustomerLTV {
             customer_id: customer_id.to_string(),
             historical_value: total_spent,
@@ -93,7 +116,7 @@ impl CLVCalculator {
             predicted_ltv,
             predicted_ltv_3yr,
             predicted_ltv_5yr,
-            churn_probability: 0.15,
+            churn_probability,
             confidence_score: 0.75,
             model_used: CLVModel::Simple,
         })
@@ -418,6 +441,29 @@ mod tests {
         assert_eq!(result.historical_value, 1000.0);
         assert!(result.predicted_ltv > 0.0);
         assert_eq!(result.model_used, CLVModel::Simple);
+    }
+
+    #[test]
+    fn test_simple_ltv_churn_probability_varies_with_real_customer_data() {
+        // Regression test found via real-world benchmarking against UCI's
+        // "Online Retail" dataset: churn_probability used to be hardcoded
+        // to 0.15 regardless of input, so every one of 4,338 real customers
+        // got the identical value. A low-frequency, low-spend customer
+        // should score a real, higher churn risk than a frequent,
+        // high-spend one.
+        let at_risk =
+            CLVCalculator::calculate_simple_ltv("low_freq", 50.0, 1, 365, 1095).unwrap();
+        let loyal =
+            CLVCalculator::calculate_simple_ltv("high_freq", 5000.0, 20, 365, 1095).unwrap();
+
+        assert!(
+            at_risk.churn_probability > loyal.churn_probability,
+            "expected the low-frequency/low-spend customer ({}) to score a \
+             higher churn risk than the frequent/high-spend one ({})",
+            at_risk.churn_probability,
+            loyal.churn_probability
+        );
+        assert!(loyal.churn_probability < 0.15);
     }
 
     #[test]

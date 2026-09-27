@@ -57,7 +57,21 @@ codebase. This is the corrected version.
   prediction/label pairs, replacing a previous hardcoded `auc_roc: 0.82`.
 - **Customer Lifetime Value** (`CustomerLTV`, `calculate_simple_ltv`) — real,
   shipped (this file previously said CLV was "not implemented"; it has been
-  for several releases now).
+  for several releases now). **FIXED 2026-09-27, found benchmarking against
+  real UCI "Online Retail" data**: `calculate_simple_ltv` — the only CLV
+  function exposed to Python — hardcoded `churn_probability: 0.15` for
+  every customer (`src/engine/clv.rs`, ~line 96), verified: every one of
+  4,338 real customers tested got exactly 0.15 regardless of their real
+  purchase behavior. Fixed to derive a real per-customer value from the
+  frequency/monetary data this model already computes, reusing the same
+  risk weighting `calculate_probabilistic_ltv`'s churn scoring uses in the
+  same file; regression test added. A separate, more complete
+  `calculate_probabilistic_ltv` function (using recency/tenure inputs this
+  simpler model isn't given) still exists in the same file and is not
+  exposed to Python — a real, separate feature addition, not in scope here
+  — see README's "vs scikit-learn & lifetimes" section for the full detail.
+  Predicted LTV itself correlates well (Spearman ρ=0.71) with `lifetimes`'
+  real BG/NBD model on the same real data.
 - **SQL export** (`export_segment_sql`, `export_all_segments_sql`,
   8 dialects) — table/column identifiers are now validated against an
   alphanumeric+underscore(+dot-qualified) allow-list before interpolation

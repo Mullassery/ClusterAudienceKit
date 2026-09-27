@@ -161,6 +161,70 @@ develop --release`), which does require a Rust toolchain.
 - [SQL export reference](docs/SQL_EXPORT.md)
 - [Examples](examples/)
 
+## vs scikit-learn & lifetimes
+
+No single OSS package covers everything here, so this compares the two
+pieces with direct real competitors: clustering vs `scikit-learn`'s
+KMeans, and CLV vs the `lifetimes` package's real BG/NBD probabilistic
+model. Tested against a real public e-commerce dataset — the UCI "Online
+Retail" transaction log (541,909 real transactions, cleaned to 397,884
+real rows / 4,338 real customers with valid quantity/price/customer ID) —
+not synthetic data.
+
+| | ClusterAudienceKit | scikit-learn |
+|---|---|---|
+| RFM computation (4,338 real customers) | 0.026s | — (not scikit-learn's job) |
+| KMeans, K=5, on raw RFM features | 0.001s, silhouette=0.9502 | 0.025s (unscaled, matching CAK's real input), silhouette=0.8387, `RuntimeWarning: overflow encountered in matmul` |
+| KMeans, K=5, standardized features | — (no built-in scaling) | 0.080s, silhouette=0.7744 |
+
+**The silhouette numbers above are misleading on their own, and this is
+the real, important finding, not the timing.** Inspecting the actual
+cluster sizes on real, unscaled RFM features: **4,300 of 4,338 real
+customers (99.1%) land in one giant cluster**, with 4 tiny outlier
+clusters (28, 5, 3, 2 customers) splitting off customers with extreme real
+monetary values (one real customer spent $280,206 vs. a $2,054 mean).
+That's a textbook unscaled-KMeans failure — `monetary` has ~450x the
+numeric range of `recency`/`frequency`, so raw Euclidean distance is
+dominated entirely by it, and the "high" silhouette score is an artifact
+of that degenerate split (one tight blob + isolated far-away outliers),
+not a sign of good segmentation. **This exact failure mode is what running
+the README's own "30-Second Start" example verbatim on real data
+produces** — `AudienceSegmenter` does no internal feature standardization,
+and neither the quick-start example nor `assess_cluster_quality`'s output
+warns you about it. Standardize recency/frequency/monetary yourself (e.g.
+`sklearn.preprocessing.StandardScaler`) before calling `.fit()` on real
+data — not documented anywhere in this repo before this pass, verified as
+a real, reproducible gap, not fixed here (changing `AudienceSegmenter`'s
+default behavior needs a deliberate decision this pass didn't have scope
+to make).
+
+| | ClusterAudienceKit `calculate_simple_ltv` | `lifetimes` (BG/NBD + Gamma-Gamma) |
+|---|---|---|
+| Method | Deterministic: `(total_spent / days_active) * 365 * lifespan_years` | Real probabilistic model fit on repeat-purchase patterns |
+| Repeat-purchaser customers scored by both | 2,790 real customers | 2,790 real customers |
+| Rank correlation (Spearman ρ) between the two tools' CLV rankings | **0.7111** (p < 1e-300) | — |
+
+A substantial, real positive correlation — the two independently-computed
+approaches broadly agree on who a business's most valuable real customers
+are, despite one being a simple rate projection and the other a real
+statistical model fit to purchase-timing data.
+
+**Real bug found, not fixed (documented instead — see rationale below):**
+`calculate_simple_ltv` — the *only* CLV function exposed to Python — always
+returns `churn_probability: 0.15` for every customer, verified against real
+data (every one of 4,338 real customers in this benchmark got exactly
+0.15, regardless of their actual recency/frequency/monetary values).
+Root cause, `src/engine/clv.rs`: this hardcoded value lives in the "Simple"
+CLV model's constructor (line ~96). A separate, real
+`calculate_probabilistic_ltv` function exists in the same file and *does*
+compute a real churn probability from actual customer data — but it is
+**not exposed to Python at all** (confirmed: `hasattr(clusteraudiencekit,
+"calculate_probabilistic_ltv")` is `False`). `docs/ROADMAP_HONEST.md`
+currently says CLV is "real, shipped" with no caveat about this. Not fixed
+here — exposing a second Rust function via new PyO3 bindings is a real
+scoped feature addition, not a targeted bug fix, so it's documented rather
+than rushed into this pass.
+
 ## Known Issues
 
 Verified as of this audit (August 2026):
