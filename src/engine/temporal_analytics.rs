@@ -157,7 +157,7 @@ impl SegmentSizeForecaster {
         forecast_periods: u32,
     ) -> Result<SizeForecast> {
         if historical_sizes.len() < 2 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 2 data points for forecasting".to_string(),
             ));
         }
@@ -217,7 +217,7 @@ impl SegmentSizeForecaster {
         let denominator: f64 = x.iter().map(|xi| (xi - x_mean).powi(2)).sum();
 
         if denominator.abs() < 1e-10 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Cannot fit linear regression (zero variance in X)".to_string(),
             ));
         }
@@ -514,7 +514,7 @@ pub struct ScenarioAnalyzer;
 impl ScenarioAnalyzer {
     pub fn compare_scenarios(scenarios: &[WhatIfScenario]) -> Result<ScenarioComparison> {
         if scenarios.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No scenarios to compare".to_string(),
             ));
         }
@@ -667,7 +667,7 @@ impl ExpansionPlanner {
         current_segments: usize,
     ) -> Result<ExpansionPlan> {
         if quarters == 0 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Timeline must be > 0 quarters".to_string(),
             ));
         }
@@ -890,7 +890,7 @@ impl MomentumAnalyzer {
         lookback_periods: usize,
     ) -> Result<TrendMomentum> {
         if metric_history.len() < 3 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 3 data points".to_string(),
             ));
         }

@@ -139,7 +139,7 @@ impl AudienceSegmenterCore {
     /// by a prior call to `fit`.
     pub fn predict(&self, data: &Array2<f64>) -> Result<Vec<usize>> {
         let centers = self.cluster_centers.as_ref().ok_or_else(|| {
-            crate::ClusterClusterAudienceKitError::ClusteringError(
+            crate::ClusterAudienceKitError::ClusteringError(
                 "predict() called before fit() — no cluster centers available".to_string(),
             )
         })?;

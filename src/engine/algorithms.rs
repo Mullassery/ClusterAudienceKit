@@ -65,7 +65,7 @@ impl KMeans {
     pub fn fit(&self, data: &Array2<f64>) -> Result<KMeansResult> {
         let (n_samples, n_features) = data.dim();
         if n_samples == 0 || self.n_clusters == 0 || self.n_clusters > n_samples {
-            return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+            return Err(crate::ClusterAudienceKitError::InvalidConfig(
                 "Invalid cluster count".to_string(),
             ));
         }
@@ -287,7 +287,7 @@ impl HierarchicalClustering {
     pub fn fit(&self, data: &Array2<f64>) -> Result<HierarchicalResult> {
         let n_samples = data.nrows();
         if n_samples == 0 || self.n_clusters == 0 || self.n_clusters > n_samples {
-            return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+            return Err(crate::ClusterAudienceKitError::InvalidConfig(
                 "Invalid cluster count".to_string(),
             ));
         }
@@ -383,7 +383,7 @@ impl GaussianMixture {
         let n_features = data.ncols();
 
         if n_samples == 0 || self.n_components == 0 || self.n_components > n_samples {
-            return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+            return Err(crate::ClusterAudienceKitError::InvalidConfig(
                 "Invalid component count".to_string(),
             ));
         }

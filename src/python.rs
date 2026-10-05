@@ -1054,7 +1054,7 @@ fn parse_streaming_window(s: &str) -> PyResult<StreamingWindow> {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyStreamingEvent {
     inner: StreamingEvent,
@@ -1386,7 +1386,7 @@ fn chi_square_drift(
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
 }
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone)]
 struct PyFeatureDrift {
     #[pyo3(get)]
@@ -1485,7 +1485,7 @@ fn parse_similarity_metric(s: &str) -> PyResult<SimilarityMetric> {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PySeedCustomer {
     inner: SeedCustomer,
@@ -1639,7 +1639,7 @@ fn parse_cohort_period(s: &str) -> PyResult<CohortPeriod> {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyCohort {
     inner: Cohort,
@@ -2140,7 +2140,7 @@ fn parse_logical_op(s: &str) -> PyResult<LogicalOp> {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyCondition {
     inner: Condition,
@@ -2160,7 +2160,7 @@ impl PyCondition {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyBehavioralRule {
     inner: BehavioralRule,
@@ -2189,7 +2189,7 @@ impl PyBehavioralRule {
     }
 }
 
-#[pyclass]
+#[pyclass(from_py_object)]
 #[derive(Clone)]
 struct PyBehavioralSegment {
     inner: BehavioralSegment,
@@ -2464,7 +2464,7 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // and callable above — a previous version of this listed "dbscan",
     // "hierarchical", and "gmm", none of which exist anywhere in this
     // codebase.
-    let info = PyModule::new_bound(py, "info")?;
+    let info = PyModule::new(py, "info")?;
     info.add("algorithms", vec!["kmeans", "kprototypes"])?;
     info.add(
         "metrics",

@@ -74,7 +74,7 @@ pub struct SegmentTrend {
 impl SegmentTrend {
     pub fn from_time_series(segment_id: usize, values: &[f64]) -> Result<Self> {
         if values.len() < 2 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 2 data points for trend".to_string(),
             ));
         }
@@ -195,7 +195,7 @@ impl GrowthForecast {
         forecast_periods: usize,
     ) -> Result<Self> {
         if historical_sizes.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No historical data".to_string(),
             ));
         }

@@ -2,7 +2,7 @@
 
 use crate::engine::clustering;
 use crate::engine::drift_detection::{DriftDetector, DriftMethod, DriftSeverity, FeatureDrift};
-use crate::{ClusterClusterAudienceKitError, Result};
+use crate::{ClusterAudienceKitError, Result};
 use ndarray::Array2;
 use std::collections::HashMap;
 
@@ -591,7 +591,7 @@ impl StreamingSegmentationEngine {
             })
             .collect();
         let data = Array2::from_shape_vec((customer_ids.len(), 3), rows).map_err(|e| {
-            ClusterClusterAudienceKitError::DataValidation(format!(
+            ClusterAudienceKitError::DataValidation(format!(
                 "failed to build RFM matrix for re-clustering: {e}"
             ))
         })?;

@@ -11,7 +11,7 @@
 //! rather than risking a subtly-wrong manual rewrite under time pressure.
 #![allow(clippy::needless_range_loop)]
 
-use crate::{ClusterClusterAudienceKitError, Result};
+use crate::{ClusterAudienceKitError, Result};
 use ndarray::{Array1, Array2, Axis};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
@@ -56,7 +56,7 @@ pub(crate) fn build_thread_pool(n_jobs: i32) -> Result<rayon::ThreadPool> {
         builder = builder.num_threads(n_jobs as usize);
     }
     builder.build().map_err(|e| {
-        ClusterClusterAudienceKitError::ClusteringError(format!(
+        ClusterAudienceKitError::ClusteringError(format!(
             "failed to build rayon thread pool for n_jobs={n_jobs}: {e}"
         ))
     })
@@ -147,17 +147,17 @@ pub fn kmeans(
     let dim = data.ncols();
 
     if n_clusters == 0 {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig(
+        return Err(ClusterAudienceKitError::InvalidConfig(
             "n_clusters must be > 0".to_string(),
         ));
     }
     if n == 0 {
-        return Err(ClusterClusterAudienceKitError::DataValidation(
+        return Err(ClusterAudienceKitError::DataValidation(
             "data has no rows".to_string(),
         ));
     }
     if n_clusters > n {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig(format!(
+        return Err(ClusterAudienceKitError::InvalidConfig(format!(
             "n_clusters ({n_clusters}) cannot exceed number of data points ({n})"
         )));
     }
@@ -260,23 +260,23 @@ pub fn kprototypes(
 ) -> Result<Vec<usize>> {
     let n = numeric_data.nrows();
     if n_clusters == 0 {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig(
+        return Err(ClusterAudienceKitError::InvalidConfig(
             "n_clusters must be > 0".to_string(),
         ));
     }
     if n == 0 {
-        return Err(ClusterClusterAudienceKitError::DataValidation(
+        return Err(ClusterAudienceKitError::DataValidation(
             "data has no rows".to_string(),
         ));
     }
     if n_clusters > n {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig(format!(
+        return Err(ClusterAudienceKitError::InvalidConfig(format!(
             "n_clusters ({n_clusters}) cannot exceed number of data points ({n})"
         )));
     }
     if let Some(cat) = categorical_data {
         if cat.len() != n {
-            return Err(ClusterClusterAudienceKitError::DataValidation(
+            return Err(ClusterAudienceKitError::DataValidation(
                 "categorical_data row count doesn't match numeric_data".to_string(),
             ));
         }
@@ -433,7 +433,7 @@ pub struct MiniBatchKMeans {
 impl MiniBatchKMeans {
     pub fn new(n_clusters: usize, random_state: u64) -> Result<Self> {
         if n_clusters == 0 {
-            return Err(ClusterClusterAudienceKitError::InvalidConfig(
+            return Err(ClusterAudienceKitError::InvalidConfig(
                 "n_clusters must be > 0".to_string(),
             ));
         }
@@ -468,7 +468,7 @@ impl MiniBatchKMeans {
 
         if !self.initialized {
             if chunk.nrows() < self.n_clusters {
-                return Err(ClusterClusterAudienceKitError::DataValidation(format!(
+                return Err(ClusterAudienceKitError::DataValidation(format!(
                     "first partial_fit chunk must have at least n_clusters ({}) rows to seed initial centers, got {}",
                     self.n_clusters,
                     chunk.nrows()
@@ -481,7 +481,7 @@ impl MiniBatchKMeans {
         }
 
         if chunk.ncols() != self.centers.ncols() {
-            return Err(ClusterClusterAudienceKitError::DataValidation(format!(
+            return Err(ClusterAudienceKitError::DataValidation(format!(
                 "chunk has {} features but centers have {} features",
                 chunk.ncols(),
                 self.centers.ncols()
@@ -510,7 +510,7 @@ impl MiniBatchKMeans {
     /// Assign each row of `data` to its nearest fitted center.
     pub fn predict(&self, data: &Array2<f64>) -> Result<Vec<usize>> {
         if !self.initialized {
-            return Err(ClusterClusterAudienceKitError::ClusteringError(
+            return Err(ClusterAudienceKitError::ClusteringError(
                 "predict() called before any partial_fit chunk was ingested".to_string(),
             ));
         }
@@ -522,12 +522,12 @@ impl MiniBatchKMeans {
 /// on new data with an already-fitted model).
 pub fn assign_to_clusters(data: &Array2<f64>, centers: &Array2<f64>) -> Result<Vec<usize>> {
     if centers.nrows() == 0 {
-        return Err(ClusterClusterAudienceKitError::InvalidConfig(
+        return Err(ClusterAudienceKitError::InvalidConfig(
             "cannot assign to clusters: no centers provided (model not fitted?)".to_string(),
         ));
     }
     if data.ncols() != centers.ncols() {
-        return Err(ClusterClusterAudienceKitError::DataValidation(format!(
+        return Err(ClusterAudienceKitError::DataValidation(format!(
             "data has {} features but centers have {} features",
             data.ncols(),
             centers.ncols()

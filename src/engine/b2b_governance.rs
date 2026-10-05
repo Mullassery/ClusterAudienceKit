@@ -38,7 +38,7 @@ impl HierarchyBuilder {
         companies: &[(String, String, Option<String>)],
     ) -> Result<AccountHierarchy> {
         if companies.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No companies provided".to_string(),
             ));
         }
@@ -122,7 +122,7 @@ impl CommitteeDetector {
         members_with_engagement: &[(String, String, String, f64)],
     ) -> Result<BuyingCommittee> {
         if members_with_engagement.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No members provided".to_string(),
             ));
         }
@@ -201,7 +201,7 @@ impl IntentAggregator {
         signals: &[(String, f64)],
     ) -> Result<AggregatedIntent> {
         if signals.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No intent signals".to_string(),
             ));
         }

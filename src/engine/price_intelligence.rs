@@ -26,7 +26,7 @@ impl ElasticityCalculator {
         price_changes: &[(f64, f64)],
     ) -> Result<ElasticityAnalysis> {
         if price_changes.len() < 2 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 2 price points".to_string(),
             ));
         }
@@ -232,7 +232,7 @@ impl SensitivityAnalyzer {
         discount_history: &[(f64, f64)],
     ) -> Result<PriceSensitivity> {
         if discount_history.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No discount history".to_string(),
             ));
         }
@@ -397,7 +397,7 @@ impl CompetitiveAnalyzer {
         competitor_prices: &[f64],
     ) -> Result<CompetitivePricingAnalysis> {
         if competitor_prices.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No competitor data".to_string(),
             ));
         }
@@ -466,7 +466,7 @@ impl ThresholdDetector {
         price_demand: &[(f64, f64)],
     ) -> Result<PriceThreshold> {
         if price_demand.len() < 3 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 3 data points".to_string(),
             ));
         }
@@ -685,7 +685,7 @@ impl ChurnAnalyzer {
         tier_churn_data: &[(String, f64, f64)],
     ) -> Result<PricePointChurnAnalysis> {
         if tier_churn_data.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No tier data".to_string(),
             ));
         }
@@ -735,7 +735,7 @@ impl TierValueAnalyzer {
         tier_data: &[(String, f64, f64)],
     ) -> Result<TierValueAnalysis> {
         if tier_data.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No tier data".to_string(),
             ));
         }

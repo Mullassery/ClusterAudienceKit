@@ -175,7 +175,7 @@ pub struct SegmentAging {
 impl SegmentAging {
     pub fn new(segment_id: usize, tenure_days: Vec<f64>, member_churn_30d: f64) -> Result<Self> {
         if tenure_days.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Empty tenure data".to_string(),
             ));
         }
@@ -408,7 +408,7 @@ impl SegmentDecay {
         historical_sizes: &[usize], // Sizes over time periods
     ) -> Result<Self> {
         if historical_sizes.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No historical data".to_string(),
             ));
         }
@@ -572,7 +572,7 @@ impl SegmentIntelligence {
         all_cluster_distances: &[Vec<f64>],
     ) -> Result<Vec<SegmentConfidence>> {
         if assignments.len() != distances_to_centroid.len() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Assignment/distance length mismatch".to_string(),
             ));
         }
@@ -662,7 +662,7 @@ impl SegmentIntelligence {
         if feature_importances.len() != segment_features.len()
             || segment_features.len() != global_feature_means.len()
         {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Feature array length mismatch".to_string(),
             ));
         }
@@ -734,7 +734,7 @@ impl SegmentIntelligence {
         base_value: f64,
     ) -> Result<Vec<ShapValue>> {
         if segment_features.len() != feature_names.len() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Feature/name length mismatch".to_string(),
             ));
         }
@@ -763,7 +763,7 @@ impl SegmentIntelligence {
     /// Cosine similarity between two vectors
     fn cosine_similarity(a: &[f64], b: &[f64]) -> Result<f64> {
         if a.len() != b.len() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Vector length mismatch".to_string(),
             ));
         }

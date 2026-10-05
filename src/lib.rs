@@ -38,7 +38,7 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Custom error type for the library
 #[derive(Error, Debug)]
-pub enum ClusterClusterAudienceKitError {
+pub enum ClusterAudienceKitError {
     #[error("Invalid configuration: {0}")]
     InvalidConfig(String),
 
@@ -51,14 +51,11 @@ pub enum ClusterClusterAudienceKitError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
 
-    #[error("Serialization error: {0}")]
-    Serialization(#[from] bincode::Error),
-
     #[error("Arrow error: {0}")]
     Arrow(String),
 }
 
-pub type Result<T> = std::result::Result<T, ClusterClusterAudienceKitError>;
+pub type Result<T> = std::result::Result<T, ClusterAudienceKitError>;
 
 #[cfg(test)]
 mod tests {

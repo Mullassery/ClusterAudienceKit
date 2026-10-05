@@ -29,7 +29,7 @@ impl SegmentRevenueCalculator {
         member_revenues: &[f64],
     ) -> Result<SegmentRevenue> {
         if member_revenues.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No members in segment".to_string(),
             ));
         }
@@ -311,7 +311,7 @@ impl RevenueForecaster {
         forecast_periods: u32,
     ) -> Result<RevenueForecast> {
         if historical_revenue.len() < 3 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 3 data points for revenue forecasting".to_string(),
             ));
         }
@@ -372,7 +372,7 @@ impl RevenueForecaster {
         let denominator: f64 = x.iter().map(|xi| (xi - x_mean).powi(2)).sum();
 
         if denominator.abs() < 1e-10 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Cannot fit linear regression".to_string(),
             ));
         }
@@ -437,7 +437,7 @@ impl CACCalculator {
         avg_monthly_revenue_per_customer: f64,
     ) -> Result<CustomerAcquisitionCost> {
         if customers_acquired == 0 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No customers acquired".to_string(),
             ));
         }
@@ -609,14 +609,14 @@ impl ConcentrationAnalyzer {
         member_revenues: &[f64],
     ) -> Result<RevenueConcentrationRisk> {
         if member_revenues.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No revenue data".to_string(),
             ));
         }
 
         let total: f64 = member_revenues.iter().sum();
         if total == 0.0 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Total revenue is zero".to_string(),
             ));
         }
@@ -768,7 +768,7 @@ pub struct TrendAnalyzer;
 impl TrendAnalyzer {
     pub fn analyze_trend(segment_id: &str, revenue_history: &[f64]) -> Result<RevenueTrend> {
         if revenue_history.len() < 2 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Need at least 2 data points".to_string(),
             ));
         }
@@ -913,7 +913,7 @@ impl ProductMixAnalyzer {
     ) -> Result<ProductMixAnalysis> {
         let total: f64 = product_revenue.iter().map(|(_, r)| r).sum();
         if total == 0.0 {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "No product revenue".to_string(),
             ));
         }

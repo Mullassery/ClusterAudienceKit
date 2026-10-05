@@ -451,8 +451,7 @@ mod tests {
         // got the identical value. A low-frequency, low-spend customer
         // should score a real, higher churn risk than a frequent,
         // high-spend one.
-        let at_risk =
-            CLVCalculator::calculate_simple_ltv("low_freq", 50.0, 1, 365, 1095).unwrap();
+        let at_risk = CLVCalculator::calculate_simple_ltv("low_freq", 50.0, 1, 365, 1095).unwrap();
         let loyal =
             CLVCalculator::calculate_simple_ltv("high_freq", 5000.0, 20, 365, 1095).unwrap();
 

@@ -88,13 +88,11 @@ impl DenseLayer {
     /// Forward pass through the layer
     pub fn forward(&self, input: &[f64]) -> Result<Vec<f64>> {
         if input.len() != self.input_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
-                format!(
-                    "Input size mismatch: expected {}, got {}",
-                    self.input_size,
-                    input.len()
-                ),
-            ));
+            return Err(crate::ClusterAudienceKitError::DataValidation(format!(
+                "Input size mismatch: expected {}, got {}",
+                self.input_size,
+                input.len()
+            )));
         }
 
         let mut output = vec![0.0; self.output_size];
@@ -118,7 +116,7 @@ impl DenseLayer {
         _learning_rate: f64,
     ) -> Result<Vec<f64>> {
         if output_deltas.len() != self.output_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Output delta size mismatch".to_string(),
             ));
         }
@@ -243,13 +241,11 @@ impl NeuralNetwork {
     /// Forward pass through entire network
     pub fn predict(&self, input: &[f64]) -> Result<Vec<f64>> {
         if input.len() != self.input_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
-                format!(
-                    "Input size mismatch: expected {}, got {}",
-                    self.input_size,
-                    input.len()
-                ),
-            ));
+            return Err(crate::ClusterAudienceKitError::DataValidation(format!(
+                "Input size mismatch: expected {}, got {}",
+                self.input_size,
+                input.len()
+            )));
         }
 
         let mut current = input.to_vec();
@@ -264,13 +260,13 @@ impl NeuralNetwork {
     /// Train the network on data
     pub fn train(&mut self, inputs: &[Vec<f64>], y: &[Vec<f64>]) -> Result<TrainingStats> {
         if inputs.is_empty() || y.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Empty training data".to_string(),
             ));
         }
 
         if inputs.len() != y.len() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "inputs and y length mismatch".to_string(),
             ));
         }
@@ -425,7 +421,7 @@ impl Autoencoder {
     /// Encode input to latent representation
     pub fn encode(&self, input: &[f64]) -> Result<Vec<f64>> {
         if input.len() != self.input_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Input size mismatch".to_string(),
             ));
         }
@@ -441,7 +437,7 @@ impl Autoencoder {
     /// Decode latent representation to reconstruction
     pub fn decode(&self, latent: &[f64]) -> Result<Vec<f64>> {
         if latent.len() != self.latent_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Latent size mismatch".to_string(),
             ));
         }
@@ -463,7 +459,7 @@ impl Autoencoder {
     /// Train autoencoder to minimize reconstruction error
     pub fn train(&mut self, inputs: &[Vec<f64>]) -> Result<TrainingStats> {
         if inputs.is_empty() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Empty training data".to_string(),
             ));
         }
@@ -561,7 +557,7 @@ impl RecurrentLayer {
     /// Process a single timestep
     pub fn step(&mut self, input: &[f64]) -> Result<Vec<f64>> {
         if input.len() != self.input_size {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Input size mismatch".to_string(),
             ));
         }

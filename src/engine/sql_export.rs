@@ -492,7 +492,7 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
 /// been emitted verbatim.
 fn validate_identifier(identifier: &str) -> Result<()> {
     if identifier.is_empty() {
-        return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
+        return Err(crate::ClusterAudienceKitError::InvalidConfig(
             "SQL identifier cannot be empty".to_string(),
         ));
     }
@@ -506,13 +506,11 @@ fn validate_identifier(identifier: &str) -> Result<()> {
             _ => false,
         };
         if !valid {
-            return Err(crate::ClusterClusterAudienceKitError::InvalidConfig(
-                format!(
-                    "Invalid SQL identifier '{}': identifiers must be alphanumeric/underscore \
+            return Err(crate::ClusterAudienceKitError::InvalidConfig(format!(
+                "Invalid SQL identifier '{}': identifiers must be alphanumeric/underscore \
                  (optionally dot-qualified) and cannot start with a digit",
-                    identifier
-                ),
-            ));
+                identifier
+            )));
         }
     }
 
@@ -549,7 +547,7 @@ impl SQLExporter {
                 segment_name,
                 definitions.keys().collect::<Vec<_>>()
             );
-            crate::ClusterClusterAudienceKitError::InvalidConfig(msg)
+            crate::ClusterAudienceKitError::InvalidConfig(msg)
         })?;
 
         let where_clause = Self::build_where_clause(&segment.patterns, column_mapping, dialect);
@@ -601,7 +599,7 @@ impl SQLExporter {
 
         let segment = definitions.get(segment_name).ok_or_else(|| {
             let msg = format!("Segment '{}' not found", segment_name);
-            crate::ClusterClusterAudienceKitError::InvalidConfig(msg)
+            crate::ClusterAudienceKitError::InvalidConfig(msg)
         })?;
 
         Ok(segment

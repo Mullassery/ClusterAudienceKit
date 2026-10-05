@@ -271,7 +271,7 @@ impl StabilityAnalysis {
         current_labels: &[usize],
     ) -> Result<StabilityAnalysis> {
         if previous_labels.len() != current_labels.len() {
-            return Err(crate::ClusterClusterAudienceKitError::DataValidation(
+            return Err(crate::ClusterAudienceKitError::DataValidation(
                 "Label arrays must have same length".to_string(),
             ));
         }
