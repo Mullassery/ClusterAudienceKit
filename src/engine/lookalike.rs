@@ -571,7 +571,7 @@ mod tests {
         }
 
         let in_order = LookalikeGenerator::generate_lookalike(
-            &[seed.clone()],
+            std::slice::from_ref(&seed),
             &candidates,
             SimilarityMetric::Cosine,
             0.9, // Top 10%
@@ -580,7 +580,7 @@ mod tests {
         .unwrap();
 
         let reversed = LookalikeGenerator::generate_lookalike(
-            &[seed.clone()],
+            std::slice::from_ref(&seed),
             &shuffled,
             SimilarityMetric::Cosine,
             0.9,

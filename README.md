@@ -231,19 +231,23 @@ in scope for this fix. `docs/ROADMAP_HONEST.md` previously said CLV was
 
 ## Known Issues
 
-Verified as of this audit (August 2026):
+Verified as of this audit (October 2026):
 
-- **Published wheels are still single-platform, though the latest release
-  improved on this.** The latest PyPI release (7.3.1, matching this repo's
-  version exactly — no drift) ships a macOS ARM64 / cp311 wheel **and,
-  unlike 7.1.1/7.2.0 before it, a source distribution** — so `pip install`
-  can now at least attempt a source build via `maturin` on Linux/Windows
-  instead of failing outright with no fallback. There is still no CI job
-  that builds Linux or Windows wheels (`.github/workflows/` only runs
-  tests on `ubuntu-latest`, not a release build matrix), despite
-  `pyproject.toml` classifying the package as `OS Independent` and
-  supporting Python 3.8–3.12, so every release's wheel is still built and
-  uploaded by hand rather than by CI.
+- **Multi-platform wheel-building CI now exists** (`.github/workflows/wheels.yml`,
+  added this pass) — builds and tests wheels on Linux, macOS (arm64 + x86_64
+  via cross-compilation), and Windows on every push/PR, and is wired to
+  publish to PyPI via Trusted Publishing on tagged releases. **The PyPI-side
+  Trusted Publisher has not yet been configured for this project** — the
+  publish job will fail until that one-time setup is done on pypi.org. Until
+  then, releases are still published by hand. The package also now builds
+  as an `abi3` wheel (Python ≥3.9, one wheel per OS/arch instead of one per
+  Python minor version).
+- **`cargo audit`: 1 open advisory with no fix available.** `anyhow` 1.0.102
+  has an unsoundness advisory in `Error::downcast_mut()`
+  ([RUSTSEC-2026-0190](https://rustsec.org/advisories/RUSTSEC-2026-0190)).
+  No patched version exists upstream yet; tracked in
+  [RepoIssues #34](https://github.com/Mullassery/RepoIssues/issues/34),
+  re-check on future `cargo audit` runs.
 - **`v7.0.0` remains installable from PyPI despite a confirmed
   import-crashing bug.** It was never yanked. If you have it pinned,
   upgrade to `>=7.2.0`.
@@ -259,9 +263,9 @@ Verified as of this audit (August 2026):
   `Err("Not implemented")`. They are not called from anywhere else in the
   crate and are not exposed to Python, so they don't affect any documented
   functionality — noted here for completeness.
-- **Registry check:** local version (`7.3.1`, in `Cargo.toml` and
-  `pyproject.toml`) matches the latest version actually published on PyPI.
-  No drift.
+- **Registry check:** repo version is `7.4.0` (`Cargo.toml`/`pyproject.toml`);
+  latest PyPI release at time of writing is `7.3.2` — this release has not
+  been published yet as of this commit.
 - **No open GitHub issues** at the time of this audit.
 - Six real, tested Rust modules are implemented but not yet wired to the
   Python API (`segment_intelligence`, `pattern_discovery`,

@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "clusteraudiencekit"
-version = "7.3.2"
+version = "7.4.0"
 description = "Rust-powered customer segmentation: RFM analysis, KMeans/K-Prototypes clustering, churn prediction, customer lifetime value, real-time streaming segmentation, drift detection, lookalike audiences, cohort analytics, lifecycle tracking, and differential privacy / k-anonymity."
 readme = "README.md"
 
@@ -65,7 +65,7 @@ classifiers = [
 ]
 dependencies = [
     "pandas>=2.0,<3",
-    "numpy>=1.24,<2.1",
+    "numpy>=1.24,<2.3",
     "pyarrow>=10.0",
 ]
 
@@ -76,6 +76,7 @@ dev = [
     "black>=22.0",
     "ruff>=0.1.0",
     "mypy>=1.0",
+    "scikit-learn>=1.0",
 ]
 docs = [
     "sphinx>=5.0",
@@ -95,3 +96,8 @@ Discussions = "https://github.com/Mullassery/ClusterAudienceKit/discussions"
 features = ["pyo3/extension-module"]
 python-packages = ["clusteraudiencekit"]
 include = ["LICENSE"]
+
+[tool.pytest.ini_options]
+markers = [
+    "benchmark: marks tests as performance benchmarks (deselect with '-m \"not benchmark\"')",
+]

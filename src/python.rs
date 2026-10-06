@@ -2465,7 +2465,10 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     // "hierarchical", and "gmm", none of which exist anywhere in this
     // codebase.
     let info = PyModule::new(py, "info")?;
-    info.add("algorithms", vec!["kmeans", "kprototypes"])?;
+    info.add(
+        "algorithms",
+        vec!["kmeans", "kprototypes", "minibatchkmeans"],
+    )?;
     info.add(
         "metrics",
         vec!["silhouette", "davies_bouldin", "calinski_harabasz"],

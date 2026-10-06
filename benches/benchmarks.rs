@@ -4,10 +4,11 @@
 
 use clusteraudiencekit::engine::clustering::kmeans;
 use clusteraudiencekit::engine::rfm::{calculate_rfm, RFMConfig, Transaction};
-use criterion::{black_box, criterion_group, criterion_main, Criterion};
+use criterion::{criterion_group, criterion_main, Criterion};
 use ndarray::Array2;
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use std::hint::black_box;
 
 /// Generate `n` points in `dim` dimensions, drawn from `k` well-separated
 /// Gaussian-ish blobs — representative of real RFM feature data (a handful
