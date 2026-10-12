@@ -1,14 +1,17 @@
 # ClusterAudienceKit Roadmap (Honest)
 
-**Current Version:** 7.3.1
-**Last Updated:** 2026-09-27 (deep code-review pass — see "Deep code-review
-pass (2026-09-27)" below: found and fixed a real, previously-undisclosed
-**security bug** in the differential-privacy module — the "noise" added by
-both `add_laplace_noise`/`add_gaussian_noise` was not random at all, so
-neither actually provided differential-privacy protection — plus an
-order-dependent percentile bug in `generate_lookalike`. No version bump this
-pass; both fixes are behavioral corrections to existing 7.3.1 code, not new
-features.
+**Current Version:** 7.4.1
+**Last Updated:** 2026-10-12 — patch release 7.4.1 published to PyPI,
+bundling three behavioral fixes that landed after 7.4.0 plus one
+SQL-injection guard (see "Deep code-review pass (2026-09-27)" and the
+7.4.1 CHANGELOG entry). The 2026-09-27 pass found and fixed a real,
+previously-undisclosed **security bug** in the differential-privacy module —
+the "noise" added by both `add_laplace_noise`/`add_gaussian_noise` was not
+random at all, so neither actually provided differential-privacy protection —
+plus an order-dependent percentile bug in `generate_lookalike`, a
+hardcoded-zero `ChiSquare` drift-detection method that silently reported "no
+drift" regardless of input, a mislabeled `adjusted_rand_index`, and
+hardcoded `separation`/`health_score`/`purity` values in `profile_segment`.
 Previously 2026-09-22: patch release 7.3.1 published to PyPI,
 packaging the 2026-09-21 quick-fix pass — see "Quick-fix pass
 (2026-09-21)" below: 33 ruff findings, a clippy-blocking compile error, dead
@@ -145,6 +148,29 @@ actual PyO3 binding, not a mock.
   `compute_auc_roc()` and its dedicated tests (perfect separation → 1.0,
   perfectly inverted → 0.0, no discrimination → 0.5, hand-computed case →
   0.75).
+- **`profiling.rs` segment profiling**: `profile_segment` shipped with three
+  hardcoded values — `separation: 0.5`, `health_score: size.min(100)` (a size
+  cap, not a health measure), and `purity: 0.85` — even though the function's
+  own doc comment claimed it returned a "stability/cohesion/separation health
+  score." Now: `separation` is computed for real by comparing the segment's
+  per-feature distribution against the complement (every non-member row) via
+  the existing `calculate_separation`, and is `0.0` only when there genuinely
+  is no complement; `health_score` is a bounded `0.3·stability + 0.3·cohesion
+  + 0.4·separation` combination of the real components; and `purity` is the
+  true clustering purity (majority-class fraction) when ground-truth `labels`
+  are supplied (new optional `labels` argument, Python-exposed), falling back
+  to a documented label-free homogeneity proxy otherwise (never a constant).
+  Regression tests in `profiling.rs` and `tests/test_wired_modules.py` assert
+  separation is high for a well-separated segment and exactly `0.0` for one
+  that covers every row, and that purity is `0.75` for the hand-computed
+  label case.
+- **`quality_metrics.rs` ARI**: `StabilityAnalysis::adjusted_rand_index` was
+  a mislabeled shortcut — `(RandIndex * 2.0 - 1.0)` — which is not the
+  Adjusted Rand Index and mis-scores even trivial cases (it returned `0.0`
+  for the textbook two-pairings-of-four case whose ARI is `-0.5`). Replaced
+  with the standard contingency-table ARI formula (pair-count form), with
+  tests asserting the identical-clustering case (`1.0`), the hand-computed
+  `-0.5` case, and a partial-agreement refinement case.
 
 ---
 
@@ -463,6 +489,79 @@ right: 91` against the pre-fix code and passes against the fix.
 `candidates`'s existing sort direction) before indexing, so the percentile
 cutoff reflects the real distribution of similarity scores regardless of
 candidate input order.
+
+### `detect_feature_drift`'s ChiSquare method was a hardcoded 0.0 — a total false negative
+
+**`src/engine/drift_detection.rs:369`** (in `detect_feature_drift`'s
+`match method`): the `DriftMethod::ChiSquare` arm was `0.0, // Use KS as
+proxy` — a comment claiming it proxied to the Kolmogorov-Smirnov test, but
+the code never called anything; it was a literal hardcoded `0.0`.
+`DriftMethod` is a real, user-selectable, documented option
+(`parse_drift_method` in `src/python.rs:1329-1337` accepts
+`"chi_square"`/`"chi2"`), and this directly contradicted this file's own
+"What's real and shipping" claim above of "Real KS test, Hellinger
+distance, and chi-square statistics." Any caller of
+`detect_feature_drift(..., method="chi_square")` got `drift_score: 0.0`,
+`severity: "none"` regardless of how different the two distributions
+actually were — a silent total false negative for anyone using that
+specific method string.
+
+**Verified** via the real PyO3 binding: identical baseline vs. a
+100x-shifted distribution scored `drift_score: 1.0, severity: "critical"`
+under `method="ks"` but `drift_score: 0.0, severity: "none"` under
+`method="chi_square"` — before the fix. New Rust regression test
+`test_chi_square_drift_method_is_not_a_hardcoded_zero` fails against the
+pre-fix code and passes against the fix.
+
+Note this bug is distinct from the separate, correctly-implemented
+standalone `DriftDetector::chi_square()` function (categorical drift over
+`HashMap<String, usize>` counts) and its `chi_square_drift` Python binding
+— those were never broken. The bug was specifically in this one dispatcher
+arm inside `detect_feature_drift`, which operates on continuous `&[f64]`
+samples (a different input shape than `chi_square()`'s categorical counts,
+which is why the two can't just be wired together directly without adding
+a real binning step — a larger feature, not a one-line fix). Also verified:
+`StreamingSegmentationEngine::check_drift`/`maybe_recluster` (the
+drift-triggered re-clustering feature) hardcodes KS/Hellinger directly and
+never goes through this `ChiSquare` arm, so that feature is unaffected —
+only direct callers of `detect_feature_drift(..., method="chi_square")` hit
+this bug.
+
+**Fixed**: the `ChiSquare` arm now really does what its comment always
+claimed — it proxies to `kolmogorov_smirnov`, the same pattern
+`KullbackLeibler` already uses with `hellinger_distance` one line above.
+This isn't a real chi-square statistic for continuous data (that would
+need a real binning implementation — noted below as a follow-up), but it
+replaces a hardcoded false negative with a real, non-zero drift signal.
+
+- **Follow-up (not done this pass, noted for honesty):** a *real*
+  chi-square-for-continuous-features implementation (bin both samples,
+  e.g. via `baseline`'s value range, compute expected counts from the
+  baseline distribution scaled to the current sample size, then the
+  standard chi-square statistic) would be more correct than proxying to
+  KS, but needs its own severity-threshold calibration (a raw chi-square
+  statistic isn't bounded to the same 0–1 range `DriftSeverity::threshold()`
+  assumes for KS/Hellinger/the current proxy) — a real feature addition,
+  not a bug fix, deferred rather than rushed.
+
+### FYI, not fixed: `StreamingAggregator::calculate_event_rate` has a timestamp-unit mismatch, but it's dead code
+
+**`src/engine/streaming.rs:275`**: `let actual_window = ((max_timestamp -
+min_timestamp).max(1)) as f64 / 1000.0; // Convert to seconds` divides by
+1000 as if `StreamingEvent.timestamp` were milliseconds — but every other
+timestamp in this file (`StreamingRFMState::last_event_timestamp`, the
+`FeatureDrift`/`ReclusterEvent` timestamps, etc.) is populated via
+`SystemTime::now().duration_since(UNIX_EPOCH).unwrap_or_default().as_secs()`
+— epoch **seconds**, not milliseconds. If this function were ever called
+with real second-based timestamps, `actual_window` would be computed 1000x
+too small, and the resulting "rate" would be 1000x too high. Not fixed:
+confirmed via `grep` that `calculate_event_rate` has **zero callers**
+anywhere in the crate, no Python binding in `src/python.rs`, and no test
+coverage — it's unreachable dead code, so there's no real-world impact to
+fix, and guessing at the "right" unit convention for a function nothing
+calls would be speculative. Flagged here per this file's own stated
+purpose (document real bugs found, even unreachable ones) rather than
+silently fixed or silently ignored.
 
 ---
 

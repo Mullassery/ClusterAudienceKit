@@ -2,9 +2,18 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
-## [Unreleased]
+## [7.4.1] - 2026-10-12
 
 ### Security
+- **SQL-injection vector through `PyCondition` field names**: the Python
+  `PyCondition(field, operator, value)` constructor interpolated `field`
+  verbatim into the SQL produced by `Condition::to_sql` (reached via
+  `PyBehavioralSegment::export_sql`), with no validation anywhere on that
+  path, so e.g. `PyCondition("x; DROP TABLE t; --", ">", 1.0)` emitted the
+  payload straight into generated SQL. `field` is now passed through the
+  existing `validate_identifier` guard (the same check already enforced in
+  `sql_export.rs`), raising `ValueError` for anything that is not a plain
+  identifier. New regression test `test_condition_field_rejects_sql_injection`.
 - **`engine::privacy::DifferentialPrivacy::laplace_noise`/`gaussian_noise`
   did not sample any actual randomness**, so `add_laplace_noise`/
   `add_gaussian_noise` (the Python-exposed differential-privacy API)
@@ -35,6 +44,41 @@ All notable changes to ClusterAudienceKit are documented here.
   actually sorting descending before indexing. New regression test
   `test_percentile_filtering_is_order_independent` (fails against the
   pre-fix code with `left: 10, right: 91`).
+- `engine::drift_detection::DriftDetector::detect_feature_drift`'s
+  `DriftMethod::ChiSquare` arm was a hardcoded `0.0` (comment claimed "Use
+  KS as proxy" but never called anything), so any caller of
+  `detect_feature_drift(..., method="chi_square")` — a real,
+  user-selectable, documented option (`parse_drift_method` in
+  `src/python.rs` accepts `"chi_square"`/`"chi2"`) — silently got
+  `drift_score: 0.0`/`severity: "none"` regardless of actual drift: a total
+  false negative. Verified via the real PyO3 binding: a 100x-shifted
+  distribution scored 1.0/critical under `"ks"` but 0.0/none under
+  `"chi_square"` before the fix. Fixed by actually proxying to
+  `kolmogorov_smirnov` (matching the pre-existing `KullbackLeibler` ->
+  `hellinger_distance` proxy pattern one line above) — same score/severity
+  as KS now. New regression test
+  `test_chi_square_drift_method_is_not_a_hardcoded_zero` (fails against the
+  pre-fix code). The separate, correctly-implemented standalone
+  `chi_square()`/`chi_square_drift` (categorical drift) were never affected.
+  See `docs/ROADMAP_HONEST.md` for why a real continuous-data chi-square
+  statistic is a follow-up, not done in this pass.
+- `engine::profiling::ProfilingEngine::profile_segment` returned three
+  hardcoded values — `separation: 0.5`, `health_score: size.min(100)`, and
+  `purity: 0.85` — despite its doc comment promising a real
+  stability/cohesion/separation health score. `separation` is now computed
+  against the complement (all non-member rows) per feature, `health_score` is
+  a bounded combination of the real stability/cohesion/separation
+  components, and `purity` is the true clustering purity when ground-truth
+  `labels` are passed (new optional argument) or a documented label-free
+  homogeneity proxy otherwise. Regression tests assert a well-separated
+  segment scores >0.9 separation, a full-coverage segment scores exactly
+  `0.0`, and the label purity case equals `0.75`.
+- `engine::quality_metrics::StabilityAnalysis::adjusted_rand_index` was not
+  the Adjusted Rand Index at all — it returned `(RandIndex * 2.0 - 1.0)`,
+  which mis-scores even trivial inputs (e.g. `0.0` instead of `-0.5` for the
+  textbook two-pairings-of-four case). Replaced with the standard
+  contingency-table ARI; new tests cover the identical (`1.0`), hand-computed
+  `-0.5`, and partial-agreement cases.
 
 ## [7.3.1] - 2026-09-22
 

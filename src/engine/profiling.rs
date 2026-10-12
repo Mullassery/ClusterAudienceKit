@@ -1,7 +1,7 @@
 //! Segment profiling and business insights generation
 
 use crate::Result;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Statistical summary for a segment
 #[derive(Clone, Debug)]
@@ -100,6 +100,20 @@ impl ProfilingEngine {
         features: &HashMap<usize, Vec<f64>>,
         feature_names: Option<&[String]>,
     ) -> Result<SegmentProfile> {
+        Self::profile_segment_with_labels(segment_id, members, features, feature_names, None)
+    }
+
+    /// As [`Self::profile_segment`], but with optional ground-truth class
+    /// `labels` (one per row) used to compute a true clustering *purity*.
+    /// Without labels, purity falls back to a documented label-free
+    /// homogeneity proxy (see [`Self::calculate_purity`]).
+    pub fn profile_segment_with_labels(
+        segment_id: usize,
+        members: &[usize],
+        features: &HashMap<usize, Vec<f64>>,
+        feature_names: Option<&[String]>,
+        labels: Option<&[usize]>,
+    ) -> Result<SegmentProfile> {
         let size = members.len();
         let mut statistics = HashMap::new();
         let mut feature_importance = Vec::new();
@@ -142,20 +156,30 @@ impl ProfilingEngine {
         // Extract key characteristics
         let characteristics = Self::extract_characteristics(&statistics);
 
-        // Calculate health indicators
+        // Calculate health indicators from the segment's own data instead of
+        // fixed placeholders: stability/cohesion come from the segment's
+        // internal statistics, separation from comparing it against every
+        // non-member row.
+        let stability = Self::calculate_stability(size);
+        let cohesion = Self::estimate_cohesion(&statistics);
+        let separation = Self::calculate_segment_separation(members, features);
+        let health_score =
+            (100.0 * (0.3 * stability + 0.3 * cohesion + 0.4 * separation)).clamp(0.0, 100.0);
         let health = SegmentHealth {
-            stability: Self::calculate_stability(size),
-            cohesion: Self::estimate_cohesion(&statistics),
-            separation: 0.5, // To be calculated with other segments
-            health_score: (size as f64).min(100.0), // Placeholder
+            stability,
+            cohesion,
+            separation,
+            health_score,
         };
 
         let actionability_score = Self::calculate_actionability(&statistics, size);
 
+        let purity = Self::calculate_purity(members, features, labels);
+
         Ok(SegmentProfile {
             segment_id,
             size,
-            purity: 0.85, // Placeholder
+            purity,
             statistics,
             feature_importance,
             business_description: description,
@@ -277,6 +301,109 @@ impl ProfilingEngine {
             (mean_diff / combined_std).min(2.0) / 2.0
         }
     }
+
+    /// Measure how distinct this segment is from every row *not* in it, by
+    /// comparing the segment's per-feature distribution against the
+    /// complement's ("the rest of the population") with
+    /// [`Self::calculate_separation`], then averaging across features.
+    ///
+    /// Returns `0.0` when there is no complement (this segment covers every
+    /// row) or when no feature has usable values on both sides: with nothing
+    /// to separate from, there is no separation signal, and inventing a
+    /// non-zero value would misreport the data.
+    fn calculate_segment_separation(members: &[usize], features: &HashMap<usize, Vec<f64>>) -> f64 {
+        let member_set: HashSet<usize> = members.iter().copied().collect();
+
+        let mut per_feature = Vec::new();
+        for column in features.values() {
+            let segment_values: Vec<f64> = members
+                .iter()
+                .filter_map(|&m| column.get(m).copied())
+                .collect();
+            let rest_values: Vec<f64> = column
+                .iter()
+                .enumerate()
+                .filter(|(idx, _)| !member_set.contains(idx))
+                .map(|(_, v)| *v)
+                .collect();
+
+            if segment_values.is_empty() || rest_values.is_empty() {
+                continue;
+            }
+
+            let seg_stats = SegmentStatistics::from_values(&segment_values);
+            let rest_stats = SegmentStatistics::from_values(&rest_values);
+            per_feature.push(Self::calculate_separation(&seg_stats, &rest_stats));
+        }
+
+        if per_feature.is_empty() {
+            0.0
+        } else {
+            per_feature.iter().sum::<f64>() / per_feature.len() as f64
+        }
+    }
+
+    /// Compute segment purity.
+    ///
+    /// With ground-truth `labels` (one class label per row), this is the true
+    /// clustering purity: the fraction of the segment's members belonging to
+    /// its single most common class.
+    ///
+    /// Without labels there is no ground truth to measure against, so this
+    /// falls back to a label-free homogeneity proxy: the average, across
+    /// features, of the fraction of the segment's values that fall within one
+    /// standard deviation of that feature's segment mean. It is a real,
+    /// deterministic statistic of the segment's own spread (not a fixed
+    /// constant), but it measures internal tightness, not class purity — do
+    /// not read it as the supervised purity figure.
+    fn calculate_purity(
+        members: &[usize],
+        features: &HashMap<usize, Vec<f64>>,
+        labels: Option<&[usize]>,
+    ) -> f64 {
+        if members.is_empty() {
+            return 0.0;
+        }
+
+        if let Some(labels) = labels {
+            let mut class_counts: HashMap<usize, usize> = HashMap::new();
+            let mut counted = 0usize;
+            for &m in members {
+                if let Some(&label) = labels.get(m) {
+                    *class_counts.entry(label).or_insert(0) += 1;
+                    counted += 1;
+                }
+            }
+            if counted == 0 {
+                return 0.0;
+            }
+            let majority = class_counts.values().copied().max().unwrap_or(0);
+            return majority as f64 / counted as f64;
+        }
+
+        let mut fractions = Vec::new();
+        for column in features.values() {
+            let values: Vec<f64> = members
+                .iter()
+                .filter_map(|&m| column.get(m).copied())
+                .collect();
+            if values.is_empty() {
+                continue;
+            }
+            let stats = SegmentStatistics::from_values(&values);
+            let within = values
+                .iter()
+                .filter(|v| (*v - stats.mean).abs() <= stats.std_dev)
+                .count();
+            fractions.push(within as f64 / values.len() as f64);
+        }
+
+        if fractions.is_empty() {
+            0.0
+        } else {
+            fractions.iter().sum::<f64>() / fractions.len() as f64
+        }
+    }
 }
 
 /// Business metrics derived from profiles
@@ -354,6 +481,64 @@ mod tests {
         assert_eq!(profile.segment_id, 0);
         assert_eq!(profile.size, 4);
         assert!(!profile.business_description.is_empty());
+    }
+
+    #[test]
+    fn test_separation_uses_complement_not_placeholder() {
+        // Two well-separated groups: segment {0,1,2} (low) vs rest {3,4,5}
+        // (high). Separation must be clearly non-zero and not the old fixed
+        // 0.5 placeholder.
+        let members = vec![0, 1, 2];
+        let mut features = HashMap::new();
+        features.insert(0, vec![1.0, 2.0, 3.0, 101.0, 102.0, 103.0]);
+
+        let profile = ProfilingEngine::profile_segment(0, &members, &features, None).unwrap();
+        assert!(
+            profile.health.separation > 0.9,
+            "expected strong separation, got {}",
+            profile.health.separation
+        );
+
+        // A segment covering every row has nothing to separate from -> 0.0,
+        // not an invented constant.
+        let all = vec![0, 1, 2, 3, 4, 5];
+        let profile_all = ProfilingEngine::profile_segment(0, &all, &features, None).unwrap();
+        assert_eq!(profile_all.health.separation, 0.0);
+    }
+
+    #[test]
+    fn test_health_score_is_bounded_and_data_driven() {
+        let members = vec![0, 1, 2];
+        let mut features = HashMap::new();
+        features.insert(0, vec![1.0, 1.1, 1.2, 50.0, 51.0, 52.0]);
+        let profile = ProfilingEngine::profile_segment(0, &members, &features, None).unwrap();
+        assert!(
+            profile.health.health_score > 0.0 && profile.health.health_score <= 100.0,
+            "got {}",
+            profile.health.health_score
+        );
+    }
+
+    #[test]
+    fn test_purity_with_ground_truth_labels() {
+        let members = vec![0, 1, 2, 3];
+        let mut features = HashMap::new();
+        features.insert(0, vec![1.0, 1.0, 1.0, 1.0, 9.0, 9.0]);
+        // Three of the four members share class 7 -> true purity 0.75.
+        let labels = vec![7, 7, 7, 3, 0, 0];
+        let profile = ProfilingEngine::profile_segment_with_labels(
+            0,
+            &members,
+            &features,
+            None,
+            Some(&labels),
+        )
+        .unwrap();
+        assert!(
+            (profile.purity - 0.75).abs() < 1e-9,
+            "got {}",
+            profile.purity
+        );
     }
 
     #[test]

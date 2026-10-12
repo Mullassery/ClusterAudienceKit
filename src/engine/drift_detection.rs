@@ -366,7 +366,20 @@ impl DriftDetector {
             DriftMethod::KolmogorovSmirnov => Self::kolmogorov_smirnov(baseline, current)?,
             DriftMethod::HellingerDistance => Self::hellinger_distance(baseline, current)?,
             DriftMethod::KullbackLeibler => Self::hellinger_distance(baseline, current)?,
-            DriftMethod::ChiSquare => 0.0, // Use KS as proxy
+            // `Self::chi_square()` operates on categorical `HashMap<String, usize>`
+            // counts, not the continuous `&[f64]` samples this function takes, so
+            // it can't be called directly here without first binning both
+            // samples (a real feature, not a one-line fix -- tracked in
+            // docs/ROADMAP_HONEST.md). This arm previously hardcoded a literal
+            // `0.0` despite a comment claiming it used KS as a proxy -- it never
+            // actually called `kolmogorov_smirnov`, so any caller selecting
+            // `method="chi_square"` silently got `drift_score: 0.0`,
+            // `severity: "none"` regardless of how different the two
+            // distributions actually were (a total false negative). Now it
+            // really does what the comment always claimed: proxies to KS,
+            // the same pattern `KullbackLeibler` already uses with
+            // `hellinger_distance` above.
+            DriftMethod::ChiSquare => Self::kolmogorov_smirnov(baseline, current)?,
         };
 
         let severity = if drift_score < DriftSeverity::Low.threshold() {
@@ -621,6 +634,60 @@ mod tests {
 
         assert_eq!(alert.severity, DriftSeverity::High);
         assert!(!alert.acknowledged);
+    }
+
+    /// Regression test for a real bug: `detect_feature_drift`'s
+    /// `DriftMethod::ChiSquare` arm hardcoded a literal `0.0` (despite a
+    /// comment claiming it used KS as a proxy -- it never called anything),
+    /// so any caller selecting `method="chi_square"` got `drift_score: 0.0`
+    /// / `severity: "none"` regardless of how different the two
+    /// distributions actually were -- a silent total false negative for a
+    /// real, user-selectable, documented drift-detection method
+    /// (`parse_drift_method` in `src/python.rs` accepts
+    /// `"chi_square"`/`"chi2"`). Assert that a wildly-shifted distribution
+    /// is actually detected as drift under `ChiSquare`, and with the same
+    /// score as `KolmogorovSmirnov` (since it now proxies to KS).
+    #[test]
+    fn test_chi_square_drift_method_is_not_a_hardcoded_zero() {
+        let baseline = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+        let current = vec![100.0, 200.0, 300.0, 400.0, 500.0];
+
+        let ks_drift = DriftDetector::detect_feature_drift(
+            "feature_1".to_string(),
+            &baseline,
+            &current,
+            DriftMethod::KolmogorovSmirnov,
+        )
+        .unwrap();
+
+        let chi_square_drift = DriftDetector::detect_feature_drift(
+            "feature_1".to_string(),
+            &baseline,
+            &current,
+            DriftMethod::ChiSquare,
+        )
+        .unwrap();
+
+        assert!(
+            chi_square_drift.drift_score > 0.0,
+            "ChiSquare method returned a hardcoded 0.0 drift score for a wildly-shifted \
+             distribution -- it must detect real drift, not silently report none"
+        );
+        assert_ne!(chi_square_drift.severity, DriftSeverity::None);
+        assert_eq!(chi_square_drift.drift_score, ks_drift.drift_score);
+        assert_eq!(chi_square_drift.severity, ks_drift.severity);
+
+        // Identical distributions should still show (near-)zero drift --
+        // confirms this isn't just "always return a nonzero number".
+        let identical = DriftDetector::detect_feature_drift(
+            "feature_1".to_string(),
+            &baseline,
+            &baseline,
+            DriftMethod::ChiSquare,
+        )
+        .unwrap();
+        assert_eq!(identical.drift_score, 0.0);
+        assert_eq!(identical.severity, DriftSeverity::None);
     }
 
     #[test]

@@ -317,6 +317,14 @@ class TestBehavioralSegmentation:
         sql = segmenter.export_sql()
         assert "monetary" in sql
 
+    def test_condition_field_rejects_sql_injection(self):
+        # `field` is interpolated verbatim into the SQL that to_sql()/
+        # export_sql() produce, with no other validation on this path.
+        # PyCondition must reject anything that isn't a plain identifier
+        # instead of letting it flow into generated SQL unescaped.
+        with pytest.raises(ValueError):
+            PyCondition("spend; DROP TABLE customers; --", ">", 100.0)
+
 
 class TestProfiling:
     def test_profile_segment_produces_health_and_description(self):
@@ -327,3 +335,20 @@ class TestProfiling:
         assert profile.size == 3
         assert profile.business_description
         assert 0.0 <= profile.health.health_score
+
+    def test_separation_reflects_the_complement_not_a_placeholder(self):
+        # Segment {0,1,2} is low; the other rows are far away -> real separation.
+        members = [0, 1, 2]
+        separated = profile_segment(0, members, {0: [1.0, 2.0, 3.0, 101.0, 102.0, 103.0]})
+        assert separated.health.separation > 0.9
+        # A segment spanning every row has nothing to separate from -> 0.0.
+        covering_all = profile_segment(0, [0, 1, 2, 3, 4, 5], {0: [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]})
+        assert covering_all.health.separation == 0.0
+
+    def test_purity_with_ground_truth_labels(self):
+        members = [0, 1, 2, 3]
+        features = {0: [1.0, 1.0, 1.0, 1.0, 9.0, 9.0]}
+        # 3 of the 4 members share class 7 -> true purity 0.75.
+        profile = profile_segment(0, members, features, labels=[7, 7, 7, 3, 0, 0])
+        assert abs(profile.purity - 0.75) < 1e-9
+

@@ -490,7 +490,7 @@ fn get_segment_definitions() -> HashMap<String, SegmentDefinition> {
 /// flowed straight into `format!()`-built SQL with no validation, so a
 /// caller-supplied value like `customers; DROP TABLE users; --` would have
 /// been emitted verbatim.
-fn validate_identifier(identifier: &str) -> Result<()> {
+pub(crate) fn validate_identifier(identifier: &str) -> Result<()> {
     if identifier.is_empty() {
         return Err(crate::ClusterAudienceKitError::InvalidConfig(
             "SQL identifier cannot be empty".to_string(),

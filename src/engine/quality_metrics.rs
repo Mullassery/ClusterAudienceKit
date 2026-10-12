@@ -294,34 +294,53 @@ impl StabilityAnalysis {
     }
 
     fn adjusted_rand_index(labels1: &[usize], labels2: &[usize]) -> f64 {
-        if labels1.len() < 2 {
+        let n = labels1.len();
+        if n < 2 {
             return 1.0;
         }
 
-        let n = labels1.len() as f64;
+        // Build the contingency table of (labels1, labels2) pair counts and
+        // the marginal totals -- the three quantities the ARI formula needs.
+        let mut contingency: HashMap<(usize, usize), u64> = HashMap::new();
+        let mut row_sums: HashMap<usize, u64> = HashMap::new();
+        let mut col_sums: HashMap<usize, u64> = HashMap::new();
+        for (&a, &b) in labels1.iter().zip(labels2.iter()) {
+            *contingency.entry((a, b)).or_insert(0) += 1;
+            *row_sums.entry(a).or_insert(0) += 1;
+            *col_sums.entry(b).or_insert(0) += 1;
+        }
 
-        // Check if labels are identical
-        if labels1.iter().zip(labels2.iter()).all(|(a, b)| a == b) {
+        // C(x, 2) = number of pairs among x items; the ARI is defined purely
+        // in terms of these pair counts.
+        let comb2 = |x: u64| -> f64 {
+            let x = x as f64;
+            x * (x - 1.0) / 2.0
+        };
+
+        let sum_cells: f64 = contingency.values().map(|&v| comb2(v)).sum();
+        let sum_rows: f64 = row_sums.values().map(|&v| comb2(v)).sum();
+        let sum_cols: f64 = col_sums.values().map(|&v| comb2(v)).sum();
+        let total_pairs = comb2(n as u64);
+
+        if total_pairs == 0.0 {
             return 1.0;
         }
 
-        // Calculate agreement (Rand Index)
-        let mut agreement = 0.0;
-        for i in 0..labels1.len() {
-            for j in (i + 1)..labels1.len() {
-                let same1 = labels1[i] == labels1[j];
-                let same2 = labels2[i] == labels2[j];
-                if same1 == same2 {
-                    agreement += 1.0;
-                }
-            }
+        // ARI = (index - expected) / (max - expected), where the chance
+        // correction is exactly what makes it "adjusted" (a raw Rand Index
+        // is inflated for clusterings with many clusters).
+        let expected_index = sum_rows * sum_cols / total_pairs;
+        let max_index = 0.5 * (sum_rows + sum_cols);
+        let denominator = max_index - expected_index;
+
+        // Degenerate case: one or both clusterings are trivial (all items in
+        // a single cluster), so there is no adjusted agreement to measure;
+        // conventionally reported as perfect agreement.
+        if denominator.abs() < 1e-12 {
+            return 1.0;
         }
 
-        let n_pairs = n * (n - 1.0) / 2.0;
-        let ri = agreement / n_pairs;
-
-        // Simplified ARI calculation: directly use RI
-        (ri * 2.0 - 1.0).clamp(-1.0, 1.0)
+        ((sum_cells - expected_index) / denominator).clamp(-1.0, 1.0)
     }
 
     fn calculate_correspondence(labels1: &[usize], labels2: &[usize]) -> f64 {
@@ -457,6 +476,26 @@ mod tests {
         let stability = StabilityAnalysis::calculate(&prev, &curr).unwrap();
         assert_eq!(stability.label_agreement, 1.0);
         assert_eq!(stability.cluster_correspondence, 1.0);
+    }
+
+    #[test]
+    fn test_adjusted_rand_index_known_values() {
+        // Identical clusterings agree perfectly.
+        assert_eq!(
+            StabilityAnalysis::adjusted_rand_index(&[0, 0, 1, 1], &[0, 0, 1, 1]),
+            1.0
+        );
+        // The textbook two-pairings-of-four case: ARI is exactly -0.5, which
+        // the old "2*RI - 1" shortcut got wrong (it returned 0.0 here).
+        let ari = StabilityAnalysis::adjusted_rand_index(&[0, 0, 1, 1], &[0, 1, 0, 1]);
+        assert!((ari - (-0.5)).abs() < 1e-9, "expected -0.5, got {ari}");
+        // A finer clustering that refines a coarser one: partial, positive.
+        let partial =
+            StabilityAnalysis::adjusted_rand_index(&[0, 0, 1, 1, 2, 2], &[0, 0, 0, 1, 1, 1]);
+        assert!(
+            partial > 0.0 && partial < 1.0,
+            "expected partial agreement, got {partial}"
+        );
     }
 
     #[test]

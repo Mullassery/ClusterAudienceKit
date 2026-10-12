@@ -18,7 +18,7 @@ use crate::engine::rfm::{
     calculate_rfm, DecayFunction, RFMConfig, RFMScore, ScoringMethod, Transaction,
 };
 use crate::engine::segments::{SegmentProfile, SegmentType};
-use crate::engine::sql_export::{ColumnMapping, SQLDialect, SQLExporter};
+use crate::engine::sql_export::{validate_identifier, ColumnMapping, SQLDialect, SQLExporter};
 use crate::engine::{AudienceSegmenterCore, SegmenterConfig};
 use ndarray::Array2;
 use pyo3::prelude::*;
@@ -2150,6 +2150,16 @@ struct PyCondition {
 impl PyCondition {
     #[new]
     fn new(field: &str, operator: &str, value: f64) -> PyResult<Self> {
+        // `field` is interpolated verbatim into the SQL this condition's
+        // `to_sql()`/`export_sql()` produce (see `Condition::to_sql` in
+        // engine::behavioral), with no other validation anywhere on this
+        // path. Without this check, e.g. `PyCondition("x; DROP TABLE t; --",
+        // ">", 1.0)` renders that payload straight into generated SQL —
+        // the same class of SQL-injection vector `validate_identifier` was
+        // introduced to close in `sql_export.rs`, just reachable through a
+        // different binding it didn't cover.
+        validate_identifier(field)
+            .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
         Ok(PyCondition {
             inner: Condition::new(
                 field,
@@ -2312,18 +2322,29 @@ impl PyProfiledSegment {
 /// feature index to that feature's full column of values (all rows, not
 /// just this segment's — used to compute cross-segment separation);
 /// `feature_names` optionally labels each feature index.
+///
+/// `labels`, if given, is the ground-truth class label per row (e.g. a known
+/// customer type), used to compute a true clustering *purity*. Without it,
+/// `purity` is a documented label-free homogeneity proxy (see
+/// `ProfilingEngine::calculate_purity`), not supervised purity.
 #[pyfunction]
-#[pyo3(signature = (segment_id, members, features, feature_names=None))]
+#[pyo3(signature = (segment_id, members, features, feature_names=None, labels=None))]
 fn profile_segment(
     py: Python<'_>,
     segment_id: usize,
     members: Vec<usize>,
     features: HashMap<usize, Vec<f64>>,
     feature_names: Option<Vec<String>>,
+    labels: Option<Vec<usize>>,
 ) -> PyResult<PyProfiledSegment> {
-    let profile =
-        ProfilingEngine::profile_segment(segment_id, &members, &features, feature_names.as_deref())
-            .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
+    let profile = ProfilingEngine::profile_segment_with_labels(
+        segment_id,
+        &members,
+        &features,
+        feature_names.as_deref(),
+        labels.as_deref(),
+    )
+    .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))?;
 
     let health = Py::new(
         py,
