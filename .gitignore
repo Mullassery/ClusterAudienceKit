@@ -62,3 +62,5 @@ target/
 *.log
 temp/
 tmp/
+
+graphify-out/
