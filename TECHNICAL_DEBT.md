@@ -3,7 +3,7 @@
 ## Executive Summary
 
 Total items: 9
-Open: 6 · Resolved (this pass): 6 (overlaps with historical where a fix
+Open: 5 · Resolved (this pass): 6 (overlaps with historical where a fix
 closed more than one angle of the same item — see per-item notes) ·
 Future/Deferred: 2
 Critical: 0 · High: 1 · Medium: 4 · Low: 4
@@ -43,7 +43,7 @@ None found.
 
 | ID | Category | Description | Source | Status | Fix |
 |---|---|---|---|---|---|
-| TD-0008 | TEST_DEBT | `tests/test_performance.py` uses `@pytest.mark.benchmark` without registering it, producing a `PytestUnknownMarkWarning` on every run (2 occurrences). | SOURCE_CODE (pytest output) | OPEN | One-line fix (add to `pyproject.toml`'s `[tool.pytest.ini_options]` markers list, or a `pytest.ini`) — not done this pass to keep the diff focused on security/compatibility; trivial follow-up. |
+| TD-0008 | TEST_DEBT | `tests/test_performance.py` uses `@pytest.mark.benchmark` without registering it, producing a `PytestUnknownMarkWarning` on every run (2 occurrences). | SOURCE_CODE (pytest output) | **RESOLVED** (already fixed in tree) | The `benchmark` marker is registered in `pyproject.toml`'s `[tool.pytest.ini_options].markers` (line 102), so the `PytestUnknownMarkWarning` no longer occurs — this register was recorded as OPEN by mistake. |
 | TD-0009 | REFACTOR | 30 pre-existing clippy warnings remain, all confirmed (by file) concentrated in modules that are either explicitly deferred (`neural_networks.rs`, `temporal_analytics.rs`, `b2b_governance.rs`, `segment_intelligence.rs`, `pattern_discovery.rs`, `dashboard.rs`, `activation.rs`, `price_intelligence.rs`, `b2b_segmentation.rs`, `activation_orchestrator.rs`) or Rust-only/not-yet-wired per `docs/ROADMAP_HONEST.md` — zero are in a module reachable from the Python API. Re-verified this pass (count unchanged at 30; the pass added zero new clippy warnings despite the pyo3 bump and 18-file rename). | SOURCE_CODE (`cargo clippy`) | OPEN (unchanged) | Already tracked in `docs/ROADMAP_HONEST.md`'s own lint-debt accounting; not re-litigated here. |
 
 ## Explicit TODOs
@@ -69,7 +69,7 @@ None found this pass. `actionlint` clean on both workflow files. `tests.yml`'s `
 
 ## Test Debt
 
-TD-0008 (benchmark marker warning). Otherwise: 439/439 Rust tests, 227 passed/2 skipped Python tests, both re-verified at the final state after all fixes in this pass.
+TD-0008 (benchmark marker warning) is resolved: the `benchmark` marker is already registered in `pyproject.toml`, so no `PytestUnknownMarkWarning` is emitted. Otherwise: 439/439 Rust tests, 227 passed/2 skipped Python tests, both re-verified at the final state after all fixes in this pass.
 
 ## Dependency Debt
 
