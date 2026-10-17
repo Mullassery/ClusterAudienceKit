@@ -2,6 +2,11 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [7.4.2] - 2026-10-17
+
+### Fixed
+- Audit remediation: security hardening, correctness fixes, and lint/CI gates.
+
 ## [7.4.1] - 2026-10-12
 
 ### Security
