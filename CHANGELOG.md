@@ -5,6 +5,14 @@ All notable changes to ClusterAudienceKit are documented here.
 ## [Unreleased]
 
 ### Added
+- Exposed five more stateless analytics APIs with PyO3 wrappers, aliases,
+  `__all__` entries, and tests: `reconstruct_segment_history` /
+  `HistoricalSegmentState` and `analyze_trend_momentum` / `TrendMomentum`
+  (`temporal_analytics`), `predict_tier_migration` / `TierMigrationForecast`
+  and `analyze_category_affinity` / `CategoryAffinity` (`price_intelligence`),
+  and `calculate_cac` / `CustomerAcquisitionCost` (`revenue_intelligence`).
+  Each maps engine errors to `ValueError` and validates finite/range/empty
+  inputs; no stubs were added.
 - Exposed five more stateless analytics APIs with PyO3 wrappers, aliases, and
   tests: `forecast_composition` / `CompositionForecast` and
   `simulate_what_if` / `WhatIfScenario` (`temporal_analytics`),

@@ -38,13 +38,17 @@ use crate::engine::lifecycle::{LifecycleStage, LifecycleTracker};
 use crate::engine::lookalike::{LookalikeGenerator, SeedCustomer, SimilarityMetric};
 use crate::engine::neural_networks::{NNConfig, NeuralNetwork};
 use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
-use crate::engine::price_intelligence::{DiscountOptimizer, ElasticityCalculator};
+use crate::engine::price_intelligence::{
+    AffiniCalculator, DiscountOptimizer, ElasticityCalculator, TierMigrationPredictor,
+};
 use crate::engine::privacy::{DifferentialPrivacy, KAnonymity, PrivacyBudget};
 use crate::engine::profiling::ProfilingEngine;
 use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
 };
-use crate::engine::revenue_intelligence::{AttributionEngine, ROICalculator, RevenueForecaster};
+use crate::engine::revenue_intelligence::{
+    AttributionEngine, CACCalculator, ROICalculator, RevenueForecaster,
+};
 use crate::engine::segment_intelligence::{
     SegmentAging, SegmentConfidence, SegmentDifferentiation, SegmentEntropy, SegmentPredictability,
 };
@@ -53,7 +57,8 @@ use crate::engine::streaming::{
     StreamingSegmentationEngine, StreamingWindow,
 };
 use crate::engine::temporal_analytics::{
-    CompositionForecaster, SegmentSizeForecaster, WhatIfSimulator,
+    CompositionForecaster, HistoricalReconstruction, MomentumAnalyzer, SegmentSizeForecaster,
+    WhatIfSimulator,
 };
 
 // ============================================================================
@@ -3335,6 +3340,393 @@ impl PyNeuralNetwork {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Temporal analytics: historical reconstruction and trend momentum
+// ---------------------------------------------------------------------------
+
+/// Reconstructed membership of one segment at a past date, replaying
+/// `(event_date, event_type, member_id)` events up to (and including) that
+/// date. `event_type` is `"added"` or `"removed"`; events on other dates and
+/// unknown event types are rejected.
+#[pyclass]
+pub struct PyHistoricalSegmentState {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub date: String,
+    #[pyo3(get)]
+    pub members: Vec<String>,
+    #[pyo3(get)]
+    pub size_trend: Vec<(i32, usize)>,
+    #[pyo3(get)]
+    pub composition_changes: Vec<(i32, String, usize, String)>,
+}
+
+#[pymethods]
+impl PyHistoricalSegmentState {
+    fn __repr__(&self) -> String {
+        format!(
+            "HistoricalSegmentState(segment={}, date={}, members={})",
+            self.segment_id,
+            self.date,
+            self.members.len()
+        )
+    }
+}
+
+/// Rebuild a segment's membership as of `target_date` from its event log.
+/// Dates are compared as ISO-8601 strings (lexicographic order), so they must
+/// be in a sortable `YYYY-MM-DD`-style format.
+#[pyfunction]
+fn reconstruct_segment_history(
+    segment_id: &str,
+    target_date: &str,
+    historical_events: Vec<(String, String, String)>,
+) -> PyResult<PyHistoricalSegmentState> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    if target_date.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "target_date must not be empty",
+        ));
+    }
+    for (index, (event_date, event_type, member_id)) in historical_events.iter().enumerate() {
+        if event_date.trim().is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "historical_events[{index}] event_date must not be empty"
+            )));
+        }
+        if event_type != "added" && event_type != "removed" {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "historical_events[{index}] event_type must be 'added' or 'removed'"
+            )));
+        }
+        if member_id.trim().is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "historical_events[{index}] member_id must not be empty"
+            )));
+        }
+    }
+
+    let state =
+        HistoricalReconstruction::reconstruct_at_date(segment_id, target_date, &historical_events)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyHistoricalSegmentState {
+        segment_id: state.segment_id,
+        date: state.date,
+        members: state.members,
+        size_trend: state.size_trend,
+        composition_changes: state
+            .composition_changes
+            .into_iter()
+            .map(|c| (c.days_ago, c.change_type, c.affected_members, c.reason))
+            .collect(),
+    })
+}
+
+/// Momentum read-out for a metric series: recent change, acceleration, and a
+/// continuation/reversal split.
+#[pyclass]
+pub struct PyTrendMomentum {
+    #[pyo3(get)]
+    pub metric_name: String,
+    #[pyo3(get)]
+    pub current_value: f64,
+    #[pyo3(get)]
+    pub momentum_score: f64,
+    #[pyo3(get)]
+    pub acceleration: f64,
+    #[pyo3(get)]
+    pub trend_strength: String,
+    #[pyo3(get)]
+    pub continuation_probability: f64,
+    #[pyo3(get)]
+    pub reversal_risk: f64,
+}
+
+#[pymethods]
+impl PyTrendMomentum {
+    fn __repr__(&self) -> String {
+        format!(
+            "TrendMomentum(momentum={:.4}, strength={}, continuation={:.4})",
+            self.momentum_score, self.trend_strength, self.continuation_probability
+        )
+    }
+}
+
+/// Measure momentum over `lookback_periods` of a finite metric series. Needs
+/// at least three points and a lookback of at least one period.
+#[pyfunction]
+fn analyze_trend_momentum(
+    metric_history: Vec<f64>,
+    lookback_periods: usize,
+) -> PyResult<PyTrendMomentum> {
+    if lookback_periods == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "lookback_periods must be greater than zero",
+        ));
+    }
+    if metric_history.iter().any(|value| !value.is_finite()) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "metric_history must contain finite values",
+        ));
+    }
+
+    let momentum = MomentumAnalyzer::analyze_momentum(&metric_history, lookback_periods)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyTrendMomentum {
+        metric_name: momentum.metric_name,
+        current_value: momentum.current_value,
+        momentum_score: momentum.momentum_score,
+        acceleration: momentum.acceleration,
+        trend_strength: momentum.trend_strength,
+        continuation_probability: momentum.continuation_probability,
+        reversal_risk: momentum.reversal_risk,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Price intelligence: tier migration and category affinity
+// ---------------------------------------------------------------------------
+
+/// Probability of a customer staying in, upgrading from, or downgrading out
+/// of a pricing tier.
+#[pyclass]
+pub struct PyTierMigrationForecast {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub current_tier: String,
+    #[pyo3(get)]
+    pub tier_migration_probabilities: HashMap<String, f64>,
+    #[pyo3(get)]
+    pub most_likely_tier: String,
+    #[pyo3(get)]
+    pub migration_timeline_months: u32,
+    #[pyo3(get)]
+    pub expansion_likelihood: f64,
+    #[pyo3(get)]
+    pub churn_risk: f64,
+}
+
+#[pymethods]
+impl PyTierMigrationForecast {
+    fn __repr__(&self) -> String {
+        format!(
+            "TierMigrationForecast(segment={}, tier={}, most_likely={}, churn={:.4})",
+            self.segment_id, self.current_tier, self.most_likely_tier, self.churn_risk
+        )
+    }
+}
+
+/// Predict tier movement from current usage versus historical usage. Needs a
+/// non-empty historical series of finite values; a flat history yields a
+/// "stay" forecast.
+#[pyfunction]
+fn predict_tier_migration(
+    segment_id: &str,
+    current_tier: &str,
+    current_usage: f64,
+    historical_usage: Vec<f64>,
+) -> PyResult<PyTierMigrationForecast> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    if current_tier.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "current_tier must not be empty",
+        ));
+    }
+    if !current_usage.is_finite() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "current_usage must be finite",
+        ));
+    }
+    if historical_usage.is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "historical_usage must contain at least one value",
+        ));
+    }
+    if historical_usage.iter().any(|value| !value.is_finite()) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "historical_usage must contain finite values",
+        ));
+    }
+
+    let forecast = TierMigrationPredictor::predict_migration(
+        segment_id,
+        current_tier,
+        current_usage,
+        &historical_usage,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyTierMigrationForecast {
+        segment_id: forecast.segment_id,
+        current_tier: forecast.current_tier,
+        tier_migration_probabilities: forecast.tier_migration_probabilities,
+        most_likely_tier: forecast.most_likely_tier,
+        migration_timeline_months: forecast.migration_timeline_months,
+        expansion_likelihood: forecast.expansion_likelihood,
+        churn_risk: forecast.churn_risk,
+    })
+}
+
+/// Cross-category purchase affinity for one segment.
+#[pyclass]
+pub struct PyCategoryAffinity {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub category_pairs: Vec<(String, String, f64)>,
+    #[pyo3(get)]
+    pub affinity_scores: HashMap<String, f64>,
+    #[pyo3(get)]
+    pub recommended_bundles: Vec<String>,
+    #[pyo3(get)]
+    pub cross_sell_opportunities: f64,
+}
+
+#[pymethods]
+impl PyCategoryAffinity {
+    fn __repr__(&self) -> String {
+        format!(
+            "CategoryAffinity(segment={}, categories={}, cross_sell={:.4})",
+            self.segment_id,
+            self.affinity_scores.len(),
+            self.cross_sell_opportunities
+        )
+    }
+}
+
+/// Score category affinity from `(category, purchase_value)` pairs. Needs at
+/// least one category with finite, non-negative purchase values.
+#[pyfunction]
+fn analyze_category_affinity(
+    segment_id: &str,
+    category_purchases: Vec<(String, f64)>,
+) -> PyResult<PyCategoryAffinity> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    if category_purchases.is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "category_purchases must contain at least one category",
+        ));
+    }
+    for (index, (category, purchases)) in category_purchases.iter().enumerate() {
+        if category.trim().is_empty() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "category_purchases[{index}] category must not be empty"
+            )));
+        }
+        if !purchases.is_finite() || *purchases < 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "category_purchases[{index}] purchases must be finite and non-negative"
+            )));
+        }
+    }
+
+    let affinity = AffiniCalculator::analyze_category_affinity(segment_id, &category_purchases)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyCategoryAffinity {
+        segment_id: affinity.segment_id,
+        category_pairs: affinity.category_pairs,
+        affinity_scores: affinity.affinity_scores,
+        recommended_bundles: affinity.recommended_bundles,
+        cross_sell_opportunities: affinity.cross_sell_opportunities,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Revenue intelligence: customer acquisition cost
+// ---------------------------------------------------------------------------
+
+/// Acquisition cost, payback, and efficiency for one segment.
+#[pyclass]
+pub struct PyCustomerAcquisitionCost {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub total_acquisition_spend: f64,
+    #[pyo3(get)]
+    pub customers_acquired: usize,
+    #[pyo3(get)]
+    pub cac_per_customer: f64,
+    #[pyo3(get)]
+    pub payback_period_months: f64,
+    #[pyo3(get)]
+    pub efficiency_score: f64,
+}
+
+#[pymethods]
+impl PyCustomerAcquisitionCost {
+    fn __repr__(&self) -> String {
+        format!(
+            "CustomerAcquisitionCost(segment={}, cac={:.2}, payback_months={:.2})",
+            self.segment_id, self.cac_per_customer, self.payback_period_months
+        )
+    }
+}
+
+/// Calculate CAC (`spend / customers_acquired`) and its payback period in
+/// months. Payback is capped at 1000 months when monthly revenue is zero.
+#[pyfunction]
+fn calculate_cac(
+    segment_id: &str,
+    acquisition_spend: f64,
+    customers_acquired: usize,
+    avg_monthly_revenue_per_customer: f64,
+) -> PyResult<PyCustomerAcquisitionCost> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    if !acquisition_spend.is_finite() || acquisition_spend < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "acquisition_spend must be finite and non-negative",
+        ));
+    }
+    if customers_acquired == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "customers_acquired must be greater than zero",
+        ));
+    }
+    if !avg_monthly_revenue_per_customer.is_finite() || avg_monthly_revenue_per_customer < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "avg_monthly_revenue_per_customer must be finite and non-negative",
+        ));
+    }
+
+    let cac = CACCalculator::calculate_cac(
+        segment_id,
+        acquisition_spend,
+        customers_acquired,
+        avg_monthly_revenue_per_customer,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyCustomerAcquisitionCost {
+        segment_id: cac.segment_id,
+        total_acquisition_spend: cac.total_acquisition_spend,
+        customers_acquired: cac.customers_acquired,
+        cac_per_customer: cac.cac_per_customer,
+        payback_period_months: cac.payback_period_months,
+        efficiency_score: cac.efficiency_score,
+    })
+}
+
 /// Python module initialization
 #[pymodule]
 fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
@@ -3411,23 +3803,33 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PySizeForecast>()?;
     m.add_class::<PyCompositionForecast>()?;
     m.add_class::<PyWhatIfScenario>()?;
+    m.add_class::<PyHistoricalSegmentState>()?;
+    m.add_class::<PyTrendMomentum>()?;
     m.add_function(wrap_pyfunction!(forecast_segment_sizes, m)?)?;
     m.add_function(wrap_pyfunction!(forecast_composition, m)?)?;
     m.add_function(wrap_pyfunction!(simulate_what_if, m)?)?;
+    m.add_function(wrap_pyfunction!(reconstruct_segment_history, m)?)?;
+    m.add_function(wrap_pyfunction!(analyze_trend_momentum, m)?)?;
 
     // Price intelligence
     m.add_class::<PyElasticityAnalysis>()?;
     m.add_class::<PyDiscountStrategy>()?;
+    m.add_class::<PyTierMigrationForecast>()?;
+    m.add_class::<PyCategoryAffinity>()?;
     m.add_function(wrap_pyfunction!(analyze_price_elasticity, m)?)?;
     m.add_function(wrap_pyfunction!(optimize_discount, m)?)?;
+    m.add_function(wrap_pyfunction!(predict_tier_migration, m)?)?;
+    m.add_function(wrap_pyfunction!(analyze_category_affinity, m)?)?;
 
     // Revenue intelligence
     m.add_class::<PySegmentROI>()?;
     m.add_class::<PyRevenueAttribution>()?;
     m.add_class::<PyRevenueForecast>()?;
+    m.add_class::<PyCustomerAcquisitionCost>()?;
     m.add_function(wrap_pyfunction!(calculate_segment_roi, m)?)?;
     m.add_function(wrap_pyfunction!(calculate_revenue_attribution, m)?)?;
     m.add_function(wrap_pyfunction!(forecast_revenue, m)?)?;
+    m.add_function(wrap_pyfunction!(calculate_cac, m)?)?;
 
     // Neural networks
     m.add_class::<PyTrainingStats>()?;

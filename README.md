@@ -15,10 +15,12 @@ It covers RFM analysis, KMeans/K-Prototypes clustering, cluster-quality metrics,
 K selection, churn prediction, customer lifetime value, SQL export to 8 warehouse dialects,
 differential privacy / k-anonymity, real-time streaming segmentation, drift detection,
 lookalike audiences, cohort analytics, lifecycle tracking, rule-based behavioral
-segmentation, segment profiling, temporal size/composition forecasting, what-if scenario
-simulation, price elasticity, discount optimization, segment ROI, revenue attribution and
-forecasting, and a small neural-network regressor — all real, tested Rust logic exposed
-through the compiled Python extension (`import clusteraudiencekit`).
+segmentation, segment profiling, temporal size/composition forecasting, historical
+reconstruction, trend momentum, what-if scenario simulation, price elasticity, price tier
+migration, category affinity, discount optimization, segment ROI, customer acquisition
+cost, revenue attribution and forecasting, and a small neural-network regressor — all
+real, tested Rust logic exposed through the compiled Python extension
+(`import clusteraudiencekit`).
 
 ## Features
 
@@ -40,11 +42,16 @@ through the compiled Python extension (`import clusteraudiencekit`).
 | Rule-based behavioral segmentation | `PyBehavioralSegmenter`, `PyBehavioralSegment`, `PyBehavioralRule`, `PyCondition` |
 | Segment profiling | `profile_segment` |
 | Temporal size forecasting | `forecast_segment_sizes`, `SizeForecast` |
+| Historical reconstruction | `reconstruct_segment_history`, `HistoricalSegmentState` |
+| Trend momentum | `analyze_trend_momentum`, `TrendMomentum` |
 | Composition forecasting | `forecast_composition`, `CompositionForecast` |
 | What-if scenario simulation | `simulate_what_if`, `WhatIfScenario` |
 | Price elasticity | `analyze_price_elasticity`, `ElasticityAnalysis` |
+| Price tier migration | `predict_tier_migration`, `TierMigrationForecast` |
+| Category affinity | `analyze_category_affinity`, `CategoryAffinity` |
 | Discount optimization | `optimize_discount`, `DiscountStrategy` |
 | Segment ROI | `calculate_segment_roi`, `SegmentROI` |
+| Customer acquisition cost | `calculate_cac`, `CustomerAcquisitionCost` |
 | Revenue attribution | `calculate_revenue_attribution`, `RevenueAttribution` |
 | Revenue forecasting | `forecast_revenue`, `RevenueForecast` |
 | Neural-network regressor | `NeuralNetwork`, `TrainingStats` |
@@ -81,15 +88,18 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
   data; it just isn't reachable from that Python entry point yet.
 - **Six Rust modules are only partially exposed to Python.** Each has real, tested,
   stateless slices wired up: `temporal_analytics` (`forecast_segment_sizes`,
-  `forecast_composition`, `simulate_what_if`), `price_intelligence`
-  (`analyze_price_elasticity`, `optimize_discount`), `revenue_intelligence`
-  (`calculate_segment_roi`, `calculate_revenue_attribution`, `forecast_revenue`),
-  `neural_networks` (`NeuralNetwork`, `TrainingStats`), `pattern_discovery`
-  (`SegmentTrend`, `EmergingAudience`), and `segment_intelligence` (`SegmentConfidence`,
-  `SegmentEntropy`, `SegmentDifferentiation`, `SegmentPredictability`, `SegmentAging`).
-  Their remaining APIs (tier/margin/bundle optimization, membership/churn/lifecycle
-  forecasting, scenario comparison, autoencoder/RNN, and similar) are a follow-up release.
-  Everything exposed is tested, not a stub.
+  `forecast_composition`, `simulate_what_if`, `reconstruct_segment_history`,
+  `analyze_trend_momentum`), `price_intelligence`
+  (`analyze_price_elasticity`, `optimize_discount`, `predict_tier_migration`,
+  `analyze_category_affinity`), `revenue_intelligence`
+  (`calculate_segment_roi`, `calculate_revenue_attribution`, `forecast_revenue`,
+  `calculate_cac`), `neural_networks` (`NeuralNetwork`, `TrainingStats`),
+  `pattern_discovery` (`SegmentTrend`, `EmergingAudience`), and
+  `segment_intelligence` (`SegmentConfidence`, `SegmentEntropy`,
+  `SegmentDifferentiation`, `SegmentPredictability`, `SegmentAging`).
+  Their remaining APIs (margin/bundle optimization, membership/churn/lifecycle
+  forecasting, scenario comparison, autoencoder/RNN, and similar) are a follow-up
+  release. Everything exposed is tested, not a stub.
 
 ## Project status
 

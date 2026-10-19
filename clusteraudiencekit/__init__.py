@@ -35,15 +35,20 @@ SegmentAging = PySegmentAging
 SizeForecast = PySizeForecast
 CompositionForecast = PyCompositionForecast
 WhatIfScenario = PyWhatIfScenario
+HistoricalSegmentState = PyHistoricalSegmentState
+TrendMomentum = PyTrendMomentum
 
 # Price intelligence
 ElasticityAnalysis = PyElasticityAnalysis
 DiscountStrategy = PyDiscountStrategy
+TierMigrationForecast = PyTierMigrationForecast
+CategoryAffinity = PyCategoryAffinity
 
 # Revenue intelligence
 SegmentROI = PySegmentROI
 RevenueAttribution = PyRevenueAttribution
 RevenueForecast = PyRevenueForecast
+CustomerAcquisitionCost = PyCustomerAcquisitionCost
 
 # Neural networks
 NeuralNetwork = PyNeuralNetwork
@@ -68,15 +73,18 @@ kmeans = kmeans_py
 # Re-export friendly names
 __all__ = [
     "AudienceSegmenter",
+    "CategoryAffinity",
     "ChurnPrediction",
     "ChurnRiskLevel",
     "CompositionForecast",
+    "CustomerAcquisitionCost",
     "CustomerLTV",
     "DecayFunction",
     "DiscountStrategy",
     "ElasticityAnalysis",
     "EmergingAudience",
     "FeatureDrift",
+    "HistoricalSegmentState",
     "KMeansResult",
     "MiniBatchKMeans",
     "NeuralNetwork",
@@ -105,11 +113,16 @@ __all__ = [
     "StreamingEvent",
     "StreamingSegmentUpdate",
     "StreamingSegmentationEngine",
+    "TierMigrationForecast",
     "TrainingStats",
+    "TrendMomentum",
     "WhatIfScenario",
     "__author__",
     "__version__",
+    "analyze_category_affinity",
     "analyze_price_elasticity",
+    "analyze_trend_momentum",
+    "calculate_cac",
     "calculate_revenue_attribution",
     "calculate_rfm",
     "calculate_segment_roi",
@@ -129,5 +142,7 @@ __all__ = [
     "kmeans",
     "kolmogorov_smirnov",
     "optimize_discount",
+    "predict_tier_migration",
+    "reconstruct_segment_history",
     "simulate_what_if",
 ]
