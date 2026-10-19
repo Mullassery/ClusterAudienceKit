@@ -212,11 +212,6 @@ Verified as of the last audit (October 2026):
 
 Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
 
-## Queue status
-
-Shipped, blocked/failed, and rejected work for this repository is documented in
-[`QUEUE_STATUS.md`](QUEUE_STATUS.md).
-
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Development quickstart:
