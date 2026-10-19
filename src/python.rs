@@ -38,13 +38,13 @@ use crate::engine::lifecycle::{LifecycleStage, LifecycleTracker};
 use crate::engine::lookalike::{LookalikeGenerator, SeedCustomer, SimilarityMetric};
 use crate::engine::neural_networks::{NNConfig, NeuralNetwork};
 use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
-use crate::engine::price_intelligence::ElasticityCalculator;
+use crate::engine::price_intelligence::{DiscountOptimizer, ElasticityCalculator};
 use crate::engine::privacy::{DifferentialPrivacy, KAnonymity, PrivacyBudget};
 use crate::engine::profiling::ProfilingEngine;
 use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
 };
-use crate::engine::revenue_intelligence::ROICalculator;
+use crate::engine::revenue_intelligence::{AttributionEngine, ROICalculator, RevenueForecaster};
 use crate::engine::segment_intelligence::{
     SegmentAging, SegmentConfidence, SegmentDifferentiation, SegmentEntropy, SegmentPredictability,
 };
@@ -52,7 +52,9 @@ use crate::engine::streaming::{
     ReclusterConfig, ReclusterEvent, StreamEventType, StreamingConfig, StreamingEvent,
     StreamingSegmentationEngine, StreamingWindow,
 };
-use crate::engine::temporal_analytics::SegmentSizeForecaster;
+use crate::engine::temporal_analytics::{
+    CompositionForecaster, SegmentSizeForecaster, WhatIfSimulator,
+};
 
 // ============================================================================
 // RFM CLASSES & FUNCTIONS
@@ -2699,6 +2701,176 @@ fn forecast_segment_sizes(
     })
 }
 
+fn validate_ratio(name: &str, value: f64) -> PyResult<()> {
+    if !value.is_finite() || !(0.0..=1.0).contains(&value) {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "{name} must be a finite ratio in [0, 1]"
+        )));
+    }
+    Ok(())
+}
+
+/// Projected segment composition (high-value, churn-risk, and new-member
+/// ratios) from a current snapshot and historical ratio triples.
+#[pyclass]
+pub struct PyCompositionForecast {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub forecast_periods: u32,
+    #[pyo3(get)]
+    pub high_value_ratio_forecast: Vec<f64>,
+    #[pyo3(get)]
+    pub churn_risk_forecast: Vec<f64>,
+    #[pyo3(get)]
+    pub new_member_forecast: Vec<f64>,
+    #[pyo3(get)]
+    pub composition_stability: f64,
+}
+
+#[pymethods]
+impl PyCompositionForecast {
+    fn __repr__(&self) -> String {
+        format!(
+            "CompositionForecast(periods={}, stability={:.4})",
+            self.forecast_periods, self.composition_stability
+        )
+    }
+}
+
+/// Forecast composition ratios using the engine's per-ratio linear trend.
+/// Current and historical ratios must be finite values in `[0, 1]`.
+#[pyfunction]
+fn forecast_composition(
+    current_high_value_ratio: f64,
+    current_churn_risk_ratio: f64,
+    current_new_member_ratio: f64,
+    historical_ratios: Vec<(f64, f64, f64)>,
+    forecast_periods: u32,
+) -> PyResult<PyCompositionForecast> {
+    if forecast_periods == 0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "forecast_periods must be greater than zero",
+        ));
+    }
+    validate_ratio("current_high_value_ratio", current_high_value_ratio)?;
+    validate_ratio("current_churn_risk_ratio", current_churn_risk_ratio)?;
+    validate_ratio("current_new_member_ratio", current_new_member_ratio)?;
+    for (index, (high_value, churn_risk, new_member)) in historical_ratios.iter().enumerate() {
+        validate_ratio(
+            &format!("historical_ratios[{index}].high_value_ratio"),
+            *high_value,
+        )?;
+        validate_ratio(
+            &format!("historical_ratios[{index}].churn_risk_ratio"),
+            *churn_risk,
+        )?;
+        validate_ratio(
+            &format!("historical_ratios[{index}].new_member_ratio"),
+            *new_member,
+        )?;
+    }
+
+    let forecast = CompositionForecaster::forecast_composition(
+        current_high_value_ratio,
+        current_churn_risk_ratio,
+        current_new_member_ratio,
+        &historical_ratios,
+        forecast_periods,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyCompositionForecast {
+        segment_id: forecast.segment_id,
+        forecast_periods: forecast.forecast_periods,
+        high_value_ratio_forecast: forecast.high_value_ratio_forecast,
+        churn_risk_forecast: forecast.churn_risk_forecast,
+        new_member_forecast: forecast.new_member_forecast,
+        composition_stability: forecast.composition_stability,
+    })
+}
+
+/// Projected outcome of changing segmentation parameters.
+#[pyclass]
+pub struct PyWhatIfScenario {
+    #[pyo3(get)]
+    pub scenario_name: String,
+    #[pyo3(get)]
+    pub description: String,
+    #[pyo3(get)]
+    pub parameters_changed: HashMap<String, (String, String)>,
+    #[pyo3(get)]
+    pub projected_segment_sizes: Vec<(String, usize)>,
+    #[pyo3(get)]
+    pub projected_revenue_impact: f64,
+    #[pyo3(get)]
+    pub projected_churn_impact: f64,
+    #[pyo3(get)]
+    pub feasibility_score: f64,
+}
+
+#[pymethods]
+impl PyWhatIfScenario {
+    fn __repr__(&self) -> String {
+        format!(
+            "WhatIfScenario(name={}, revenue_impact={:.2}%, feasibility={:.2})",
+            self.scenario_name, self.projected_revenue_impact, self.feasibility_score
+        )
+    }
+}
+
+/// Simulate a what-if parameter change against baseline `(segment, size)`
+/// pairs. Supported parameters are `rfm_threshold`, `n_clusters`, and
+/// `churn_threshold`; unknown keys are retained but do not alter sizes.
+#[pyfunction]
+fn simulate_what_if(
+    scenario_name: &str,
+    baseline_sizes: Vec<(String, usize)>,
+    parameter_changes: HashMap<String, f64>,
+) -> PyResult<PyWhatIfScenario> {
+    if scenario_name.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "scenario_name must not be empty",
+        ));
+    }
+    if baseline_sizes.is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "baseline_sizes must not be empty",
+        ));
+    }
+    for (name, value) in &parameter_changes {
+        if !value.is_finite() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "parameter {name} must be finite"
+            )));
+        }
+    }
+    if let Some(n_clusters) = parameter_changes.get("n_clusters") {
+        if *n_clusters < 1.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "n_clusters must be at least 1",
+            ));
+        }
+    }
+
+    let scenario = WhatIfSimulator::simulate_parameter_change(
+        scenario_name,
+        &baseline_sizes,
+        &parameter_changes,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyWhatIfScenario {
+        scenario_name: scenario.scenario_name,
+        description: scenario.description,
+        parameters_changed: scenario.parameters_changed,
+        projected_segment_sizes: scenario.projected_segment_sizes,
+        projected_revenue_impact: scenario.projected_revenue_impact,
+        projected_churn_impact: scenario.projected_churn_impact,
+        feasibility_score: scenario.feasibility_score,
+    })
+}
+
 // ---------------------------------------------------------------------------
 // Price intelligence (exposed slice)
 // ---------------------------------------------------------------------------
@@ -2746,6 +2918,84 @@ fn analyze_price_elasticity(
         revenue_sensitivity: analysis.revenue_sensitivity,
         demand_curve: analysis.demand_curve,
         optimal_price: analysis.optimal_price,
+    })
+}
+
+/// Discount recommendation and its projected revenue/acquisition impact.
+#[pyclass]
+pub struct PyDiscountStrategy {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub optimal_discount: f64,
+    #[pyo3(get)]
+    pub expected_conversion_lift: f64,
+    #[pyo3(get)]
+    pub revenue_impact: f64,
+    #[pyo3(get)]
+    pub customer_acquisition_benefit: f64,
+    #[pyo3(get)]
+    pub recommendation: String,
+}
+
+#[pymethods]
+impl PyDiscountStrategy {
+    fn __repr__(&self) -> String {
+        format!(
+            "DiscountStrategy(segment={}, discount={:.2}%, lift={:.4})",
+            self.segment_id,
+            self.optimal_discount * 100.0,
+            self.expected_conversion_lift
+        )
+    }
+}
+
+/// Optimize a segment discount from its price sensitivity and customer LTV.
+/// `baseline_conversion` is accepted for parity with the engine API but the
+/// current formula does not use it.
+#[pyfunction]
+fn optimize_discount(
+    segment_id: &str,
+    baseline_conversion: f64,
+    price_sensitivity: f64,
+    customer_ltv: f64,
+) -> PyResult<PyDiscountStrategy> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    if !baseline_conversion.is_finite() || !(0.0..=1.0).contains(&baseline_conversion) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "baseline_conversion must be a finite ratio in [0, 1]",
+        ));
+    }
+    if !price_sensitivity.is_finite() || price_sensitivity < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "price_sensitivity must be a finite non-negative number",
+        ));
+    }
+    if !customer_ltv.is_finite() || customer_ltv < 0.0 {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "customer_ltv must be a finite non-negative number",
+        ));
+    }
+
+    let strategy = DiscountOptimizer::optimize_discount(
+        segment_id,
+        baseline_conversion,
+        price_sensitivity,
+        customer_ltv,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyDiscountStrategy {
+        segment_id: strategy.segment_id,
+        optimal_discount: strategy.optimal_discount,
+        expected_conversion_lift: strategy.expected_conversion_lift,
+        revenue_impact: strategy.revenue_impact,
+        customer_acquisition_benefit: strategy.customer_acquisition_benefit,
+        recommendation: strategy.recommendation,
     })
 }
 
@@ -2802,6 +3052,155 @@ fn calculate_segment_roi(
         payback_period_days: roi.payback_period_days,
         profitability_index: roi.profitability_index,
         risk_level: roi.risk_level,
+    })
+}
+
+/// Revenue attributed to channels, products, and cohorts for one segment.
+#[pyclass]
+pub struct PyRevenueAttribution {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub channel_attributions: HashMap<String, f64>,
+    #[pyo3(get)]
+    pub product_attributions: HashMap<String, f64>,
+    #[pyo3(get)]
+    pub cohort_attributions: HashMap<String, f64>,
+    #[pyo3(get)]
+    pub first_touch_revenue: f64,
+    #[pyo3(get)]
+    pub last_touch_revenue: f64,
+    #[pyo3(get)]
+    pub multi_touch_revenue: f64,
+    #[pyo3(get)]
+    pub attribution_model: String,
+}
+
+#[pymethods]
+impl PyRevenueAttribution {
+    fn __repr__(&self) -> String {
+        format!(
+            "RevenueAttribution(segment={}, model={}, multi_touch={:.2})",
+            self.segment_id, self.attribution_model, self.multi_touch_revenue
+        )
+    }
+}
+
+/// Break revenue down by channel, product, and cohort. Revenue values must
+/// be finite and non-negative.
+#[pyfunction]
+fn calculate_revenue_attribution(
+    segment_id: &str,
+    channel_revenue: Vec<(String, f64)>,
+    product_revenue: Vec<(String, f64)>,
+    cohort_revenue: Vec<(String, f64)>,
+) -> PyResult<PyRevenueAttribution> {
+    if segment_id.trim().is_empty() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "segment_id must not be empty",
+        ));
+    }
+    for (label, rows) in [
+        ("channel_revenue", &channel_revenue),
+        ("product_revenue", &product_revenue),
+        ("cohort_revenue", &cohort_revenue),
+    ] {
+        for (index, (name, revenue)) in rows.iter().enumerate() {
+            if name.trim().is_empty() {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "{label}[{index}] name must not be empty"
+                )));
+            }
+            if !revenue.is_finite() || *revenue < 0.0 {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "{label}[{index}] revenue must be finite and non-negative"
+                )));
+            }
+        }
+    }
+
+    let attribution = AttributionEngine::calculate_attribution(
+        segment_id,
+        &channel_revenue,
+        &product_revenue,
+        &cohort_revenue,
+    )
+    .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyRevenueAttribution {
+        segment_id: attribution.segment_id,
+        channel_attributions: attribution.channel_attributions,
+        product_attributions: attribution.product_attributions,
+        cohort_attributions: attribution.cohort_attributions,
+        first_touch_revenue: attribution.first_touch_revenue,
+        last_touch_revenue: attribution.last_touch_revenue,
+        multi_touch_revenue: attribution.multi_touch_revenue,
+        attribution_model: attribution.attribution_model,
+    })
+}
+
+/// Linear revenue forecast with confidence bounds and an R-squared accuracy.
+#[pyclass]
+pub struct PyRevenueForecast {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub forecast_periods: u32,
+    #[pyo3(get)]
+    pub predicted_revenue: Vec<f64>,
+    #[pyo3(get)]
+    pub confidence_intervals_lower: Vec<f64>,
+    #[pyo3(get)]
+    pub confidence_intervals_upper: Vec<f64>,
+    #[pyo3(get)]
+    pub growth_rate: f64,
+    #[pyo3(get)]
+    pub forecast_accuracy: f64,
+}
+
+#[pymethods]
+impl PyRevenueForecast {
+    fn __repr__(&self) -> String {
+        format!(
+            "RevenueForecast(periods={}, growth={:.2}%, accuracy={:.4})",
+            self.forecast_periods, self.growth_rate, self.forecast_accuracy
+        )
+    }
+}
+
+/// Forecast future revenue from a historical series. Needs at least three
+/// finite, non-negative points and a non-zero first point (for the growth
+/// rate).
+#[pyfunction]
+fn forecast_revenue(
+    historical_revenue: Vec<f64>,
+    forecast_periods: u32,
+) -> PyResult<PyRevenueForecast> {
+    if historical_revenue
+        .iter()
+        .any(|value| !value.is_finite() || *value < 0.0)
+    {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "historical_revenue must contain finite non-negative values",
+        ));
+    }
+    if historical_revenue.first() == Some(&0.0) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "first historical_revenue value must be non-zero for a defined growth rate",
+        ));
+    }
+
+    let forecast = RevenueForecaster::forecast_revenue(&historical_revenue, forecast_periods)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+
+    Ok(PyRevenueForecast {
+        segment_id: forecast.segment_id,
+        forecast_periods: forecast.forecast_periods,
+        predicted_revenue: forecast.predicted_revenue,
+        confidence_intervals_lower: forecast.confidence_intervals_lower,
+        confidence_intervals_upper: forecast.confidence_intervals_upper,
+        growth_rate: forecast.growth_rate,
+        forecast_accuracy: forecast.forecast_accuracy,
     })
 }
 
@@ -3010,15 +3409,25 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     // Temporal analytics
     m.add_class::<PySizeForecast>()?;
+    m.add_class::<PyCompositionForecast>()?;
+    m.add_class::<PyWhatIfScenario>()?;
     m.add_function(wrap_pyfunction!(forecast_segment_sizes, m)?)?;
+    m.add_function(wrap_pyfunction!(forecast_composition, m)?)?;
+    m.add_function(wrap_pyfunction!(simulate_what_if, m)?)?;
 
     // Price intelligence
     m.add_class::<PyElasticityAnalysis>()?;
+    m.add_class::<PyDiscountStrategy>()?;
     m.add_function(wrap_pyfunction!(analyze_price_elasticity, m)?)?;
+    m.add_function(wrap_pyfunction!(optimize_discount, m)?)?;
 
     // Revenue intelligence
     m.add_class::<PySegmentROI>()?;
+    m.add_class::<PyRevenueAttribution>()?;
+    m.add_class::<PyRevenueForecast>()?;
     m.add_function(wrap_pyfunction!(calculate_segment_roi, m)?)?;
+    m.add_function(wrap_pyfunction!(calculate_revenue_attribution, m)?)?;
+    m.add_function(wrap_pyfunction!(forecast_revenue, m)?)?;
 
     // Neural networks
     m.add_class::<PyTrainingStats>()?;

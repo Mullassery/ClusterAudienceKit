@@ -5,6 +5,14 @@ All notable changes to ClusterAudienceKit are documented here.
 ## [Unreleased]
 
 ### Added
+- Exposed five more stateless analytics APIs with PyO3 wrappers, aliases, and
+  tests: `forecast_composition` / `CompositionForecast` and
+  `simulate_what_if` / `WhatIfScenario` (`temporal_analytics`),
+  `optimize_discount` / `DiscountStrategy` (`price_intelligence`), and
+  `calculate_revenue_attribution` / `RevenueAttribution` plus
+  `forecast_revenue` / `RevenueForecast` (`revenue_intelligence`). Each maps
+  engine errors to `ValueError` and validates finite/range/non-negative
+  inputs; no stubs were added.
 - Exposed stateless slices of the remaining analytics/modelling Rust modules
   (previously Rust-only): `forecast_segment_sizes` / `SizeForecast`
   (`temporal_analytics`), `analyze_price_elasticity` / `ElasticityAnalysis`

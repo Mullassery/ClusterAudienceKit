@@ -5,12 +5,22 @@ from __future__ import annotations
 import pytest
 
 from clusteraudiencekit import (
+    CompositionForecast,
+    DiscountStrategy,
     ElasticityAnalysis,
+    RevenueAttribution,
+    RevenueForecast,
     SegmentROI,
     SizeForecast,
+    WhatIfScenario,
     analyze_price_elasticity,
+    calculate_revenue_attribution,
     calculate_segment_roi,
+    forecast_composition,
+    forecast_revenue,
     forecast_segment_sizes,
+    optimize_discount,
+    simulate_what_if,
 )
 
 
@@ -131,3 +141,171 @@ def test_classes_exported_in_all():
     assert SizeForecast.__name__ == "PySizeForecast"
     assert ElasticityAnalysis.__name__ == "PyElasticityAnalysis"
     assert SegmentROI.__name__ == "PySegmentROI"
+
+
+def test_composition_forecast_projects_each_ratio():
+    forecast = forecast_composition(
+        0.7,
+        0.15,
+        0.05,
+        [(0.5, 0.2, 0.1), (0.7, 0.15, 0.05)],
+        3,
+    )
+    assert isinstance(forecast, CompositionForecast)
+    assert forecast.forecast_periods == 3
+    assert forecast.high_value_ratio_forecast == pytest.approx([0.7, 0.9, 1.0])
+    assert forecast.churn_risk_forecast == pytest.approx([0.15, 0.10, 0.05])
+    assert forecast.new_member_forecast == pytest.approx([0.05, 0.0, 0.0])
+    assert forecast.composition_stability == pytest.approx(1.0 / 1.01)
+
+
+def test_composition_forecast_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        forecast_composition(0.5, 0.2, 0.1, [], 0)
+    with pytest.raises(ValueError):
+        forecast_composition(1.5, 0.2, 0.1, [], 2)
+    with pytest.raises(ValueError):
+        forecast_composition(0.5, -0.2, 0.1, [], 2)
+    with pytest.raises(ValueError):
+        forecast_composition(0.5, 0.2, 0.1, [(0.5, float("nan"), 0.1)], 2)
+
+
+def test_what_if_scenario_projects_sizes_and_impacts():
+    scenario = simulate_what_if(
+        "scale",
+        [("a", 100), ("b", 200)],
+        {"rfm_threshold": 0.5, "n_clusters": 2.0, "churn_threshold": 0.1},
+    )
+    assert isinstance(scenario, WhatIfScenario)
+    assert scenario.scenario_name == "scale"
+    assert scenario.description == "Scenario with 3 parameter changes"
+    assert scenario.projected_segment_sizes == [("a", 52), ("b", 105)]
+    assert scenario.projected_revenue_impact == pytest.approx((157.0 - 300.0) / 300.0 * 100.0)
+    assert scenario.projected_churn_impact == pytest.approx(0.1)
+    assert scenario.feasibility_score == pytest.approx(0.7)
+    assert set(scenario.parameters_changed) == {
+        "rfm_threshold",
+        "n_clusters",
+        "churn_threshold",
+    }
+    assert scenario.parameters_changed["n_clusters"] == ("old", "2.00")
+
+
+def test_what_if_scenario_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        simulate_what_if("", [("a", 10)], {})
+    with pytest.raises(ValueError):
+        simulate_what_if("scale", [], {})
+    with pytest.raises(ValueError):
+        simulate_what_if("scale", [("a", 10)], {"n_clusters": 0.0})
+    with pytest.raises(ValueError):
+        simulate_what_if("scale", [("a", 10)], {"rfm_threshold": float("inf")})
+
+
+def test_optimize_discount_numeric_values():
+    strategy = optimize_discount("seg-1", 0.05, 2.0, 100.0)
+    assert isinstance(strategy, DiscountStrategy)
+    assert strategy.optimal_discount == pytest.approx(0.3)
+    assert strategy.expected_conversion_lift == pytest.approx(1.2)
+    assert strategy.revenue_impact == pytest.approx(84.0)
+    assert strategy.customer_acquisition_benefit == pytest.approx(0.36)
+    assert strategy.recommendation == "Apply 30.0% discount to maximize revenue"
+
+
+def test_optimize_discount_recommends_holding_price_when_impact_is_small():
+    strategy = optimize_discount("seg-1", 0.05, 0.05, 100.0)
+    assert strategy.optimal_discount == pytest.approx(0.0075)
+    assert strategy.revenue_impact == pytest.approx(0.0744375)
+    assert strategy.recommendation == "Maintain current pricing"
+
+
+def test_optimize_discount_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        optimize_discount("", 0.05, 1.0, 100.0)
+    with pytest.raises(ValueError):
+        optimize_discount("seg", 1.5, 1.0, 100.0)
+    with pytest.raises(ValueError):
+        optimize_discount("seg", 0.05, -1.0, 100.0)
+    with pytest.raises(ValueError):
+        optimize_discount("seg", 0.05, 1.0, -100.0)
+    with pytest.raises(ValueError):
+        optimize_discount("seg", 0.05, float("nan"), 100.0)
+
+
+def test_revenue_attribution_preserves_maps_and_splits():
+    attribution = calculate_revenue_attribution(
+        "seg-1",
+        [("email", 100.0), ("ads", 300.0)],
+        [("product-a", 150.0)],
+        [("cohort-a", 250.0)],
+    )
+    assert isinstance(attribution, RevenueAttribution)
+    assert attribution.channel_attributions == {"email": 100.0, "ads": 300.0}
+    assert attribution.product_attributions == {"product-a": 150.0}
+    assert attribution.cohort_attributions == {"cohort-a": 250.0}
+    assert attribution.first_touch_revenue == pytest.approx(100.0)
+    assert attribution.last_touch_revenue == pytest.approx(100.0)
+    assert attribution.multi_touch_revenue == pytest.approx(200.0)
+    assert attribution.attribution_model == "multi-touch"
+
+
+def test_revenue_attribution_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        calculate_revenue_attribution("", [], [], [])
+    with pytest.raises(ValueError):
+        calculate_revenue_attribution("seg", [("", 1.0)], [], [])
+    with pytest.raises(ValueError):
+        calculate_revenue_attribution("seg", [("email", -1.0)], [], [])
+    with pytest.raises(ValueError):
+        calculate_revenue_attribution("seg", [], [("p", float("nan"))], [])
+
+
+def test_revenue_forecast_is_linear_with_full_accuracy():
+    forecast = forecast_revenue([100.0, 120.0, 140.0], 3)
+    assert isinstance(forecast, RevenueForecast)
+    assert forecast.forecast_periods == 3
+    assert forecast.predicted_revenue == pytest.approx([160.0, 180.0, 200.0])
+    assert forecast.confidence_intervals_lower == pytest.approx([160.0, 180.0, 200.0])
+    assert forecast.confidence_intervals_upper == pytest.approx([160.0, 180.0, 200.0])
+    assert forecast.growth_rate == pytest.approx(40.0)
+    assert forecast.forecast_accuracy == pytest.approx(1.0)
+
+
+def test_revenue_forecast_zero_periods_is_empty_not_an_error():
+    forecast = forecast_revenue([100.0, 120.0, 140.0], 0)
+    assert forecast.forecast_periods == 0
+    assert forecast.predicted_revenue == []
+
+
+def test_revenue_forecast_rejects_invalid_inputs():
+    with pytest.raises(ValueError):
+        forecast_revenue([100.0, 120.0], 2)
+    with pytest.raises(ValueError):
+        forecast_revenue([0.0, 120.0, 140.0], 2)
+    with pytest.raises(ValueError):
+        forecast_revenue([100.0, -120.0, 140.0], 2)
+    with pytest.raises(ValueError):
+        forecast_revenue([100.0, float("nan"), 140.0], 2)
+
+
+def test_additional_classes_and_functions_exported_in_all():
+    import clusteraudiencekit as cak
+
+    for name in (
+        "CompositionForecast",
+        "WhatIfScenario",
+        "DiscountStrategy",
+        "RevenueAttribution",
+        "RevenueForecast",
+        "forecast_composition",
+        "simulate_what_if",
+        "optimize_discount",
+        "calculate_revenue_attribution",
+        "forecast_revenue",
+    ):
+        assert name in cak.__all__
+    assert CompositionForecast.__name__ == "PyCompositionForecast"
+    assert WhatIfScenario.__name__ == "PyWhatIfScenario"
+    assert DiscountStrategy.__name__ == "PyDiscountStrategy"
+    assert RevenueAttribution.__name__ == "PyRevenueAttribution"
+    assert RevenueForecast.__name__ == "PyRevenueForecast"

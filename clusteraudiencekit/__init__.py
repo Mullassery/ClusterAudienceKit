@@ -33,12 +33,17 @@ SegmentAging = PySegmentAging
 
 # Temporal analytics
 SizeForecast = PySizeForecast
+CompositionForecast = PyCompositionForecast
+WhatIfScenario = PyWhatIfScenario
 
 # Price intelligence
 ElasticityAnalysis = PyElasticityAnalysis
+DiscountStrategy = PyDiscountStrategy
 
 # Revenue intelligence
 SegmentROI = PySegmentROI
+RevenueAttribution = PyRevenueAttribution
+RevenueForecast = PyRevenueForecast
 
 # Neural networks
 NeuralNetwork = PyNeuralNetwork
@@ -65,54 +70,64 @@ __all__ = [
     "AudienceSegmenter",
     "ChurnPrediction",
     "ChurnRiskLevel",
+    "CompositionForecast",
     "CustomerLTV",
     "DecayFunction",
-    "FeatureDrift",
-    "SegmentTrend",
+    "DiscountStrategy",
+    "ElasticityAnalysis",
     "EmergingAudience",
+    "FeatureDrift",
     "KMeansResult",
     "MiniBatchKMeans",
+    "NeuralNetwork",
+    "PreprocessingPipeline",
+    "PreprocessingUnavailable",
     "RFMConfig",
     "RFMScore",
     "ReclusterConfig",
     "ReclusterEvent",
+    "RevenueAttribution",
+    "RevenueForecast",
     "ScoringMethod",
     "SegmentAging",
-    "SizeForecast",
-    "ElasticityAnalysis",
-    "SegmentROI",
-    "NeuralNetwork",
-    "TrainingStats",
     "SegmentCompositionChange",
     "SegmentConfidence",
     "SegmentDifferentiation",
     "SegmentEntropy",
     "SegmentPredictability",
     "SegmentProfile",
+    "SegmentROI",
+    "SegmentTrend",
     "SegmentType",
+    "SegmenterWithPreprocessing",
+    "SizeForecast",
     "StreamingConfig",
     "StreamingEvent",
     "StreamingSegmentUpdate",
     "StreamingSegmentationEngine",
+    "TrainingStats",
+    "WhatIfScenario",
     "__author__",
     "__version__",
-    "PreprocessingPipeline",
-    "PreprocessingUnavailable",
-    "SegmenterWithPreprocessing",
-    "fit_with_preprocessing",
-    "calculate_rfm",
-    "calculate_simple_ltv",
-    "calculate_segment_roi",
     "analyze_price_elasticity",
-    "forecast_segment_sizes",
+    "calculate_revenue_attribution",
+    "calculate_rfm",
+    "calculate_segment_roi",
+    "calculate_simple_ltv",
     "chi_square_drift",
     "detect_feature_drift",
     "export_all_segments_sql",
     "export_segment_sql",
+    "fit_with_preprocessing",
+    "forecast_composition",
+    "forecast_revenue",
+    "forecast_segment_sizes",
     "get_segment_rfm_patterns",
     "get_supported_sql_dialects",
     "hellinger_distance",
     "info",
     "kmeans",
     "kolmogorov_smirnov",
+    "optimize_discount",
+    "simulate_what_if",
 ]

@@ -15,9 +15,10 @@ It covers RFM analysis, KMeans/K-Prototypes clustering, cluster-quality metrics,
 K selection, churn prediction, customer lifetime value, SQL export to 8 warehouse dialects,
 differential privacy / k-anonymity, real-time streaming segmentation, drift detection,
 lookalike audiences, cohort analytics, lifecycle tracking, rule-based behavioral
-segmentation, segment profiling, temporal size forecasting, price elasticity, segment ROI,
-and a small neural-network regressor — all real, tested Rust logic exposed through the
-compiled Python extension (`import clusteraudiencekit`).
+segmentation, segment profiling, temporal size/composition forecasting, what-if scenario
+simulation, price elasticity, discount optimization, segment ROI, revenue attribution and
+forecasting, and a small neural-network regressor — all real, tested Rust logic exposed
+through the compiled Python extension (`import clusteraudiencekit`).
 
 ## Features
 
@@ -39,8 +40,13 @@ compiled Python extension (`import clusteraudiencekit`).
 | Rule-based behavioral segmentation | `PyBehavioralSegmenter`, `PyBehavioralSegment`, `PyBehavioralRule`, `PyCondition` |
 | Segment profiling | `profile_segment` |
 | Temporal size forecasting | `forecast_segment_sizes`, `SizeForecast` |
+| Composition forecasting | `forecast_composition`, `CompositionForecast` |
+| What-if scenario simulation | `simulate_what_if`, `WhatIfScenario` |
 | Price elasticity | `analyze_price_elasticity`, `ElasticityAnalysis` |
+| Discount optimization | `optimize_discount`, `DiscountStrategy` |
 | Segment ROI | `calculate_segment_roi`, `SegmentROI` |
+| Revenue attribution | `calculate_revenue_attribution`, `RevenueAttribution` |
+| Revenue forecasting | `forecast_revenue`, `RevenueForecast` |
 | Neural-network regressor | `NeuralNetwork`, `TrainingStats` |
 
 Segmentation output is 13 named RFM segments (Champions, Loyal Customers, Potential
@@ -73,18 +79,21 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
   numeric feature matrix today, so selecting K-Prototypes through that class runs
   numeric-only (effectively KMeans). The underlying Rust implementation does support mixed
   data; it just isn't reachable from that Python entry point yet.
-- **Six Rust modules are only partially exposed to Python.** Each has a real, tested,
-  stateless slice wired up: `temporal_analytics` (`forecast_segment_sizes`),
-  `price_intelligence` (`analyze_price_elasticity`), `revenue_intelligence`
-  (`calculate_segment_roi`), `neural_networks` (`NeuralNetwork`, `TrainingStats`),
-  `pattern_discovery` (`SegmentTrend`, `EmergingAudience`), and `segment_intelligence`
-  (`SegmentConfidence`, `SegmentEntropy`, `SegmentDifferentiation`,
-  `SegmentPredictability`, `SegmentAging`). Their remaining scenario/composition/optimization
-  APIs are a follow-up release. They're tested, not stubs.
+- **Six Rust modules are only partially exposed to Python.** Each has real, tested,
+  stateless slices wired up: `temporal_analytics` (`forecast_segment_sizes`,
+  `forecast_composition`, `simulate_what_if`), `price_intelligence`
+  (`analyze_price_elasticity`, `optimize_discount`), `revenue_intelligence`
+  (`calculate_segment_roi`, `calculate_revenue_attribution`, `forecast_revenue`),
+  `neural_networks` (`NeuralNetwork`, `TrainingStats`), `pattern_discovery`
+  (`SegmentTrend`, `EmergingAudience`), and `segment_intelligence` (`SegmentConfidence`,
+  `SegmentEntropy`, `SegmentDifferentiation`, `SegmentPredictability`, `SegmentAging`).
+  Their remaining APIs (tier/margin/bundle optimization, membership/churn/lifecycle
+  forecasting, scenario comparison, autoencoder/RNN, and similar) are a follow-up release.
+  Everything exposed is tested, not a stub.
 
 ## Project status
 
-**Production/Stable** per the package classifier (version 7.4.1), with the honest gaps
+**Production/Stable** per the package classifier (version 7.4.2), with the honest gaps
 above. This project tracks its own implementation-vs.-plan status on purpose; see
 [`docs/ROADMAP_HONEST.md`](docs/ROADMAP_HONEST.md). Changes are tracked in
 [CHANGELOG.md](CHANGELOG.md).
