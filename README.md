@@ -68,10 +68,10 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
   numeric feature matrix today, so selecting K-Prototypes through that class runs
   numeric-only (effectively KMeans). The underlying Rust implementation does support mixed
   data; it just isn't reachable from that Python entry point yet.
-- **Six Rust modules are real but not yet exposed to Python:** `segment_intelligence`,
-  `pattern_discovery`, `temporal_analytics`, `price_intelligence`, `revenue_intelligence`,
-  and `neural_networks`. They're tested, not stubs; wiring them to the Python API is a
-  follow-up release.
+- **Five Rust modules are real but not yet exposed to Python:** `segment_intelligence`,
+  `temporal_analytics`, `price_intelligence`, `revenue_intelligence`, and `neural_networks`.
+  `pattern_discovery` is partially exposed now (`SegmentTrend`, `EmergingAudience`); its
+  remaining APIs and the five modules above are a follow-up release. They're tested, not stubs.
 
 ## Project status
 

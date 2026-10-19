@@ -2,6 +2,12 @@
 
 All notable changes to ClusterAudienceKit are documented here.
 
+## [Unreleased]
+
+### Added
+- Exposed `SegmentTrend.from_time_series()` and `EmergingAudience` from the
+  `pattern_discovery` engine module (previously Rust-only).
+
 ## [7.4.2] - 2026-10-17
 
 ### Fixed

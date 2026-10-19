@@ -38,6 +38,7 @@ use crate::engine::lifecycle::{LifecycleStage, LifecycleTracker};
 use crate::engine::lookalike::{LookalikeGenerator, SeedCustomer, SimilarityMetric};
 use crate::engine::privacy::{DifferentialPrivacy, KAnonymity, PrivacyBudget};
 use crate::engine::profiling::ProfilingEngine;
+use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
 use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
 };
@@ -2371,6 +2372,89 @@ fn profile_segment(
 // PYTHON MODULE INITIALIZATION
 // ============================================================================
 
+
+// ---------------------------------------------------------------------------
+// Pattern discovery (exposed slice)
+// ---------------------------------------------------------------------------
+
+#[pyclass]
+pub struct PySegmentTrend {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub trend_direction: String,
+    #[pyo3(get)]
+    pub trend_strength: f64,
+    #[pyo3(get)]
+    pub moving_average: f64,
+    #[pyo3(get)]
+    pub volatility: f64,
+    #[pyo3(get)]
+    pub forecast_accuracy: f64,
+}
+
+#[pymethods]
+impl PySegmentTrend {
+    #[staticmethod]
+    fn from_time_series(segment_id: usize, values: Vec<f64>) -> PyResult<Self> {
+        let trend = SegmentTrend::from_time_series(segment_id, &values)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            segment_id: trend.segment_id,
+            trend_direction: trend.trend_direction,
+            trend_strength: trend.trend_strength,
+            moving_average: trend.moving_average,
+            volatility: trend.volatility,
+            forecast_accuracy: trend.forecast_accuracy,
+        })
+    }
+}
+
+#[pyclass]
+pub struct PyEmergingAudience {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub emergence_score: f64,
+    #[pyo3(get)]
+    pub growth_rate: f64,
+    #[pyo3(get)]
+    pub periods_since_emergence: usize,
+    #[pyo3(get)]
+    pub current_size: usize,
+    #[pyo3(get)]
+    pub projected_size_next_period: usize,
+    #[pyo3(get)]
+    pub emergence_status: String,
+}
+
+#[pymethods]
+impl PyEmergingAudience {
+    #[new]
+    fn new(
+        segment_id: usize,
+        current_size: usize,
+        previous_size: usize,
+        historical_sizes: Vec<usize>,
+    ) -> Self {
+        let audience = EmergingAudience::new(
+            segment_id,
+            current_size,
+            previous_size,
+            &historical_sizes,
+        );
+        Self {
+            segment_id: audience.segment_id,
+            emergence_score: audience.emergence_score,
+            growth_rate: audience.growth_rate,
+            periods_since_emergence: audience.periods_since_emergence,
+            current_size: audience.current_size,
+            projected_size_next_period: audience.projected_size_next_period,
+            emergence_status: audience.emergence_status,
+        }
+    }
+}
+
 /// Python module initialization
 #[pymodule]
 fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
@@ -2426,6 +2510,8 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
 
     // Drift detection
     m.add_class::<PyFeatureDrift>()?;
+    m.add_class::<PySegmentTrend>()?;
+    m.add_class::<PyEmergingAudience>()?;
     m.add_class::<PySegmentCompositionChange>()?;
     m.add_function(wrap_pyfunction!(kolmogorov_smirnov, m)?)?;
     m.add_function(wrap_pyfunction!(hellinger_distance, m)?)?;

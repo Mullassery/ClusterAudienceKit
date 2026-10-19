@@ -21,6 +21,8 @@ CustomerLTV = PyCustomerLTV
 SegmentType = PySegmentType
 SegmentProfile = PySegmentProfile
 MiniBatchKMeans = PyMiniBatchKMeans
+SegmentTrend = PySegmentTrend
+EmergingAudience = PyEmergingAudience
 
 # Streaming segmentation + drift-triggered re-clustering (never aliased
 # before -- these were only reachable via their raw Py-prefixed names,
@@ -46,6 +48,8 @@ __all__ = [
     "CustomerLTV",
     "DecayFunction",
     "FeatureDrift",
+    "SegmentTrend",
+    "EmergingAudience",
     "KMeansResult",
     "MiniBatchKMeans",
     "RFMConfig",
