@@ -121,6 +121,31 @@ segmenter.fit(features)
 segments = segmenter.predict(features)
 ```
 
+## Preprocessing before clustering
+
+Distance-based clustering needs comparable numeric features. Install the
+optional sklearn/pandas adapter:
+
+```bash
+pip install "clusteraudiencekit[preprocessing]"
+```
+
+```python
+from clusteraudiencekit import AudienceSegmenter, fit_with_preprocessing
+
+wrapped = fit_with_preprocessing(
+    AudienceSegmenter(n_clusters=4),
+    customers_df,
+    numeric_features=["recency", "frequency", "monetary"],
+    categorical_features=["channel", "region"],
+)
+labels = wrapped.predict(customers_df)
+```
+
+`PreprocessingPipeline` fits median imputation, standard scaling and one-hot
+encoding, and reuses those fitted statistics at predict time. It is optional;
+the Rust engine itself remains dependency-free.
+
 ## Usage
 
 ### Why ClusterAudienceKit?

@@ -3,7 +3,7 @@
 This file records what was shipped, what is blocked/failed, and what is rejected for this repository. It complements `AUDIT_FINDINGS.md`.
 
 ## Shipped
-- No code changes in this cycle; audit/bundle docs added.
+- Optional sklearn `PreprocessingPipeline` and `SegmenterWithPreprocessing` adapter (`[preprocessing]` extra); audit/bundle docs added.
 
 ## Blocked / failed
 - Linux/Windows wheels.

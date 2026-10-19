@@ -1,6 +1,12 @@
 """ClusterAudienceKit - Production audience segmentation engine with Python bindings"""
 
 from .clusteraudiencekit import *
+from .preprocessing import (
+    PreprocessingPipeline,
+    PreprocessingUnavailable,
+    SegmenterWithPreprocessing,
+    fit_with_preprocessing,
+)
 
 # Create friendly aliases for classes (remove Py prefix)
 AudienceSegmenter = PyAudienceSegmenter
@@ -56,6 +62,10 @@ __all__ = [
     "StreamingSegmentationEngine",
     "__author__",
     "__version__",
+    "PreprocessingPipeline",
+    "PreprocessingUnavailable",
+    "SegmenterWithPreprocessing",
+    "fit_with_preprocessing",
     "calculate_rfm",
     "calculate_simple_ltv",
     "chi_square_drift",
