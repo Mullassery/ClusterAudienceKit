@@ -201,6 +201,11 @@ Verified as of the last audit (October 2026):
 - **Six tested Rust modules are implemented but not yet wired to the Python API** (see
   "What it is not").
 
+## Queue status
+
+Shipped, blocked/failed, and rejected work for this repository is documented in
+[`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Development quickstart:
