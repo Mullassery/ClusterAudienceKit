@@ -201,6 +201,17 @@ Verified as of the last audit (October 2026):
 - **Six tested Rust modules are implemented but not yet wired to the Python API** (see
   "What it is not").
 
+## Known issues and deferred work
+
+**Blocked / failed:**
+- Linux/Windows wheels.
+- CLV/churn validation against lifetimes/PyMC-Marketing.
+
+**Rejected / deferred:**
+- A full CDP or warehouse; integrate with MessageBirds/PyReverseETL.
+
+Full shipped/blocked/rejected detail: [`QUEUE_STATUS.md`](QUEUE_STATUS.md).
+
 ## Queue status
 
 Shipped, blocked/failed, and rejected work for this repository is documented in
