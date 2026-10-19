@@ -24,6 +24,13 @@ MiniBatchKMeans = PyMiniBatchKMeans
 SegmentTrend = PySegmentTrend
 EmergingAudience = PyEmergingAudience
 
+# Segment intelligence metrics
+SegmentConfidence = PySegmentConfidence
+SegmentEntropy = PySegmentEntropy
+SegmentDifferentiation = PySegmentDifferentiation
+SegmentPredictability = PySegmentPredictability
+SegmentAging = PySegmentAging
+
 # Streaming segmentation + drift-triggered re-clustering (never aliased
 # before -- these were only reachable via their raw Py-prefixed names,
 # unlike every other class in this module).
@@ -57,7 +64,12 @@ __all__ = [
     "ReclusterConfig",
     "ReclusterEvent",
     "ScoringMethod",
+    "SegmentAging",
     "SegmentCompositionChange",
+    "SegmentConfidence",
+    "SegmentDifferentiation",
+    "SegmentEntropy",
+    "SegmentPredictability",
     "SegmentProfile",
     "SegmentType",
     "StreamingConfig",

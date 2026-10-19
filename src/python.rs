@@ -36,11 +36,14 @@ use crate::engine::k_estimation::{
 };
 use crate::engine::lifecycle::{LifecycleStage, LifecycleTracker};
 use crate::engine::lookalike::{LookalikeGenerator, SeedCustomer, SimilarityMetric};
+use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
 use crate::engine::privacy::{DifferentialPrivacy, KAnonymity, PrivacyBudget};
 use crate::engine::profiling::ProfilingEngine;
-use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
 use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
+};
+use crate::engine::segment_intelligence::{
+    SegmentAging, SegmentConfidence, SegmentDifferentiation, SegmentEntropy, SegmentPredictability,
 };
 use crate::engine::streaming::{
     ReclusterConfig, ReclusterEvent, StreamEventType, StreamingConfig, StreamingEvent,
@@ -2455,6 +2458,193 @@ impl PyEmergingAudience {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Segment intelligence (exposed slice)
+// ---------------------------------------------------------------------------
+
+/// Membership certainty for one member, derived from the distance to its own
+/// centroid versus the distance to the nearest other centroid.
+#[pyclass]
+pub struct PySegmentConfidence {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub member_id: String,
+    #[pyo3(get)]
+    pub confidence_score: f64,
+    #[pyo3(get)]
+    pub distance_to_centroid: f64,
+    #[pyo3(get)]
+    pub distance_to_nearest_other: f64,
+}
+
+#[pymethods]
+impl PySegmentConfidence {
+    #[new]
+    fn new(
+        segment_id: usize,
+        member_id: String,
+        distance_to_centroid: f64,
+        distance_to_nearest_other: f64,
+    ) -> Self {
+        let conf = SegmentConfidence::new(
+            segment_id,
+            member_id,
+            distance_to_centroid,
+            distance_to_nearest_other,
+        );
+        Self {
+            segment_id: conf.segment_id,
+            member_id: conf.member_id,
+            confidence_score: conf.confidence_score,
+            distance_to_centroid: conf.distance_to_centroid,
+            distance_to_nearest_other: conf.distance_to_nearest_other,
+        }
+    }
+}
+
+/// Diversity of a segment, computed from category frequencies. `compute_shannon`
+/// returns Shannon entropy in bits (`-Σ p log2 p`); `compute_gini` returns the
+/// normalized Gini concentration coefficient.
+#[pyclass]
+pub struct PySegmentEntropy {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub shannon_entropy: f64,
+    #[pyo3(get)]
+    pub gini_coefficient: f64,
+    #[pyo3(get)]
+    pub member_count: usize,
+}
+
+#[pymethods]
+impl PySegmentEntropy {
+    #[new]
+    fn new(segment_id: usize, member_count: usize) -> Self {
+        let entropy = SegmentEntropy::new(segment_id, member_count);
+        Self {
+            segment_id: entropy.segment_id,
+            shannon_entropy: entropy.shannon_entropy,
+            gini_coefficient: entropy.gini_coefficient,
+            member_count: entropy.member_count,
+        }
+    }
+
+    #[staticmethod]
+    fn compute_shannon(frequencies: Vec<usize>) -> f64 {
+        SegmentEntropy::compute_shannon(&frequencies)
+    }
+
+    #[staticmethod]
+    fn compute_gini(frequencies: Vec<usize>) -> f64 {
+        SegmentEntropy::compute_gini(&frequencies)
+    }
+
+    fn __repr__(&self) -> String {
+        format!(
+            "SegmentEntropy(id={}, shannon={:.4}, gini={:.4}, members={})",
+            self.segment_id, self.shannon_entropy, self.gini_coefficient, self.member_count
+        )
+    }
+}
+
+/// Uniqueness of a segment: `1.0 - similarity_to_nearest`.
+#[pyclass]
+pub struct PySegmentDifferentiation {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub differentiation_score: f64,
+    #[pyo3(get)]
+    pub similarity_to_nearest: f64,
+    #[pyo3(get)]
+    pub similarity_to_farthest: f64,
+}
+
+#[pymethods]
+impl PySegmentDifferentiation {
+    #[new]
+    fn new(segment_id: usize, similarity_to_nearest: f64, similarity_to_farthest: f64) -> Self {
+        let diff =
+            SegmentDifferentiation::new(segment_id, similarity_to_nearest, similarity_to_farthest);
+        Self {
+            segment_id: diff.segment_id,
+            differentiation_score: diff.differentiation_score,
+            similarity_to_nearest: diff.similarity_to_nearest,
+            similarity_to_farthest: diff.similarity_to_farthest,
+        }
+    }
+}
+
+/// Stability of segment assignments from assignment variance and churn rate.
+#[pyclass]
+pub struct PySegmentPredictability {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub predictability_score: f64,
+    #[pyo3(get)]
+    pub assignment_variance: f64,
+    #[pyo3(get)]
+    pub churn_rate: f64,
+    #[pyo3(get)]
+    pub stability_trend: String,
+}
+
+#[pymethods]
+impl PySegmentPredictability {
+    #[new]
+    fn new(segment_id: usize, assignment_variance: f64, churn_rate: f64) -> Self {
+        let pred = SegmentPredictability::new(segment_id, assignment_variance, churn_rate);
+        Self {
+            segment_id: pred.segment_id,
+            predictability_score: pred.predictability_score,
+            assignment_variance: pred.assignment_variance,
+            churn_rate: pred.churn_rate,
+            stability_trend: pred.stability_trend,
+        }
+    }
+}
+
+/// Tenure statistics and lifecycle stage for a segment. Raises `ValueError`
+/// when `tenure_days` is empty.
+#[pyclass]
+pub struct PySegmentAging {
+    #[pyo3(get)]
+    pub segment_id: usize,
+    #[pyo3(get)]
+    pub avg_member_tenure_days: f64,
+    #[pyo3(get)]
+    pub median_member_tenure_days: f64,
+    #[pyo3(get)]
+    pub newest_member_days_ago: f64,
+    #[pyo3(get)]
+    pub oldest_member_days_ago: f64,
+    #[pyo3(get)]
+    pub member_churn_rate_30d: f64,
+    #[pyo3(get)]
+    pub segment_lifespan_stage: String,
+}
+
+#[pymethods]
+impl PySegmentAging {
+    #[new]
+    fn new(segment_id: usize, tenure_days: Vec<f64>, member_churn_30d: f64) -> PyResult<Self> {
+        let aging = SegmentAging::new(segment_id, tenure_days, member_churn_30d)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(Self {
+            segment_id: aging.segment_id,
+            avg_member_tenure_days: aging.avg_member_tenure_days,
+            median_member_tenure_days: aging.median_member_tenure_days,
+            newest_member_days_ago: aging.newest_member_days_ago,
+            oldest_member_days_ago: aging.oldest_member_days_ago,
+            member_churn_rate_30d: aging.member_churn_rate_30d,
+            segment_lifespan_stage: aging.segment_lifespan_stage,
+        })
+    }
+}
+
 /// Python module initialization
 #[pymodule]
 fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
@@ -2518,6 +2708,14 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(chi_square_drift, m)?)?;
     m.add_function(wrap_pyfunction!(detect_feature_drift, m)?)?;
     m.add_function(wrap_pyfunction!(detect_segment_composition_change, m)?)?;
+
+    // Segment intelligence: confidence, entropy, differentiation,
+    // predictability, and aging metrics
+    m.add_class::<PySegmentConfidence>()?;
+    m.add_class::<PySegmentEntropy>()?;
+    m.add_class::<PySegmentDifferentiation>()?;
+    m.add_class::<PySegmentPredictability>()?;
+    m.add_class::<PySegmentAging>()?;
 
     // Lookalike audiences
     m.add_class::<PySeedCustomer>()?;

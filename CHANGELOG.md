@@ -7,6 +7,10 @@ All notable changes to ClusterAudienceKit are documented here.
 ### Added
 - Exposed `SegmentTrend.from_time_series()` and `EmergingAudience` from the
   `pattern_discovery` engine module (previously Rust-only).
+- Exposed five stateless metrics from the `segment_intelligence` engine module
+  (previously Rust-only): `SegmentConfidence`, `SegmentEntropy` (including
+  `compute_shannon`/`compute_gini`), `SegmentDifferentiation`,
+  `SegmentPredictability`, and `SegmentAging`.
 
 ## [7.4.2] - 2026-10-17
 
