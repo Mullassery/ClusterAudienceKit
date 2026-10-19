@@ -36,12 +36,15 @@ use crate::engine::k_estimation::{
 };
 use crate::engine::lifecycle::{LifecycleStage, LifecycleTracker};
 use crate::engine::lookalike::{LookalikeGenerator, SeedCustomer, SimilarityMetric};
+use crate::engine::neural_networks::{NNConfig, NeuralNetwork};
 use crate::engine::pattern_discovery::{EmergingAudience, SegmentTrend};
+use crate::engine::price_intelligence::ElasticityCalculator;
 use crate::engine::privacy::{DifferentialPrivacy, KAnonymity, PrivacyBudget};
 use crate::engine::profiling::ProfilingEngine;
 use crate::engine::quality_metrics::{
     CalinskiHarabaszMetric, DaviesBouldinMetric, QualityAssessment, SilhouetteMetric,
 };
+use crate::engine::revenue_intelligence::ROICalculator;
 use crate::engine::segment_intelligence::{
     SegmentAging, SegmentConfidence, SegmentDifferentiation, SegmentEntropy, SegmentPredictability,
 };
@@ -49,6 +52,7 @@ use crate::engine::streaming::{
     ReclusterConfig, ReclusterEvent, StreamEventType, StreamingConfig, StreamingEvent,
     StreamingSegmentationEngine, StreamingWindow,
 };
+use crate::engine::temporal_analytics::SegmentSizeForecaster;
 
 // ============================================================================
 // RFM CLASSES & FUNCTIONS
@@ -2375,7 +2379,6 @@ fn profile_segment(
 // PYTHON MODULE INITIALIZATION
 // ============================================================================
 
-
 // ---------------------------------------------------------------------------
 // Pattern discovery (exposed slice)
 // ---------------------------------------------------------------------------
@@ -2440,12 +2443,8 @@ impl PyEmergingAudience {
         previous_size: usize,
         historical_sizes: Vec<usize>,
     ) -> Self {
-        let audience = EmergingAudience::new(
-            segment_id,
-            current_size,
-            previous_size,
-            &historical_sizes,
-        );
+        let audience =
+            EmergingAudience::new(segment_id, current_size, previous_size, &historical_sizes);
         Self {
             segment_id: audience.segment_id,
             emergence_score: audience.emergence_score,
@@ -2645,6 +2644,298 @@ impl PySegmentAging {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Temporal analytics (exposed slice)
+// ---------------------------------------------------------------------------
+
+/// Linear size forecast for one segment. `predictions` holds
+/// `(periods_ahead, predicted_size)` pairs and the confidence bounds are
+/// the engine's ±10% band, floored at zero.
+#[pyclass]
+pub struct PySizeForecast {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub forecast_days: u32,
+    #[pyo3(get)]
+    pub predictions: Vec<(u32, f64)>,
+    #[pyo3(get)]
+    pub confidence_interval_lower: Vec<f64>,
+    #[pyo3(get)]
+    pub confidence_interval_upper: Vec<f64>,
+    #[pyo3(get)]
+    pub trend_type: String,
+    #[pyo3(get)]
+    pub r_squared: f64,
+}
+
+#[pymethods]
+impl PySizeForecast {
+    fn __repr__(&self) -> String {
+        format!(
+            "SizeForecast(days={}, trend={}, r2={:.4})",
+            self.forecast_days, self.trend_type, self.r_squared
+        )
+    }
+}
+
+/// Forecast future segment sizes from `(day, size)` history using the same
+/// least-squares linear fit as the Rust engine. Needs at least two points.
+#[pyfunction]
+fn forecast_segment_sizes(
+    historical_sizes: Vec<(i32, usize)>,
+    forecast_periods: u32,
+) -> PyResult<PySizeForecast> {
+    let forecast = SegmentSizeForecaster::forecast_sizes(&historical_sizes, forecast_periods)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    Ok(PySizeForecast {
+        segment_id: forecast.segment_id,
+        forecast_days: forecast.forecast_days,
+        predictions: forecast.predictions,
+        confidence_interval_lower: forecast.confidence_interval_lower,
+        confidence_interval_upper: forecast.confidence_interval_upper,
+        trend_type: forecast.trend_type,
+        r_squared: forecast.r_squared,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Price intelligence (exposed slice)
+// ---------------------------------------------------------------------------
+
+/// Average price elasticity across consecutive `(price, quantity)` points.
+#[pyclass]
+pub struct PyElasticityAnalysis {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub price_elasticity: f64,
+    #[pyo3(get)]
+    pub elasticity_classification: String,
+    #[pyo3(get)]
+    pub revenue_sensitivity: f64,
+    #[pyo3(get)]
+    pub demand_curve: Vec<(f64, f64)>,
+    #[pyo3(get)]
+    pub optimal_price: f64,
+}
+
+#[pymethods]
+impl PyElasticityAnalysis {
+    fn __repr__(&self) -> String {
+        format!(
+            "ElasticityAnalysis(segment={}, elasticity={:.4}, class={})",
+            self.segment_id, self.price_elasticity, self.elasticity_classification
+        )
+    }
+}
+
+/// Analyze price elasticity from observed `(price, quantity)` pairs.
+/// Needs at least two points; zero price changes contribute zero elasticity.
+#[pyfunction]
+fn analyze_price_elasticity(
+    segment_id: &str,
+    price_changes: Vec<(f64, f64)>,
+) -> PyResult<PyElasticityAnalysis> {
+    let analysis = ElasticityCalculator::analyze_elasticity(segment_id, &price_changes)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    Ok(PyElasticityAnalysis {
+        segment_id: analysis.segment_id,
+        price_elasticity: analysis.price_elasticity,
+        elasticity_classification: analysis.elasticity_classification,
+        revenue_sensitivity: analysis.revenue_sensitivity,
+        demand_curve: analysis.demand_curve,
+        optimal_price: analysis.optimal_price,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Revenue intelligence (exposed slice)
+// ---------------------------------------------------------------------------
+
+/// Return on investment for one segment.
+#[pyclass]
+pub struct PySegmentROI {
+    #[pyo3(get)]
+    pub segment_id: String,
+    #[pyo3(get)]
+    pub revenue: f64,
+    #[pyo3(get)]
+    pub investment: f64,
+    #[pyo3(get)]
+    pub roi_percentage: f64,
+    #[pyo3(get)]
+    pub payback_period_days: f64,
+    #[pyo3(get)]
+    pub profitability_index: f64,
+    #[pyo3(get)]
+    pub risk_level: String,
+}
+
+#[pymethods]
+impl PySegmentROI {
+    fn __repr__(&self) -> String {
+        format!(
+            "SegmentROI(segment={}, roi={:.2}%, risk={})",
+            self.segment_id, self.roi_percentage, self.risk_level
+        )
+    }
+}
+
+/// Calculate ROI (`(revenue - investment) / investment * 100`) and payback
+/// for a segment. `clv` is accepted for parity with the engine API but the
+/// current ROI formula does not use it.
+#[pyfunction]
+fn calculate_segment_roi(
+    segment_id: &str,
+    revenue: f64,
+    investment: f64,
+    clv: f64,
+) -> PyResult<PySegmentROI> {
+    let roi = ROICalculator::calculate_roi(segment_id, revenue, investment, clv)
+        .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+    Ok(PySegmentROI {
+        segment_id: roi.segment_id,
+        revenue: roi.revenue,
+        investment: roi.investment,
+        roi_percentage: roi.roi_percentage,
+        payback_period_days: roi.payback_period_days,
+        profitability_index: roi.profitability_index,
+        risk_level: roi.risk_level,
+    })
+}
+
+// ---------------------------------------------------------------------------
+// Neural networks (exposed slice)
+// ---------------------------------------------------------------------------
+
+/// Result of one `NeuralNetwork.train()` call.
+#[pyclass]
+pub struct PyTrainingStats {
+    #[pyo3(get)]
+    pub epochs: usize,
+    #[pyo3(get)]
+    pub final_loss: f64,
+    #[pyo3(get)]
+    pub samples_trained: usize,
+}
+
+#[pymethods]
+impl PyTrainingStats {
+    fn __repr__(&self) -> String {
+        format!(
+            "TrainingStats(epochs={}, final_loss={:.6}, samples={})",
+            self.epochs, self.final_loss, self.samples_trained
+        )
+    }
+}
+
+/// Small fully-connected regressor: hidden layers with the configured
+/// activation, then a linear output layer.
+#[pyclass]
+pub struct PyNeuralNetwork {
+    inner: NeuralNetwork,
+}
+
+#[pymethods]
+impl PyNeuralNetwork {
+    #[new]
+    #[pyo3(signature = (input_size, output_size, hidden_layers=None, learning_rate=0.01, epochs=100))]
+    fn new(
+        input_size: usize,
+        output_size: usize,
+        hidden_layers: Option<Vec<usize>>,
+        learning_rate: f64,
+        epochs: usize,
+    ) -> PyResult<Self> {
+        if input_size == 0 || output_size == 0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "input_size and output_size must be greater than zero",
+            ));
+        }
+        if hidden_layers
+            .as_ref()
+            .map(|layers| layers.contains(&0))
+            .unwrap_or(false)
+        {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "hidden layer sizes must be greater than zero",
+            ));
+        }
+        if !learning_rate.is_finite() || learning_rate <= 0.0 {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "learning_rate must be a positive finite number",
+            ));
+        }
+
+        let config = NNConfig {
+            hidden_layers: hidden_layers.unwrap_or_else(|| vec![8, 4]),
+            learning_rate,
+            epochs,
+            ..NNConfig::default()
+        };
+        Ok(Self {
+            inner: NeuralNetwork::new(input_size, output_size, config),
+        })
+    }
+
+    #[getter]
+    fn input_size(&self) -> usize {
+        self.inner.input_size
+    }
+
+    #[getter]
+    fn output_size(&self) -> usize {
+        self.inner.output_size
+    }
+
+    /// Run a forward pass for one sample; raises `ValueError` on a size
+    /// mismatch.
+    fn predict(&self, input: Vec<f64>) -> PyResult<Vec<f64>> {
+        self.inner
+            .predict(&input)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+    }
+
+    /// Train with mini-batch SGD. `inputs` and `y` must be non-empty and of
+    /// equal length; each row must match `input_size`/`output_size`.
+    fn train(&mut self, inputs: Vec<Vec<f64>>, y: Vec<Vec<f64>>) -> PyResult<PyTrainingStats> {
+        for (i, row) in inputs.iter().enumerate() {
+            if row.len() != self.inner.input_size {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "input row {} has {} values, expected {}",
+                    i,
+                    row.len(),
+                    self.inner.input_size
+                )));
+            }
+        }
+        for (i, row) in y.iter().enumerate() {
+            if row.len() != self.inner.output_size {
+                return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                    "target row {} has {} values, expected {}",
+                    i,
+                    row.len(),
+                    self.inner.output_size
+                )));
+            }
+        }
+        let stats = self
+            .inner
+            .train(&inputs, &y)
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
+        Ok(PyTrainingStats {
+            epochs: stats.epochs,
+            final_loss: stats.final_loss,
+            samples_trained: stats.samples_trained,
+        })
+    }
+
+    fn layer_info(&self) -> Vec<String> {
+        self.inner.layer_info()
+    }
+}
+
 /// Python module initialization
 #[pymodule]
 fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
@@ -2716,6 +3007,22 @@ fn clusteraudiencekit(py: Python, m: &Bound<PyModule>) -> PyResult<()> {
     m.add_class::<PySegmentDifferentiation>()?;
     m.add_class::<PySegmentPredictability>()?;
     m.add_class::<PySegmentAging>()?;
+
+    // Temporal analytics
+    m.add_class::<PySizeForecast>()?;
+    m.add_function(wrap_pyfunction!(forecast_segment_sizes, m)?)?;
+
+    // Price intelligence
+    m.add_class::<PyElasticityAnalysis>()?;
+    m.add_function(wrap_pyfunction!(analyze_price_elasticity, m)?)?;
+
+    // Revenue intelligence
+    m.add_class::<PySegmentROI>()?;
+    m.add_function(wrap_pyfunction!(calculate_segment_roi, m)?)?;
+
+    // Neural networks
+    m.add_class::<PyTrainingStats>()?;
+    m.add_class::<PyNeuralNetwork>()?;
 
     // Lookalike audiences
     m.add_class::<PySeedCustomer>()?;

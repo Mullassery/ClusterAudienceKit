@@ -15,7 +15,8 @@ It covers RFM analysis, KMeans/K-Prototypes clustering, cluster-quality metrics,
 K selection, churn prediction, customer lifetime value, SQL export to 8 warehouse dialects,
 differential privacy / k-anonymity, real-time streaming segmentation, drift detection,
 lookalike audiences, cohort analytics, lifecycle tracking, rule-based behavioral
-segmentation, and segment profiling — all real, tested Rust logic exposed through the
+segmentation, segment profiling, temporal size forecasting, price elasticity, segment ROI,
+and a small neural-network regressor — all real, tested Rust logic exposed through the
 compiled Python extension (`import clusteraudiencekit`).
 
 ## Features
@@ -37,6 +38,10 @@ compiled Python extension (`import clusteraudiencekit`).
 | Lifecycle tracking | `classify_lifecycle_stage`, `lifecycle_retention_actions`, `lifecycle_stage_distribution` |
 | Rule-based behavioral segmentation | `PyBehavioralSegmenter`, `PyBehavioralSegment`, `PyBehavioralRule`, `PyCondition` |
 | Segment profiling | `profile_segment` |
+| Temporal size forecasting | `forecast_segment_sizes`, `SizeForecast` |
+| Price elasticity | `analyze_price_elasticity`, `ElasticityAnalysis` |
+| Segment ROI | `calculate_segment_roi`, `SegmentROI` |
+| Neural-network regressor | `NeuralNetwork`, `TrainingStats` |
 
 Segmentation output is 13 named RFM segments (Champions, Loyal Customers, Potential
 Loyalists, At Risk, Cannot Lose Them, About to Sleep, New Customers, Promising, Need
@@ -68,12 +73,14 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
   numeric feature matrix today, so selecting K-Prototypes through that class runs
   numeric-only (effectively KMeans). The underlying Rust implementation does support mixed
   data; it just isn't reachable from that Python entry point yet.
-- **Four Rust modules are real but not yet exposed to Python:** `temporal_analytics`,
-  `price_intelligence`, `revenue_intelligence`, and `neural_networks`. Two more are
-  partially exposed: `pattern_discovery` (`SegmentTrend`, `EmergingAudience`) and
-  `segment_intelligence` (`SegmentConfidence`, `SegmentEntropy`, `SegmentDifferentiation`,
-  `SegmentPredictability`, `SegmentAging`). Their remaining APIs and the four modules above
-  are a follow-up release. They're tested, not stubs.
+- **Six Rust modules are only partially exposed to Python.** Each has a real, tested,
+  stateless slice wired up: `temporal_analytics` (`forecast_segment_sizes`),
+  `price_intelligence` (`analyze_price_elasticity`), `revenue_intelligence`
+  (`calculate_segment_roi`), `neural_networks` (`NeuralNetwork`, `TrainingStats`),
+  `pattern_discovery` (`SegmentTrend`, `EmergingAudience`), and `segment_intelligence`
+  (`SegmentConfidence`, `SegmentEntropy`, `SegmentDifferentiation`,
+  `SegmentPredictability`, `SegmentAging`). Their remaining scenario/composition/optimization
+  APIs are a follow-up release. They're tested, not stubs.
 
 ## Project status
 
@@ -225,8 +232,8 @@ Verified as of the last audit (October 2026):
 - **Two Rust utility functions are unimplemented stubs.** `pandas_to_arrow`/`arrow_to_pandas`
   in `src/utils/conversions.rs` return `Err("Not implemented")`; they aren't called elsewhere
   or exposed to Python.
-- **Six tested Rust modules are implemented but not yet wired to the Python API** (see
-  "What it is not").
+- **Six tested Rust modules are only partially wired to the Python API** — each exposes a
+  small stateless slice, with the rest deferred (see "What it is not").
 
 ## Known issues and deferred work
 

@@ -31,6 +31,19 @@ SegmentDifferentiation = PySegmentDifferentiation
 SegmentPredictability = PySegmentPredictability
 SegmentAging = PySegmentAging
 
+# Temporal analytics
+SizeForecast = PySizeForecast
+
+# Price intelligence
+ElasticityAnalysis = PyElasticityAnalysis
+
+# Revenue intelligence
+SegmentROI = PySegmentROI
+
+# Neural networks
+NeuralNetwork = PyNeuralNetwork
+TrainingStats = PyTrainingStats
+
 # Streaming segmentation + drift-triggered re-clustering (never aliased
 # before -- these were only reachable via their raw Py-prefixed names,
 # unlike every other class in this module).
@@ -65,6 +78,11 @@ __all__ = [
     "ReclusterEvent",
     "ScoringMethod",
     "SegmentAging",
+    "SizeForecast",
+    "ElasticityAnalysis",
+    "SegmentROI",
+    "NeuralNetwork",
+    "TrainingStats",
     "SegmentCompositionChange",
     "SegmentConfidence",
     "SegmentDifferentiation",
@@ -84,6 +102,9 @@ __all__ = [
     "fit_with_preprocessing",
     "calculate_rfm",
     "calculate_simple_ltv",
+    "calculate_segment_roi",
+    "analyze_price_elasticity",
+    "forecast_segment_sizes",
     "chi_square_drift",
     "detect_feature_drift",
     "export_all_segments_sql",

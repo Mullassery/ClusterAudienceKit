@@ -5,6 +5,14 @@ All notable changes to ClusterAudienceKit are documented here.
 ## [Unreleased]
 
 ### Added
+- Exposed stateless slices of the remaining analytics/modelling Rust modules
+  (previously Rust-only): `forecast_segment_sizes` / `SizeForecast`
+  (`temporal_analytics`), `analyze_price_elasticity` / `ElasticityAnalysis`
+  (`price_intelligence`), `calculate_segment_roi` / `SegmentROI`
+  (`revenue_intelligence`), and `NeuralNetwork` / `TrainingStats`
+  (`neural_networks`, small MLP with `predict`/`train`). All are thin
+  PyO3 wrappers over the existing tested engines, with `ValueError` on
+  invalid input; no stubs were added.
 - Exposed `SegmentTrend.from_time_series()` and `EmergingAudience` from the
   `pattern_discovery` engine module (previously Rust-only).
 - Exposed five stateless metrics from the `segment_intelligence` engine module
