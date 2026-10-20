@@ -103,7 +103,7 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
 
 ## Project status
 
-**Production/Stable** per the package classifier (version 7.5.0), with the honest gaps
+**Production/Stable** per the package classifier (version 7.5.2), with the honest gaps
 above. This project tracks its own implementation-vs.-plan status on purpose; see
 [`docs/ROADMAP_HONEST.md`](docs/ROADMAP_HONEST.md). Changes are tracked in
 [CHANGELOG.md](CHANGELOG.md).
