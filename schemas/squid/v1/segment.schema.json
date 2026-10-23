@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clusteraudiencekit.local/schemas/squid/v1/segment.schema.json",
+  "title": "ClusterAudienceKit Squid audienceSegment record v1",
+  "description": "One custom-object record describing a generated audience segment. Membership is stored separately; this object never contains customer PII.",
+  "type": "object",
+  "required": [
+    "name",
+    "segmentId",
+    "segmentType",
+    "memberCount",
+    "generatedAt",
+    "source",
+    "schemaVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Existing Squid record id, added only after a segmentId lookup match."
+    },
+    "name": {"type": "string", "minLength": 1, "maxLength": 200},
+    "segmentId": {
+      "type": "string",
+      "pattern": "^cak_seg_[a-f0-9]{24}$",
+      "description": "Stable ClusterAudienceKit segment identity."
+    },
+    "segmentType": {
+      "type": "string",
+      "enum": ["rfm", "cluster", "behavioral", "lookalike", "custom"]
+    },
+    "memberCount": {"type": "integer", "minimum": 0},
+    "definitionHash": {
+      "type": "string",
+      "maxLength": 128,
+      "description": "Optional hash of the segment definition/config for reproducibility."
+    },
+    "generatedAt": {"type": "string", "format": "date-time"},
+    "source": {"type": "string", "const": "clusteraudiencekit"},
+    "schemaVersion": {"type": "string", "const": "1"}
+  }
+}

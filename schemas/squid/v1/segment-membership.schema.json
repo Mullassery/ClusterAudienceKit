@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://clusteraudiencekit.local/schemas/squid/v1/segment-membership.schema.json",
+  "title": "ClusterAudienceKit Squid audienceSegmentMembership record v1",
+  "description": "One custom-object membership record. customerId is an opaque CRM/customer reference; names, emails and other PII must not be copied here.",
+  "type": "object",
+  "required": [
+    "name",
+    "membershipId",
+    "segmentId",
+    "customerId",
+    "assignedAt",
+    "source",
+    "schemaVersion"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "description": "Existing Squid record id, added only after a membershipId lookup match."
+    },
+    "name": {"type": "string", "minLength": 1, "maxLength": 260},
+    "membershipId": {
+      "type": "string",
+      "pattern": "^cak_mem_[a-f0-9]{24}$",
+      "description": "Stable identity derived from segmentId + customerId."
+    },
+    "segmentId": {
+      "type": "string",
+      "pattern": "^cak_seg_[a-f0-9]{24}$"
+    },
+    "customerId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "description": "Opaque customer/CRM identifier. Never an email, phone or name."
+    },
+    "score": {
+      "type": "number",
+      "description": "Optional model/segment score for this membership."
+    },
+    "rfmSegment": {
+      "type": "string",
+      "maxLength": 100,
+      "description": "Optional RFM/business segment label (e.g. Champions)."
+    },
+    "assignedAt": {"type": "string", "format": "date-time"},
+    "source": {"type": "string", "const": "clusteraudiencekit"},
+    "schemaVersion": {"type": "string", "const": "1"}
+  }
+}

@@ -5,6 +5,10 @@ All notable changes to ClusterAudienceKit are documented here.
 ## [Unreleased]
 
 ### Added
+- Versioned Squid-CRM custom-object contract for segment metadata and opaque
+  memberships: JSON schemas, `clusteraudiencekit/squid.py` manifest/record/write-plan
+  helpers, stable `cak_seg_`/`cak_mem_` identities, and deterministic
+  `Idempotency-Key` generation. Pure data only; no HTTP client or live writes.
 - Exposed five more stateless analytics APIs with PyO3 wrappers, aliases,
   `__all__` entries, and tests: `reconstruct_segment_history` /
   `HistoricalSegmentState` and `analyze_trend_momentum` / `TrendMomentum`

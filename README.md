@@ -72,11 +72,28 @@ Attention, Lost, At Risk - Sleeping, Hibernating, VIP).
   k-anonymity suppression/generalization are real, tested primitives, not a compliance
   checkbox.
 
+## Squid segment contract
+
+Segment and membership output has a versioned Squid-CRM custom-object contract:
+
+- `schemas/squid/v1/segment.schema.json` — `audienceSegments`
+- `schemas/squid/v1/segment-membership.schema.json` — `audienceSegmentMemberships`
+- `clusteraudiencekit/squid.py` — stable ids, metadata manifest, record mapping,
+  batched lookup/upsert plan and a deterministic `Idempotency-Key`
+- `docs/SQUID_SEGMENTS.md` — field definitions, sequence, acceptance checklist and limits
+
+The helper is pure data: no HTTP client, credentials or live writes. `customerId` is
+opaque, email-like values are rejected, and no consent decision is stored in a segment
+record.
+
 ## What it is not
 
-- **Not external platform activation.** Pushing segments to ad/CRM platforms, B2B
-  governance/workflow tooling, a dashboard UI, and a plugin framework are deliberately out
-  of scope for this library.
+- **Not external platform activation.** The library does not push segments to ad/CRM
+  platforms over HTTP. It does define a versioned Squid-CRM custom-object contract and a
+  pure-data lookup/upsert plan (`clusteraudiencekit/squid.py`,
+  `docs/SQUID_SEGMENTS.md`); Squid acceptance and a live write test remain pending.
+  B2B governance/workflow tooling, a dashboard UI, and a plugin framework are also out of
+  scope.
 - **Not a scikit-learn wrapper.** The algorithms are real, independently unit-tested Rust
   implementations, not thin bindings over Python libraries.
 - **Not feature-scaling-aware by default.** `AudienceSegmenter` does no internal
