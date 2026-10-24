@@ -6,7 +6,7 @@
 > Some API details below (e.g. constructor signatures, algorithm names, or
 > performance numbers) may be aspirational or out of date. For the current,
 > verified-accurate picture of what's real and callable, see
-> [`README.md`](../README.md) and [`docs/ROADMAP_HONEST.md`](ROADMAP_HONEST.md).
+> [`README.md`](../README.md) and [`docs/ROADMAP_HONEST.md`](../ROADMAP_HONEST.md).
 
 
 Complete API documentation for ClusterAudienceKit.
@@ -499,7 +499,7 @@ For 1M customers:
 - `silhouette_score()`: 150-200ms
 - `update()` (incremental): 1-2ms
 
-See [performance guide](../docs/performance-comparison.md) for optimization tips.
+See [performance guide](performance-comparison.md) for optimization tips.
 
 ---
 
