@@ -56,6 +56,8 @@ starts, and record the decision in the PR or changelog.
 
 ## OSS gap analysis — 2026-10-24
 
+**What matters most here:** CLV accuracy and safe defaults. Point-estimate LTV cannot drive budget ranges, and unscaled RFM collapses real customers into one cluster. Add probabilistic CLV and guarded preprocessing before widening the feature list.
+
 Scope: Compared ClusterAudienceKit's implemented RFM/clustering/CLV surface against the two libraries users actually substitute for its numeric work — scikit-learn (clustering/preprocessing) and PyMC-Marketing (probabilistic CLV) — plus the archived-but-canonical lifetimes package. Assessed only features verified in this repo's `python.rs` surface or those projects' own docs/releases.
 
 ### Comparable OSS projects
