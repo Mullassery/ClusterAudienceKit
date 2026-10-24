@@ -65,14 +65,7 @@ pub struct DenseLayer {
 impl DenseLayer {
     /// Create a new dense layer with random initialization
     pub fn new(input_size: usize, output_size: usize, activation: Activation) -> Self {
-        let mut weights = Vec::with_capacity(output_size);
-        for _ in 0..output_size {
-            let mut row = Vec::with_capacity(input_size);
-            for _ in 0..input_size {
-                row.push(0.1); // Xavier-like initialization
-            }
-            weights.push(row);
-        }
+        let weights = vec![vec![0.1; input_size]; output_size];
 
         let biases = vec![0.0; output_size];
 
@@ -97,12 +90,12 @@ impl DenseLayer {
 
         let mut output = vec![0.0; self.output_size];
 
-        for i in 0..self.output_size {
+        for (i, output_value) in output.iter_mut().enumerate() {
             let mut z = self.biases[i];
-            for j in 0..self.input_size {
-                z += self.weights[i][j] * input[j];
+            for (weight, value) in self.weights[i].iter().zip(input.iter()) {
+                z += weight * value;
             }
-            output[i] = self.activation.apply(z);
+            *output_value = self.activation.apply(z);
         }
 
         Ok(output)
@@ -124,9 +117,9 @@ impl DenseLayer {
         let mut input_deltas = vec![0.0; self.input_size];
 
         // Compute input deltas for backprop to previous layer
-        for j in 0..self.input_size {
-            for i in 0..self.output_size {
-                input_deltas[j] += self.weights[i][j] * output_deltas[i];
+        for (j, delta) in input_deltas.iter_mut().enumerate() {
+            for (weight_row, output_delta) in self.weights.iter().zip(output_deltas.iter()) {
+                *delta += weight_row[j] * output_delta;
             }
         }
 
@@ -140,10 +133,16 @@ impl DenseLayer {
         output_deltas: &[f64],
         learning_rate: f64,
     ) -> Result<()> {
-        for i in 0..self.output_size {
-            self.biases[i] -= learning_rate * output_deltas[i];
-            for j in 0..self.input_size {
-                self.weights[i][j] -= learning_rate * output_deltas[i] * input[j];
+        for (i, (bias, weight_row)) in self
+            .biases
+            .iter_mut()
+            .zip(self.weights.iter_mut())
+            .enumerate()
+        {
+            let output_delta = output_deltas[i];
+            *bias -= learning_rate * output_delta;
+            for (weight, value) in weight_row.iter_mut().zip(input.iter()) {
+                *weight -= learning_rate * output_delta * value;
             }
         }
 
@@ -473,12 +472,12 @@ impl Autoencoder {
             for batch_start in (0..inputs.len()).step_by(self.config.batch_size) {
                 let batch_end = (batch_start + self.config.batch_size).min(inputs.len());
 
-                for i in batch_start..batch_end {
-                    let reconstruction = self.reconstruct(&inputs[i])?;
+                for sample in &inputs[batch_start..batch_end] {
+                    let reconstruction = self.reconstruct(sample)?;
 
                     // Reconstruction error (MSE)
                     let mut loss = 0.0;
-                    for (r, x) in reconstruction.iter().zip(inputs[i].iter()) {
+                    for (r, x) in reconstruction.iter().zip(sample.iter()) {
                         loss += (r - x).powi(2);
                     }
                     total_loss += loss / reconstruction.len() as f64;
@@ -564,20 +563,20 @@ impl RecurrentLayer {
 
         let mut new_hidden = vec![0.0; self.hidden_size];
 
-        for i in 0..self.hidden_size {
+        for (i, hidden_value) in new_hidden.iter_mut().enumerate() {
             let mut z = self.bias[i];
 
             // Input contribution
-            for j in 0..self.input_size {
-                z += self.weight_input[i][j] * input[j];
+            for (weight, value) in self.weight_input[i].iter().zip(input.iter()) {
+                z += weight * value;
             }
 
             // Recurrent contribution
-            for j in 0..self.hidden_size {
-                z += self.weight_hidden[i][j] * self.hidden_state[j];
+            for (weight, value) in self.weight_hidden[i].iter().zip(self.hidden_state.iter()) {
+                z += weight * value;
             }
 
-            new_hidden[i] = z.tanh();
+            *hidden_value = z.tanh();
         }
 
         self.hidden_state = new_hidden.clone();

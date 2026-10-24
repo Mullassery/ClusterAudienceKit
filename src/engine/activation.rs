@@ -367,17 +367,17 @@ impl ActivationEngine {
 
     /// Calculate activation statistics from results
     pub fn calculate_stats(results: &[ActivationResult]) -> Result<ActivationStats> {
-        let mut stats = ActivationStats::default();
+        let total_messages = results.len();
+        let successful = results.iter().filter(|r| r.success).count();
+        let failed = results.iter().filter(|r| !r.success).count();
 
-        stats.total_messages = results.len();
-        stats.successful = results.iter().filter(|r| r.success).count();
-        stats.failed = results.iter().filter(|r| !r.success).count();
-
-        if stats.total_messages > 0 {
-            stats.avg_latency_ms = 0.0; // Would be calculated from actual latencies
-        }
-
-        Ok(stats)
+        Ok(ActivationStats {
+            total_messages,
+            successful,
+            failed,
+            avg_latency_ms: 0.0,
+            ..ActivationStats::default()
+        })
     }
 
     /// Get platform endpoint for activation

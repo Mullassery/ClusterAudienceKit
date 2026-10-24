@@ -20,7 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 from datetime import datetime, timezone
-from typing import Any, Dict, Iterable, List, Mapping, Optional, Sequence
+from typing import Any, Iterable, Mapping, Sequence
 
 CONTRACT = "clusteraudiencekit.squid.segment.v1"
 SCHEMA_VERSION = "1"
@@ -70,15 +70,15 @@ def segment_record(
     name: str,
     segment_type: str,
     member_count: int,
-    generated_at: Optional[str] = None,
-    segment: Optional[str] = None,
-    definition_hash: Optional[str] = None,
-) -> Dict[str, Any]:
+    generated_at: str | None = None,
+    segment: str | None = None,
+    definition_hash: str | None = None,
+) -> dict[str, Any]:
     """Build one ``audienceSegments`` record."""
     if member_count < 0:
         raise ValueError("member_count must be >= 0")
     segment = segment or segment_id(name, segment_type, definition_hash or "")
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "name": name.strip(),
         "segmentId": segment,
         "segmentType": segment_type,
@@ -96,11 +96,11 @@ def membership_record(
     *,
     segment: str,
     customer_id: str,
-    assigned_at: Optional[str] = None,
-    score: Optional[float] = None,
-    rfm_segment: Optional[str] = None,
-    membership: Optional[str] = None,
-) -> Dict[str, Any]:
+    assigned_at: str | None = None,
+    score: float | None = None,
+    rfm_segment: str | None = None,
+    membership: str | None = None,
+) -> dict[str, Any]:
     """Build one ``audienceSegmentMemberships`` record.
 
     ``customer_id`` must be an opaque CRM/customer reference. Reject values that
@@ -110,7 +110,7 @@ def membership_record(
     if "@" in customer_id:
         raise ValueError("customer_id must be opaque, not an email address")
     membership = membership or membership_id(segment, customer_id)
-    record: Dict[str, Any] = {
+    record: dict[str, Any] = {
         "name": f"{segment}:{customer_id}",
         "membershipId": membership,
         "segmentId": segment,
@@ -126,7 +126,7 @@ def membership_record(
     return record
 
 
-def manifest() -> Dict[str, Any]:
+def manifest() -> dict[str, Any]:
     """Squid custom-object metadata for segments and memberships."""
     segment_fields = [
         _field("segmentId", "Segment ID", "TEXT", unique=True, searchable=True),
@@ -190,7 +190,7 @@ def _field(
     nullable: bool = False,
     unique: bool = False,
     searchable: bool = False,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     return {
         "name": name,
         "label": label,
@@ -201,7 +201,7 @@ def _field(
     }
 
 
-def _chunks(items: Sequence[Mapping[str, Any]], size: int) -> Iterable[List[Mapping[str, Any]]]:
+def _chunks(items: Sequence[Mapping[str, Any]], size: int) -> Iterable[list[Mapping[str, Any]]]:
     for index in range(0, len(items), size):
         yield list(items[index : index + size])
 
@@ -215,13 +215,13 @@ def write_plan(
     memberships: Sequence[Mapping[str, Any]],
     *,
     batch_size: int = DEFAULT_BATCH_SIZE,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Build the two-phase lookup/upsert plan. No network calls are made."""
     if batch_size < 1 or batch_size > 5000:
         raise ValueError("batch_size must be in 1..=5000")
     segment_batches = list(_chunks(segments, batch_size))
     membership_batches = list(_chunks(memberships, batch_size))
-    operations: List[Dict[str, Any]] = []
+    operations: list[dict[str, Any]] = []
     for batch in segment_batches:
         operations.append(
             {

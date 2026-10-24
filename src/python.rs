@@ -429,19 +429,28 @@ impl PyAudienceSegmenter {
     /// mutation of the process-global rayon pool, so constructing multiple
     /// segmenters with different `n_jobs` values is safe.
     #[new]
-    #[pyo3(signature = (n_clusters, n_jobs=None))]
-    fn new(n_clusters: usize, n_jobs: Option<i32>) -> Self {
+    #[pyo3(signature = (n_clusters, n_jobs=None, method=None))]
+    fn new(n_clusters: usize, n_jobs: Option<i32>, method: Option<&str>) -> PyResult<Self> {
+        let clustering_method = match method.unwrap_or("kmeans") {
+            "kmeans" => ClusteringMethod::KMeans,
+            "kprototypes" => ClusteringMethod::KPrototypes,
+            other => {
+                return Err(PyErr::new::<pyo3::exceptions::PyValueError, _>(format!(
+                    "unsupported clustering method '{other}'; expected 'kmeans' or 'kprototypes'"
+                )))
+            }
+        };
         let config = SegmenterConfig {
-            method: "kmeans".to_string(),
+            method: method.unwrap_or("kmeans").to_string(),
             n_clusters,
             rfm_config: RFMConfig::default(),
-            clustering_method: ClusteringMethod::KMeans,
+            clustering_method,
             random_state: 42,
             n_jobs: n_jobs.unwrap_or(-1),
         };
-        PyAudienceSegmenter {
+        Ok(PyAudienceSegmenter {
             inner: AudienceSegmenterCore::new(config),
-        }
+        })
     }
 
     #[getter]
@@ -449,7 +458,12 @@ impl PyAudienceSegmenter {
         self.inner.config.n_jobs
     }
 
-    fn fit(&mut self, data: Vec<Vec<f64>>) -> PyResult<()> {
+    #[pyo3(signature = (data, categorical_data=None))]
+    fn fit(
+        &mut self,
+        data: Vec<Vec<f64>>,
+        categorical_data: Option<Vec<Vec<usize>>>,
+    ) -> PyResult<()> {
         let data_array = Array2::from_shape_vec(
             (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
             data.into_iter().flatten().collect(),
@@ -457,11 +471,16 @@ impl PyAudienceSegmenter {
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
         self.inner
-            .fit(&data_array)
+            .fit_with_categorical(&data_array, categorical_data.as_ref())
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
     }
 
-    fn predict(&self, data: Vec<Vec<f64>>) -> PyResult<Vec<usize>> {
+    #[pyo3(signature = (data, categorical_data=None))]
+    fn predict(
+        &self,
+        data: Vec<Vec<f64>>,
+        categorical_data: Option<Vec<Vec<usize>>>,
+    ) -> PyResult<Vec<usize>> {
         let data_array = Array2::from_shape_vec(
             (data.len(), if data.is_empty() { 0 } else { data[0].len() }),
             data.into_iter().flatten().collect(),
@@ -469,8 +488,13 @@ impl PyAudienceSegmenter {
         .map_err(|e| PyErr::new::<pyo3::exceptions::PyValueError, _>(e.to_string()))?;
 
         self.inner
-            .predict(&data_array)
+            .predict_with_categorical(&data_array, categorical_data.as_ref())
             .map_err(|e| PyErr::new::<pyo3::exceptions::PyRuntimeError, _>(e.to_string()))
+    }
+
+    #[getter]
+    fn categorical_centers(&self) -> Option<Vec<Vec<usize>>> {
+        self.inner.categorical_centers.clone()
     }
 
     fn get_n_clusters(&self) -> usize {

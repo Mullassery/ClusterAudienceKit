@@ -5,6 +5,14 @@ All notable changes to ClusterAudienceKit are documented here.
 ## [Unreleased]
 
 ### Added
+- Full K-Prototypes categorical support through the Python
+  `AudienceSegmenter`: `AudienceSegmenter(n_clusters, method="kprototypes")`,
+  `fit(data, categorical_data=...)`, `predict(data, categorical_data=...)`,
+  and a `categorical_centers` getter. The engine stores per-cluster
+  categorical modes and reuses the fitted gamma during prediction via the
+  new `clustering::assign_to_clusters_kprototypes`. New Rust and Python
+  regression tests cover fit/predict round-trips and the error paths
+  (categorical data with KMeans, missing categorical data at predict time).
 - Versioned Squid-CRM custom-object contract for segment metadata and opaque
   memberships: JSON schemas, `clusteraudiencekit/squid.py` manifest/record/write-plan
   helpers, stable `cak_seg_`/`cak_mem_` identities, and deterministic
@@ -39,6 +47,15 @@ All notable changes to ClusterAudienceKit are documented here.
   (previously Rust-only): `SegmentConfidence`, `SegmentEntropy` (including
   `compute_shannon`/`compute_gini`), `SegmentDifferentiation`,
   `SegmentPredictability`, and `SegmentAging`.
+
+### Fixed
+- Cleared all 32 remaining `cargo clippy --workspace --all-targets --
+  -D warnings` findings (manual clamp patterns, needless range loops,
+  redundant drains, unused assignments/fields, type-complexity and
+  too-many-arguments lints) and removed the associated dead code. No
+  behavior changes; verified with the full Rust and Python suites.
+- Modernized type annotations in `clusteraudiencekit/squid.py` so
+  `ruff check .` passes again after the Squid contract addition.
 
 ## [7.4.2] - 2026-10-17
 

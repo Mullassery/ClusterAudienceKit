@@ -101,6 +101,9 @@ pub struct AccountHealthScore {
 }
 
 /// B2B segmentation engine
+pub type AccountInput = (FirmographicProfile, AccountEngagement, f64);
+pub type SegmentBucket = (Vec<String>, Vec<f64>, Vec<f64>);
+
 pub struct B2BSegmentation;
 
 impl B2BSegmentation {
@@ -224,10 +227,8 @@ impl B2BSegmentation {
     }
 
     /// Segment accounts into strategic buckets
-    pub fn segment_accounts(
-        accounts: &[(FirmographicProfile, AccountEngagement, f64)], // (profile, engagement, arr)
-    ) -> Result<Vec<B2BAccountSegment>> {
-        let mut segments: HashMap<String, (Vec<String>, Vec<f64>, Vec<f64>)> = HashMap::new();
+    pub fn segment_accounts(accounts: &[AccountInput]) -> Result<Vec<B2BAccountSegment>> {
+        let mut segments: HashMap<String, SegmentBucket> = HashMap::new();
 
         for (profile, engagement, arr) in accounts {
             let size_str = profile.size.as_str();

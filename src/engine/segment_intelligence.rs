@@ -235,7 +235,7 @@ impl ExplainabilityReport {
         let mut sorted = feature_importance.clone();
         sorted.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
 
-        let top_count = (sorted.len() / 3).max(1).min(5);
+        let top_count = (sorted.len() / 3).clamp(1, 5);
         let top_features = sorted.iter().take(top_count).cloned().collect();
         let bottom_features = sorted.iter().rev().take(top_count).cloned().collect();
 
@@ -782,7 +782,7 @@ impl SegmentIntelligence {
         if denominator == 0.0 {
             Ok(0.0)
         } else {
-            Ok((dot_product / denominator).max(-1.0).min(1.0))
+            Ok((dot_product / denominator).clamp(-1.0, 1.0))
         }
     }
 

@@ -246,6 +246,83 @@ pub fn kmeans(
     })
 }
 
+/// Default gamma scale for K-Prototypes: Huang (1998) recommends the average
+/// standard deviation of the numeric fields.
+pub fn kprototypes_gamma(numeric_data: &Array2<f64>) -> f64 {
+    let n = numeric_data.nrows();
+    let mean = numeric_data
+        .mean_axis(Axis(0))
+        .unwrap_or_else(|| Array1::zeros(numeric_data.ncols()));
+    let variance: f64 = numeric_data
+        .axis_iter(Axis(1))
+        .zip(mean.iter())
+        .map(|(col, &m)| col.iter().map(|&v| (v - m).powi(2)).sum::<f64>() / n as f64)
+        .sum::<f64>()
+        / numeric_data.ncols().max(1) as f64;
+    variance.sqrt().max(1e-9)
+}
+
+/// Assign rows to the nearest K-Prototypes center using the same distance
+/// metric as [`kprototypes`]. `gamma` must be the value used during fitting
+/// (see [`kprototypes_gamma`]) for assignments to be consistent.
+pub fn assign_to_clusters_kprototypes(
+    numeric_data: &Array2<f64>,
+    categorical_data: &[Vec<usize>],
+    numeric_centers: &Array2<f64>,
+    categorical_centers: &[Vec<usize>],
+    gamma: f64,
+) -> Result<Vec<usize>> {
+    let n = numeric_data.nrows();
+    if numeric_centers.nrows() == 0 || numeric_centers.nrows() != categorical_centers.len() {
+        return Err(ClusterAudienceKitError::InvalidConfig(
+            "numeric and categorical centers must be non-empty and have equal lengths".to_string(),
+        ));
+    }
+    if numeric_data.ncols() != numeric_centers.ncols() {
+        return Err(ClusterAudienceKitError::DataValidation(format!(
+            "data has {} numeric features but centers have {}",
+            numeric_data.ncols(),
+            numeric_centers.ncols()
+        )));
+    }
+    if categorical_data.len() != n {
+        return Err(ClusterAudienceKitError::DataValidation(
+            "categorical_data row count doesn't match numeric_data".to_string(),
+        ));
+    }
+    let n_cat_features = categorical_centers[0].len();
+    if categorical_data
+        .iter()
+        .any(|row| row.len() != n_cat_features)
+    {
+        return Err(ClusterAudienceKitError::DataValidation(
+            "categorical_data feature count doesn't match centers".to_string(),
+        ));
+    }
+
+    Ok((0..n)
+        .map(|i| {
+            (0..numeric_centers.nrows())
+                .map(|c| {
+                    let numeric_dist = squared_euclidean(
+                        numeric_data.row(i).as_slice().unwrap(),
+                        numeric_centers.row(c).as_slice().unwrap(),
+                    );
+                    let cat_dist = categorical_data[i]
+                        .iter()
+                        .zip(categorical_centers[c].iter())
+                        .filter(|(a, b)| a != b)
+                        .count() as f64;
+                    numeric_dist + gamma * cat_dist
+                })
+                .enumerate()
+                .min_by(|(_, a), (_, b)| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(idx, _)| idx)
+                .unwrap_or(0)
+        })
+        .collect())
+}
+
 /// Perform K-Prototypes clustering (mixed numeric/categorical data), per
 /// Huang (1998): distance = squared Euclidean over numeric fields + gamma *
 /// (count of mismatched categorical fields). Cluster centers are the mean
@@ -287,21 +364,7 @@ pub fn kprototypes(
     // thread pool sized per `n_jobs`, rather than the rayon global pool.
     let pool = build_thread_pool(n_jobs)?;
     pool.install(|| -> Result<Vec<usize>> {
-        // gamma balances the numeric vs categorical distance contribution;
-        // Huang's paper recommends the average standard deviation of the
-        // numeric fields as a reasonable default scale.
-        let gamma = {
-            let mean = numeric_data
-                .mean_axis(Axis(0))
-                .unwrap_or_else(|| Array1::zeros(numeric_data.ncols()));
-            let variance: f64 = numeric_data
-                .axis_iter(Axis(1))
-                .zip(mean.iter())
-                .map(|(col, &m)| col.iter().map(|&v| (v - m).powi(2)).sum::<f64>() / n as f64)
-                .sum::<f64>()
-                / numeric_data.ncols().max(1) as f64;
-            variance.sqrt().max(1e-9)
-        };
+        let gamma = kprototypes_gamma(numeric_data);
 
         let mut rng = StdRng::seed_from_u64(random_state);
         let (mut numeric_centers, chosen_indices) =

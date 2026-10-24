@@ -192,8 +192,7 @@ impl StreamingBuffer {
             .as_secs() as i64;
 
         self.last_flush = now;
-        let events = self.events.drain(..).collect();
-        Ok(events)
+        Ok(std::mem::take(&mut self.events))
     }
 
     pub fn clear(&mut self) {

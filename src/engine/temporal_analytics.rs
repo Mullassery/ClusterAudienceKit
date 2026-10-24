@@ -363,8 +363,6 @@ impl MembershipForecaster {
         segment_transition_probs: &HashMap<(String, String), f64>,
     ) -> Result<MembershipForecast> {
         let mut stay_prob = 0.6;
-        let mut move_prob = 0.25;
-        let mut churn_prob = 0.15;
 
         if let Some((_, &prob)) = segment_transition_probs
             .iter()
@@ -373,11 +371,10 @@ impl MembershipForecaster {
             stay_prob = prob;
         }
 
-        let (next_segment, move_prob_val) =
+        let (next_segment, move_prob) =
             Self::find_most_likely_transition(current_segment, segment_transition_probs);
 
-        move_prob = move_prob_val;
-        churn_prob = 1.0 - stay_prob - move_prob;
+        let churn_prob = 1.0 - stay_prob - move_prob;
 
         let confidence = (stay_prob.max(move_prob) - 0.33).max(0.0);
 
@@ -821,7 +818,7 @@ impl LifecycleForecaster {
                         .copied()
                         .unwrap_or(0.0);
 
-                    *next_dist.get_mut(&to_stage.to_string()).unwrap() += prob * trans_prob;
+                    *next_dist.get_mut(*to_stage).unwrap() += prob * trans_prob;
                 }
             }
 
@@ -838,9 +835,9 @@ impl LifecycleForecaster {
             .iter()
             .max_by(|a, b| {
                 current_dist
-                    .get(&b.to_string())
+                    .get(**b)
                     .unwrap_or(&0.0)
-                    .partial_cmp(current_dist.get(&a.to_string()).unwrap_or(&0.0))
+                    .partial_cmp(current_dist.get(**a).unwrap_or(&0.0))
                     .unwrap_or(std::cmp::Ordering::Equal)
             })
             .map(|s| s.to_string())

@@ -348,8 +348,6 @@ impl LineageTracker {
         let mut edges = Vec::new();
         let mut quality_score: f64 = 1.0;
 
-        let mut current_node = sources.first().cloned().unwrap_or_default();
-
         for (src, tgt, transform) in transformations {
             edges.push(LineageEdge {
                 source: src.clone(),
@@ -359,10 +357,9 @@ impl LineageTracker {
             });
 
             quality_score *= 0.95;
-            current_node = tgt.clone();
         }
 
-        quality_score = quality_score.max(0.1_f64).min(1.0_f64);
+        quality_score = quality_score.clamp(0.1_f64, 1.0_f64);
 
         Ok(DataLineage {
             dataset_id: dataset_id.to_string(),
@@ -527,12 +524,14 @@ pub struct SegmentGenealogy {
     pub merge_events: usize,
 }
 
+pub type SegmentVersionInput = (u32, String, String, Option<String>, String, usize);
+
 pub struct Genealogist;
 
 impl Genealogist {
     pub fn track_genealogy(
         segment_id: &str,
-        versions: &[(u32, String, String, Option<String>, String, usize)],
+        versions: &[SegmentVersionInput],
     ) -> Result<SegmentGenealogy> {
         let mut seg_versions = Vec::new();
         let mut ancestors = 0usize;

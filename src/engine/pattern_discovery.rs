@@ -34,7 +34,7 @@ impl EmergingAudience {
 
         // Emergence score: high growth + young age
         let age_factor = (historical_sizes.len() as f64 / 12.0).min(1.0); // Assume max 12 periods
-        let growth_factor = growth_rate.min(1.0).max(0.0);
+        let growth_factor = growth_rate.clamp(0.0, 1.0);
         let emergence_score = (growth_factor + (1.0 - age_factor)) / 2.0;
 
         // Determine emergence status
@@ -80,7 +80,7 @@ impl SegmentTrend {
         }
 
         // Calculate moving average
-        let window_size = (values.len() / 3).max(1).min(5);
+        let window_size = (values.len() / 3).clamp(1, 5);
         let moving_avg = if values.len() >= window_size {
             let sum: f64 = values[values.len() - window_size..].iter().sum();
             sum / window_size as f64

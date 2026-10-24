@@ -183,5 +183,36 @@ class TestDataValidation:
             kmeans([], n_clusters=2, random_state=0)
 
 
+class TestKPrototypes:
+    """K-Prototypes support through AudienceSegmenter with categorical data."""
+
+    def test_fit_and_predict_use_categorical_features(self):
+        segmenter = AudienceSegmenter(2, method="kprototypes")
+        data = [[0.0, 0.0], [0.0, 0.1], [10.0, 10.0], [10.0, 10.1]]
+        categorical = [[0], [0], [1], [1]]
+        segmenter.fit(data, categorical_data=categorical)
+        labels = segmenter.predict(data, categorical_data=categorical)
+        assert labels[0] == labels[1]
+        assert labels[2] == labels[3]
+        assert labels[0] != labels[2]
+        assert segmenter.categorical_centers is not None
+
+    def test_predict_requires_categorical_data_after_fit(self):
+        segmenter = AudienceSegmenter(2, method="kprototypes")
+        data = [[0.0, 0.0], [0.0, 0.1], [10.0, 10.0], [10.0, 10.1]]
+        segmenter.fit(data, categorical_data=[[0], [0], [1], [1]])
+        with pytest.raises(RuntimeError):
+            segmenter.predict(data)
+
+    def test_categorical_data_requires_kprototypes(self):
+        segmenter = AudienceSegmenter(2)
+        with pytest.raises(RuntimeError):
+            segmenter.fit([[1.0, 1.0], [2.0, 2.0]], categorical_data=[[0], [1]])
+
+    def test_unknown_method_is_rejected(self):
+        with pytest.raises(ValueError):
+            AudienceSegmenter(2, method="hierarchical")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

@@ -1,7 +1,12 @@
 # ClusterAudienceKit Roadmap (Honest)
 
-**Current Version:** 7.4.1
-**Last Updated:** 2026-10-12 — patch release 7.4.1 published to PyPI,
+**Current Version:** 7.5.2
+**Last Updated:** 2026-10-25 — verification and cleanup pass: all remaining
+`cargo clippy -- -D warnings` findings cleared (32 → 0; see "Completion
+pass (2026-10-25)" below), full K-Prototypes categorical support wired
+through `AudienceSegmenter`, and the `unreleased` Python bindings for the
+previously Rust-only analytics modules verified against the current tree.
+**Previously:** 2026-10-12 — patch release 7.4.1 published to PyPI,
 bundling three behavioral fixes that landed after 7.4.0 plus one
 SQL-injection guard (see "Deep code-review pass (2026-09-27)" and the
 7.4.1 CHANGELOG entry). The 2026-09-27 pass found and fixed a real,
@@ -337,10 +342,25 @@ and current dependency-pinning status.
 ## Roadmap
 
 ### Next release — Wire the remaining large modules
-- `segment_intelligence`, `pattern_discovery`, `temporal_analytics`,
-  `price_intelligence`, `revenue_intelligence` Python bindings.
-- Full K-Prototypes categorical support through `AudienceSegmenter`.
-- Clear the remaining 43 clippy findings in not-yet-wired modules.
+- [x] `segment_intelligence`, `pattern_discovery`, `temporal_analytics`,
+  `price_intelligence`, `revenue_intelligence` Python bindings for the
+  stateless analytics/metrics surface (see the `[Unreleased]` CHANGELOG
+  entries). A few stateful/large surfaces in those modules remain
+  Rust-only; only what is actually bound is claimed here.
+- [x] Full K-Prototypes categorical support through `AudienceSegmenter`:
+  `AudienceSegmenter(n_clusters, method="kprototypes")`, `fit(data,
+  categorical_data=...)`, `predict(data, categorical_data=...)`, plus a
+  `categorical_centers` getter. Numeric-only K-Prototypes remains the
+  default when no categorical data is supplied.
+- [x] Clear the remaining clippy findings. Verified on 2026-10-25:
+  `cargo clippy --workspace --all-targets -- -D warnings` passes with
+  zero warnings, and `cargo fmt --all -- --check` is clean.
+
+### Still deferred
+- Binding the stateful training/persistence surfaces of the larger
+  analytics modules (full model lifecycle, not the stateless slices).
+- A real chi-square-for-continuous-features statistic (currently proxied
+  to KS; see the deep-review note above).
 
 ### Later — Advanced Analytics
 - Real gradient-boosting integration for churn/CLV, if/when a Rust XGBoost

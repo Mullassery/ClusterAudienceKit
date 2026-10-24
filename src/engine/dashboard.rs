@@ -190,11 +190,7 @@ impl DashboardMetrics {
             .as_secs() as i64;
 
         let total_segments = segment_counts.len();
-        let avg_segment_size = if total_segments > 0 {
-            total_customers / total_segments
-        } else {
-            0
-        };
+        let avg_segment_size = total_customers.checked_div(total_segments).unwrap_or(0);
 
         Ok(DashboardSummary {
             total_customers,
@@ -247,6 +243,7 @@ impl DashboardMetrics {
     }
 
     /// Compare segments
+    #[allow(clippy::too_many_arguments)]
     pub fn compare_segments(
         segment_a: String,
         segment_a_size: usize,

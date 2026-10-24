@@ -111,11 +111,11 @@ impl KMeans {
                 counts[cluster] += 1;
             }
 
-            for i in 0..self.n_clusters {
-                if counts[i] > 0 {
+            for (i, &count) in counts.iter().enumerate() {
+                if count > 0 {
                     new_centers
                         .slice_mut(s![i, ..])
-                        .mapv_inplace(|x| x / counts[i] as f64);
+                        .mapv_inplace(|x| x / count as f64);
                 } else {
                     // Empty cluster: reinitialize with random data point
                     let idx = (i * 7) % n_samples;

@@ -37,8 +37,7 @@ impl ActivationQueue {
     }
 
     pub fn flush(&mut self) -> Result<Vec<ActivationMessage>> {
-        let messages = self.messages.drain(..).collect();
-        Ok(messages)
+        Ok(std::mem::take(&mut self.messages))
     }
 
     pub fn clear(&mut self) {
@@ -80,6 +79,14 @@ impl ActivationOrchestrator {
             platforms: HashMap::new(),
             results: Vec::new(),
         }
+    }
+
+    pub fn config(&self) -> &BatchActivationConfig {
+        &self.config
+    }
+
+    pub fn retry_policy(&self) -> &RetryPolicy {
+        &self.retry_policy
     }
 
     pub fn register_platform(&mut self, credential: PlatformCredential) -> Result<()> {

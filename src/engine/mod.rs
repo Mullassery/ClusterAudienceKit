@@ -53,6 +53,8 @@ pub struct AudienceSegmenterCore {
     pub cluster_centers: Option<Array2<f64>>,
     pub cluster_labels: Option<Vec<usize>>,
     pub normalization_params: Option<NormalizationParams>,
+    pub categorical_centers: Option<Vec<Vec<usize>>>,
+    pub kprototypes_gamma: Option<f64>,
 }
 
 /// Normalization parameters for RFM features
@@ -74,6 +76,8 @@ impl AudienceSegmenterCore {
             cluster_centers: None,
             cluster_labels: None,
             normalization_params: None,
+            categorical_centers: None,
+            kprototypes_gamma: None,
         }
     }
 
@@ -84,6 +88,28 @@ impl AudienceSegmenterCore {
     /// Fit the segmenter on data: runs the configured clustering method and
     /// stores the resulting centers/labels for later use by `predict`.
     pub fn fit(&mut self, data: &Array2<f64>) -> Result<()> {
+        self.fit_with_categorical(data, None)
+    }
+
+    /// Fit the segmenter, optionally supplying categorical features for
+    /// K-Prototypes. Categorical rows must contain integer-encoded category
+    /// values (one column per categorical feature).
+    pub fn fit_with_categorical(
+        &mut self,
+        data: &Array2<f64>,
+        categorical: Option<&Vec<Vec<usize>>>,
+    ) -> Result<()> {
+        if categorical.is_some()
+            && !matches!(
+                self.config.clustering_method,
+                clustering::ClusteringMethod::KPrototypes
+            )
+        {
+            return Err(crate::ClusterAudienceKitError::InvalidConfig(
+                "categorical features require KPrototypes clustering".to_string(),
+            ));
+        }
+
         match self.config.clustering_method {
             clustering::ClusteringMethod::KMeans | clustering::ClusteringMethod::KMeansOnly => {
                 let result = clustering::kmeans(
@@ -95,17 +121,28 @@ impl AudienceSegmenterCore {
                 )?;
                 self.cluster_centers = Some(result.centers);
                 self.cluster_labels = Some(result.labels);
+                self.categorical_centers = None;
+                self.kprototypes_gamma = None;
             }
             clustering::ClusteringMethod::KPrototypes => {
-                // Numeric-only path: AudienceSegmenterCore's fit() signature
-                // doesn't currently carry categorical feature data, so this
-                // runs K-Prototypes in numeric-only mode (equivalent to
-                // KMeans). Categorical support needs a richer input type
-                // than a single Array2<f64> — tracked as a follow-up rather
-                // than silently ignored.
+                if let Some(cat) = categorical {
+                    if cat.len() != data.nrows() {
+                        return Err(crate::ClusterAudienceKitError::DataValidation(
+                            "categorical_data row count doesn't match numeric data".to_string(),
+                        ));
+                    }
+                    let n_features = cat.first().map_or(0, Vec::len);
+                    if cat.iter().any(|row| row.len() != n_features) {
+                        return Err(crate::ClusterAudienceKitError::DataValidation(
+                            "categorical_data rows must all have the same number of features"
+                                .to_string(),
+                        ));
+                    }
+                }
+
                 let labels = clustering::kprototypes(
                     data,
-                    None,
+                    categorical,
                     self.config.n_clusters,
                     Self::DEFAULT_MAX_ITER,
                     self.config.random_state,
@@ -128,6 +165,28 @@ impl AudienceSegmenterCore {
                     }
                     centers
                 };
+                self.categorical_centers = categorical.map(|cat| {
+                    let n_features = cat.first().map_or(0, Vec::len);
+                    (0..self.config.n_clusters)
+                        .map(|cluster| {
+                            (0..n_features)
+                                .map(|feature| {
+                                    let mut freq = std::collections::BTreeMap::new();
+                                    for (i, &label) in labels.iter().enumerate() {
+                                        if label == cluster {
+                                            *freq.entry(cat[i][feature]).or_insert(0usize) += 1;
+                                        }
+                                    }
+                                    freq.into_iter()
+                                        .max_by_key(|(_, count)| *count)
+                                        .map(|(value, _)| value)
+                                        .unwrap_or(0)
+                                })
+                                .collect()
+                        })
+                        .collect()
+                });
+                self.kprototypes_gamma = Some(clustering::kprototypes_gamma(data));
                 self.cluster_centers = Some(centers);
                 self.cluster_labels = Some(labels);
             }
@@ -138,12 +197,40 @@ impl AudienceSegmenterCore {
     /// Predict cluster assignments for new data using the centers learned
     /// by a prior call to `fit`.
     pub fn predict(&self, data: &Array2<f64>) -> Result<Vec<usize>> {
+        self.predict_with_categorical(data, None)
+    }
+
+    /// Predict cluster assignments, supplying categorical features when the
+    /// model was fitted with K-Prototypes categorical data.
+    pub fn predict_with_categorical(
+        &self,
+        data: &Array2<f64>,
+        categorical: Option<&Vec<Vec<usize>>>,
+    ) -> Result<Vec<usize>> {
         let centers = self.cluster_centers.as_ref().ok_or_else(|| {
             crate::ClusterAudienceKitError::ClusteringError(
                 "predict() called before fit() — no cluster centers available".to_string(),
             )
         })?;
-        clustering::assign_to_clusters(data, centers)
+        match (&self.categorical_centers, categorical) {
+            (Some(cat_centers), Some(cat)) => {
+                let gamma = self.kprototypes_gamma.ok_or_else(|| {
+                    crate::ClusterAudienceKitError::ClusteringError(
+                        "model has categorical centers but no gamma; refit required".to_string(),
+                    )
+                })?;
+                clustering::assign_to_clusters_kprototypes(data, cat, centers, cat_centers, gamma)
+            }
+            (Some(_), None) => Err(crate::ClusterAudienceKitError::DataValidation(
+                "model was fitted with categorical features; predict requires categorical_data"
+                    .to_string(),
+            )),
+            (None, Some(_)) => Err(crate::ClusterAudienceKitError::DataValidation(
+                "categorical_data supplied, but the model was fitted without categorical features"
+                    .to_string(),
+            )),
+            (None, None) => clustering::assign_to_clusters(data, centers),
+        }
     }
 }
 
@@ -225,6 +312,42 @@ mod tests {
         segmenter.fit(&data).unwrap();
         assert!(segmenter.cluster_centers.is_some());
         assert_eq!(segmenter.cluster_labels.as_ref().unwrap().len(), 4);
+    }
+
+    #[test]
+    fn fit_with_kprototypes_uses_categorical_features_and_predicts_consistently() {
+        let mut segmenter =
+            AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KPrototypes));
+        let data = ndarray::array![[0.0, 0.0], [0.0, 0.1], [10.0, 10.0], [10.0, 10.1]];
+        let categorical = vec![vec![0], vec![0], vec![1], vec![1]];
+
+        segmenter
+            .fit_with_categorical(&data, Some(&categorical))
+            .unwrap();
+
+        let labels = segmenter.cluster_labels.as_ref().unwrap();
+        assert_eq!(labels[0], labels[1]);
+        assert_eq!(labels[2], labels[3]);
+        assert_ne!(labels[0], labels[2]);
+        assert!(segmenter.categorical_centers.is_some());
+
+        let predicted = segmenter
+            .predict_with_categorical(&data, Some(&categorical))
+            .unwrap();
+        assert_eq!(predicted, *labels);
+
+        assert!(segmenter.predict(&data).is_err());
+    }
+
+    #[test]
+    fn categorical_features_with_kmeans_are_rejected() {
+        let mut segmenter =
+            AudienceSegmenterCore::new(make_config(2, clustering::ClusteringMethod::KMeans));
+        let data = ndarray::array![[1.0, 1.0], [2.0, 2.0]];
+        let categorical = vec![vec![0], vec![1]];
+        assert!(segmenter
+            .fit_with_categorical(&data, Some(&categorical))
+            .is_err());
     }
 
     /// `n_jobs` is a real, load-bearing config field: it controls the size of

@@ -130,7 +130,7 @@ impl TierMigrationPredictor {
             "stay".to_string()
         };
 
-        let expansion = growth_rate.max(0.0).min(1.0);
+        let expansion = growth_rate.clamp(0.0, 1.0);
         let churn = if growth_rate < -0.3 { 0.8 } else { 0.2 };
 
         Ok(TierMigrationForecast {
