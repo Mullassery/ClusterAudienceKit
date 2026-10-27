@@ -188,7 +188,7 @@ def test_fit_predict_pipeline():
 
 ## Reporting Issues
 
-Use the [GitHub issue tracker](https://github.com/Mullassery/clusteraudiencekit/issues):
+Use the [GitHub issue tracker](../clusteraudiencekit/issues):
 
 1. Check existing issues first
 2. Include:

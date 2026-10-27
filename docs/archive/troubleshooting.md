@@ -430,7 +430,7 @@ If you can't find a solution:
 
 1. **Check the examples:** `examples/` directory
 2. **Read the documentation:** `docs/api-reference.md`
-3. **Open an issue:** https://github.com/Mullassery/clusteraudiencekit/issues
+3. **Open an issue:** ../clusteraudiencekit/issues
 
 When reporting issues, include:
 - Python version: `python --version`

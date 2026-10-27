@@ -5,7 +5,7 @@
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![PyPI](https://img.shields.io/pypi/v/clusteraudiencekit)](https://pypi.org/project/clusteraudiencekit/)
 [![Python 3.8+](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org)
-[![Tests](https://img.shields.io/github/actions/workflow/status/Mullassery/ClusterAudienceKit/tests.yml?label=tests)](https://github.com/Mullassery/ClusterAudienceKit/actions)
+[![Tests](https://img.shields.io/github/actions/workflow/status/Mullassery/ClusterAudienceKit/tests.yml?label=tests)](../ClusterAudienceKit/actions)
 
 ## What it is
 
@@ -263,7 +263,7 @@ Verified as of the last audit (October 2026):
 - **`cargo audit`: 1 open advisory with no fix available.** `anyhow` 1.0.102 has an
   unsoundness advisory in `Error::downcast_mut()`
   ([RUSTSEC-2026-0190](https://rustsec.org/advisories/RUSTSEC-2026-0190)); tracked in
-  [RepoIssues #34](https://github.com/Mullassery/RepoIssues/issues/34).
+  [RepoIssues #34](../RepoIssues/issues/34).
 - **Two Rust utility functions are unimplemented stubs.** `pandas_to_arrow`/`arrow_to_pandas`
   in `src/utils/conversions.rs` return `Err("Not implemented")`; they aren't called elsewhere
   or exposed to Python.
@@ -299,13 +299,13 @@ against libpython, which a standalone `cargo test` binary needs. See `CONTRIBUTI
 
 Other tools from the same family, for adjacent parts of the customer/data stack:
 
-- [PyReverseETL](https://github.com/Mullassery/PyReverseETL) — reverse ETL runtime: move data into CRMs and marketing tools with lineage and compliance enforcement.
-- [PySynthData](https://github.com/Mullassery/PySynthData) — synthetic data generation for ML training: realistic datasets for model development and testing.
-- [StatGuardian](https://github.com/Mullassery/StatGuardian) — fast, declarative data quality framework (Rust): schema validation, drift detection, anomaly detection.
-- [PyWeatherEnriched](https://github.com/Mullassery/PyWeatherEnriched) — real historical weather and geocoding enrichment for ML pipelines.
-- [PyDBTGuard](https://github.com/Mullassery/PyDBTGuard) — analyzes a dbt project's `manifest.json` to flag risky tests, map blast radius, and estimate test cost.
+- [PyReverseETL](../PyReverseETL) — reverse ETL runtime: move data into CRMs and marketing tools with lineage and compliance enforcement.
+- [PySynthData](../PySynthData) — synthetic data generation for ML training: realistic datasets for model development and testing.
+- [StatGuardian](../StatGuardian) — fast, declarative data quality framework (Rust): schema validation, drift detection, anomaly detection.
+- [PyWeatherEnriched](../PyWeatherEnriched) — real historical weather and geocoding enrichment for ML pipelines.
+- [PyDBTGuard](../PyDBTGuard) — analyzes a dbt project's `manifest.json` to flag risky tests, map blast radius, and estimate test cost.
 
-[Browse all projects →](https://github.com/Mullassery?tab=repositories)
+[Browse all projects →](../Mullassery-profile)
 
 ## License
 

@@ -10,7 +10,7 @@
 
 
 **Status:** Ready to publish  
-**Package:** https://github.com/Mullassery/clusteraudiencekit  
+**Package:** ../clusteraudiencekit  
 **License:** Proprietary
 
 ---
@@ -66,7 +66,7 @@ Benchmarks (real, on Apple M1 vs sklearn 1.6.1):
 - 100k customers: sklearn >2.7 hours → ClusterAudienceKit target <130ms
 
 Phase 1 implementation is in progress. The API is fully defined and installable.
-GitHub: https://github.com/Mullassery/clusteraudiencekit
+GitHub: ../clusteraudiencekit
 pip install clusteraudiencekit
 ```
 
@@ -209,13 +209,13 @@ pip install clusteraudiencekit
 uv pip install clusteraudiencekit
 
 # or
-curl -L -O https://github.com/Mullassery/clusteraudiencekit/releases/download/v0.1.0/clusteraudiencekit-0.1.0-cp313-cp313-macosx_11_0_arm64.whl
+curl -L -O ../clusteraudiencekit/releases/download/v0.1.0/clusteraudiencekit-0.1.0-cp313-cp313-macosx_11_0_arm64.whl
 pip install ./clusteraudiencekit-0.1.0-cp313-cp313-macosx_11_0_arm64.whl
 ```
 
 MIT licensed. Contributions welcome.
 
-**GitHub:** https://github.com/Mullassery/clusteraudiencekit
+**GitHub:** ../clusteraudiencekit
 ```
 
 ---
@@ -253,7 +253,7 @@ Usage:
     profiles = segmenter.segment_profiles()
 
 Install: pip install clusteraudiencekit
-GitHub: https://github.com/Mullassery/clusteraudiencekit
+GitHub: ../clusteraudiencekit
 MIT licensed. Phase 1 implementation in progress, API fully defined.
 ```
 
@@ -283,7 +283,7 @@ I built ClusterAudienceKit to fix this — an open source Python library that ha
 RFM segmentation, clustering, segment profiles, and streaming updates without 
 the 3-library stack.
 
-GitHub: https://github.com/Mullassery/clusteraudiencekit  
+GitHub: ../clusteraudiencekit  
 pip install clusteraudiencekit
 
 Happy to answer questions about the architecture or benchmark methodology.
@@ -298,7 +298,7 @@ streaming updates (free, MIT)
 
 Body:
 Built an open source Python library for Martech teams who need customer 
-segmentation in production pipelines: https://github.com/Mullassery/clusteraudiencekit
+segmentation in production pipelines: ../clusteraudiencekit
 
 It does RFM analysis, customer clustering, segment profiling, and can 
 update segments incrementally as new purchase/event data arrives — without 
@@ -370,7 +370,7 @@ MIT license.
 Installation:
     pip install clusteraudiencekit
 
-GitHub Repository: https://github.com/Mullassery/clusteraudiencekit
+GitHub Repository: ../clusteraudiencekit
 
 ABOUT:
 ClusterAudienceKit is an open source Python library for customer segmentation 
@@ -378,8 +378,8 @@ maintained by Georgi Mammen Mullassery. The project is MIT licensed and
 accepts community contributions.
 
 CONTACT:
-GitHub Issues: https://github.com/Mullassery/clusteraudiencekit/issues
-GitHub Discussions: https://github.com/Mullassery/clusteraudiencekit/discussions
+GitHub Issues: ../clusteraudiencekit/issues
+GitHub Discussions: ../clusteraudiencekit/discussions
 ```
 
 ---
@@ -435,7 +435,7 @@ caused by marketing campaigns or seasonal behaviour.
 The library is pip-installable and released proprietary license.
 
 Installation: pip install clusteraudiencekit
-GitHub: https://github.com/Mullassery/clusteraudiencekit
+GitHub: ../clusteraudiencekit
 ```
 
 ---
@@ -492,7 +492,7 @@ questions about the architecture.
 ```
 [Use the same full article content as the dev.to article above — 
 Hashnode and dev.to both accept the same format. 
-Set the canonical URL to https://github.com/Mullassery/clusteraudiencekit
+Set the canonical URL to ../clusteraudiencekit
 to avoid duplicate content penalty]
 ```
 

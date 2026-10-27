@@ -1,6 +1,6 @@
 # K-Means Benchmark: 1M Rows
 
-Addresses [RepoIssues #32](https://github.com/Mullassery/RepoIssues/issues/32) — the README/description claim
+Addresses [RepoIssues #32](../RepoIssues/issues/32) — the README/description claim
 "Process 1M+ customers in <1s" previously had zero committed benchmark evidence anywhere in the repo.
 
 ## Methodology

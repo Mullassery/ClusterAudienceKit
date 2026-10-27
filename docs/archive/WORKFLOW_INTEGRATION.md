@@ -471,5 +471,5 @@ pyreverseetl activate --audience high_value --destination salesforce
 
 ## Support
 
-- Issues: https://github.com/Mullassery/ClusterAudienceKit/issues
-- Discussions: https://github.com/Mullassery/ClusterAudienceKit/discussions
+- Issues: ../ClusterAudienceKit/issues
+- Discussions: ../ClusterAudienceKit/discussions

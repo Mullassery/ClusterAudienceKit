@@ -71,4 +71,4 @@ ClusterAudienceKit provides customer segmentation through RFM analysis, clusteri
 ## Community
 
 Contribute:
-https://github.com/Mullassery/ClusterAudienceKit/issues
+../ClusterAudienceKit/issues
