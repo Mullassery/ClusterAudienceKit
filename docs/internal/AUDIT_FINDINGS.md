@@ -17,7 +17,7 @@ Rust-powered customer segmentation with a Python API: RFM, K-Means/K-Prototypes,
 
 - Broad, real feature set (RFM, clustering, churn AUC, CLV, SQL export for 8 dialects, DP/k-anonymity, streaming, drift, cohorts, lifecycle).
 - Rust core with Python bindings; Apache-2.0; tests for clustering, performance, SQL export, and wired modules.
-- Clear MarTech positioning and cross-links to PyReverseETL/MessageBirds.
+- Clear MarTech positioning and cross-links to PyReverseETL/PyCustomerHub.
 
 ## Verified gaps and user-facing risks
 
@@ -40,7 +40,7 @@ Rust-powered customer segmentation with a Python API: RFM, K-Means/K-Prototypes,
 
 ## Do not build
 
-- A full CDP or warehouse. Integrate with MessageBirds/PyReverseETL instead.
+- A full CDP or warehouse. Integrate with PyCustomerHub/PyReverseETL instead.
 
 ## Evidence gaps / validation needed
 

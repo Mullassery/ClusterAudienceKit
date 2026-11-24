@@ -4,7 +4,7 @@ This repository is part of the **MarTech customer-data loop** bundle. Portfolio-
 reuse map, and phases are in [`Mullassery/BUNDLES.md`](../Mullassery/blob/main/BUNDLES.md).
 
 - **Role:** Segmentation, CLV, churn, lookalikes
-- **Upstream/downstream:** MessageBirds, PyReverseETL
+- **Upstream/downstream:** PyCustomerHub, PyReverseETL
 - **Next integration step:** Expose segment export/adapters; validate CLV/churn against lifetimes/PyMC; publish cross-platform wheels.
 - **Non-goal:** Become a CDP or warehouse.
 

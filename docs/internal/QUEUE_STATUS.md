@@ -10,7 +10,7 @@ This file records what was shipped, what is blocked/failed, and what is rejected
 - CLV/churn validation against lifetimes/PyMC-Marketing.
 
 ## Rejected / deferred
-- A full CDP or warehouse; integrate with MessageBirds/PyReverseETL.
+- A full CDP or warehouse; integrate with PyCustomerHub/PyReverseETL.
 
 ## Policy
 

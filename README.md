@@ -277,7 +277,7 @@ Verified as of the last audit (October 2026):
 - CLV/churn validation against lifetimes/PyMC-Marketing.
 
 **Rejected / deferred:**
-- A full CDP or warehouse; integrate with MessageBirds/PyReverseETL.
+- A full CDP or warehouse; integrate with PyCustomerHub/PyReverseETL.
 
 Full shipped/blocked/rejected detail: [`docs/internal/QUEUE_STATUS.md`](docs/internal/QUEUE_STATUS.md).
 
